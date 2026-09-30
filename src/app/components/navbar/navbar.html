@@ -1,0 +1,53 @@
+<div class="container" >
+    <div class="logo"><img src="logo-image.png" alt="Logo"></div>
+    <ul class="nav-titles">
+        <li>
+            <a routerLink="/" routerLinkActive #homeActive="routerLinkActive" [routerLinkActiveOptions]="{exact: true}" [class.active]="homeActive.isActive">
+                <img class="nav-icon" [src]="homeActive.isActive ? 'home-icon-green.svg' : 'home-icon.svg'" alt="Home Icon">
+                Início
+            </a>
+        </li>
+        <li>
+            <a routerLink="/agenda" routerLinkActive #sheduleActive="routerLinkActive" [routerLinkActiveOptions]="{exact: true}" [class.active]="sheduleActive.isActive">
+                <img class="nav-icon" [src]="sheduleActive.isActive ? 'calendar-green.svg' : 'calendar.svg'" alt="Shedule Icon">
+                Agenda
+            </a>
+        </li>
+        <li>
+            <a routerLink="/clientes" routerLinkActive #clientActive="routerLinkActive" [routerLinkActiveOptions]="{exact: true}" [class.active]="clientActive.isActive">
+                <img class="nav-icon" [src]="clientActive.isActive ? 'client-green.svg' : 'client.svg'" alt="Client Icon">
+                Clientes
+            </a>
+        </li>
+        <li>
+            <a routerLink="/servicos" routerLinkActive #serviceActive="routerLinkActive" [routerLinkActiveOptions]="{exact: true}" [class.active]="serviceActive.isActive">
+                <img class="nav-icon" src="services.svg" alt="Services Icon">
+                Serviços
+            </a>
+        </li>
+        <li>
+            <a routerLink="/profissionais" routerLinkActive #professionalActive="routerLinkActive" [routerLinkActiveOptions]="{exact: true}" [class.active]="professionalActive.isActive">
+                <img class="nav-icon" src="professional.svg" alt="Professional Icon">
+                Profissionais
+            </a>
+        </li>
+        <li>
+            <a routerLink="/financeiro" routerLinkActive #financeActive="routerLinkActive" [routerLinkActiveOptions]="{exact: true}" [class.active]="financeActive.isActive">
+                <img class="nav-icon" src="finance.svg" alt="Finance Icon">
+                Financeiro
+            </a>
+        </li>
+        <li>
+            <a routerLink="/estoque" routerLinkActive #stockActive="routerLinkActive" [routerLinkActiveOptions]="{exact: true}" [class.active]="stockActive.isActive">
+                <img class="nav-icon" src="stock.svg" alt="Stock Icon">
+                Estoque
+            </a>
+        </li>
+        <li>
+            <a routerLink="/relatorio" routerLinkActive #reportActive="routerLinkActive" [routerLinkActiveOptions]="{exact: true}" [class.active]="reportActive.isActive">
+                <img class="nav-icon" src="report.svg" alt="Report Icon">
+                Relatórios
+            </a>
+        </li>
+    </ul>
+</div>
