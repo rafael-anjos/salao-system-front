@@ -21,31 +21,31 @@
         </li>
         <li>
             <a routerLink="/servicos" routerLinkActive #serviceActive="routerLinkActive" [routerLinkActiveOptions]="{exact: true}" [class.active]="serviceActive.isActive">
-                <img class="nav-icon" src="services.svg" alt="Services Icon">
+                <img class="nav-icon" [src]="serviceActive.isActive ? 'services-green.svg' : 'services.svg'" alt="Services Icon">
                 Serviços
             </a>
         </li>
         <li>
             <a routerLink="/profissionais" routerLinkActive #professionalActive="routerLinkActive" [routerLinkActiveOptions]="{exact: true}" [class.active]="professionalActive.isActive">
-                <img class="nav-icon" src="professional.svg" alt="Professional Icon">
+                <img class="nav-icon" [src]="professionalActive.isActive ? 'professional-green.svg' : 'professional.svg'" alt="Professional Icon">
                 Profissionais
             </a>
         </li>
         <li>
             <a routerLink="/financeiro" routerLinkActive #financeActive="routerLinkActive" [routerLinkActiveOptions]="{exact: true}" [class.active]="financeActive.isActive">
-                <img class="nav-icon" src="finance.svg" alt="Finance Icon">
+                <img class="nav-icon" [src]="financeActive.isActive ? 'finance-green.svg' : 'finance.svg'" alt="Finance Icon">
                 Financeiro
             </a>
         </li>
         <li>
             <a routerLink="/estoque" routerLinkActive #stockActive="routerLinkActive" [routerLinkActiveOptions]="{exact: true}" [class.active]="stockActive.isActive">
-                <img class="nav-icon" src="stock.svg" alt="Stock Icon">
+                <img class="nav-icon" [src]="stockActive.isActive ? 'stock-green.svg' : 'stock.svg'" alt="Stock Icon">
                 Estoque
             </a>
         </li>
         <li>
             <a routerLink="/relatorio" routerLinkActive #reportActive="routerLinkActive" [routerLinkActiveOptions]="{exact: true}" [class.active]="reportActive.isActive">
-                <img class="nav-icon" src="report.svg" alt="Report Icon">
+                <img class="nav-icon" [src]="reportActive.isActive ? 'report-green.svg' : 'report.svg'" alt="Report Icon">
                 Relatórios
             </a>
         </li>

@@ -1,0 +1,127 @@
+.container {
+    display: flex;
+    justify-content: space-between;
+    min-height: 100vh;
+}
+
+main {
+    width: 80vw;
+    min-height: 100%;
+}
+
+header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 10%;
+    width: 100%;
+}
+
+header p {
+    font-family: 'Montserrat';
+    font-size: 30px;
+    margin-left: 20px;
+}
+
+.header-btn {
+    display: flex;
+    gap: 10px;
+    margin-right: 10px;
+}
+
+.agendamento-btn {
+    background-color: #1C3112;
+    border-radius: 10px;
+    cursor: pointer;
+    border: 1px solid;
+    color: white;
+    transition: 0.1s ease-out;
+}
+
+.agendamento-btn:hover {
+    background-color: white;
+    border: 1px solid;
+    border-color: #1C3112;
+    color: #1C3112;
+}
+
+.agendamento-btn p {
+    font-size: 15px;
+    margin: 5px 10px 5px 10px;
+}
+
+.notification-btn {
+    border-style: hidden;
+    background-color: transparent;
+    cursor: pointer;
+}
+
+.header-btn button img {
+    height: 25px;
+    width: 25px;
+}
+
+.agendamento {
+    display: flex;
+    height: 90%;
+    width: 100%;
+}
+
+.agendamento-agenda {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid;
+    border-radius: 7px;
+    margin: 5px;
+    width: 75%;
+    min-height: 95%;
+}
+
+.agendamento-calendar {
+    border: 1px solid;
+    border-radius: 7px;
+    margin: 5px;
+    width: 25%;
+    min-height: 95%;
+}
+
+.agenda-title {
+    display: flex;
+    margin-left: 5px;
+    height: 5%;
+    gap: 8px;
+    align-items: center;
+    font-family: 'Montserrat';
+    font-size: 15px;
+}
+
+.agenda {
+    min-height: 94%;
+    width: 99%;
+    font-family: 'Montserrat';
+    border-collapse: collapse;
+}
+
+.agenda th {
+    border: 1px solid;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.back {
+    border-radius: 100%;
+    border: 1px solid;
+    height: 17px;
+    width: 17px;
+    cursor: pointer;
+}
+
+.forward {
+    border-radius: 100%;
+    border: 1px solid;
+    height: 17px;
+    width: 17px;
+    cursor: pointer;
+}
