@@ -18,16 +18,13 @@
         <p>S</p>
     </div>
     <div class="calendario-dias">
-        <ng-container *ngFor="let dia of diasCalendario; let i = index">
-            <div *ngIf="i < 7">
-                <strong>{{ dia | date: 'EEEEE' }}</strong>
-            </div>
-        </ng-container>
-        <div *ngFor="let dia of diasCalendario; let i = index"
+        @for (dia of diasCalendario; track $index) {
+            <div
             class="calendario-dia"
-            [class.calendario-quebrar-linha]="i % 7 === 0"
+            [class.calendario-quebrar-linha]="$index % 7 === 0"
             [class.calendario-dia-nao-faz-parte-mes-atual]="dataAtual.getMonth() !== dia.getMonth()">
             {{dia | date : 'dd'}}
-        </div>
+            </div>
+        }
     </div>
 </div>

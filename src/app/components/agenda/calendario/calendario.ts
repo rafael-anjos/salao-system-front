@@ -1,9 +1,9 @@
-import { DatePipe, NgForOf } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 
 @Component({
   selector: 'app-calendario',
-  imports: [DatePipe, NgForOf],
+  imports: [DatePipe],
   templateUrl: './calendario.html',
   styleUrl: './calendario.css',
 })

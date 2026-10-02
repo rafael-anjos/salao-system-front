@@ -13,13 +13,9 @@
                 <table class="agenda">
                     <thead>
                         <tr>
-                            <th>Dom, 27</th>
-                            <th>Seg, 28</th>
-                            <th>Ter, 29</th>
-                            <th>Qua, 30</th>
-                            <th>Qui, 01</th>
-                            <th>Sex, 02</th>
-                            <th>Sáb, 03</th>
+                            @for (dia of diasAgenda; track $index) {
+                                <th>{{diasSemana.at(dia.getDay())}}, {{dia | date: 'dd'}}</th>
+                            }
                         </tr>
                     </thead>
                     <tbody>
