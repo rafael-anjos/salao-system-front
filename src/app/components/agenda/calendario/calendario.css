@@ -1,0 +1,58 @@
+.calendario {
+    font-family: 'Montserrat';
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid;
+    border-radius: 7px;
+    width: 100%;
+    height: 100%;
+}
+
+.calendario-titulo {
+    display: grid;
+    margin-top: 10px;
+    grid-template-columns: 1fr 3fr 1fr;
+    text-align: center;
+    gap: 10px;
+}
+
+.calendario-titulo button {
+    height: 20px;
+    width: 20px;
+    border: 1px solid;
+    border-radius: 10px;
+    background-color: #fff;
+    cursor: pointer;
+}
+
+.calendario-titulo-mes-ano {
+    font-size: 18px;
+}
+
+.calendario-dias {
+    display: grid;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+}
+
+.calendario-dias div {
+    font-size: 20px;
+    padding: 5px;
+}
+
+.calendario-dias-semana {
+    display: flex;
+    justify-content: space-between;
+    width: 80%;
+    margin-top: 5px;
+    padding: 10px;
+    border-bottom: 1px solid #1c3112;
+}
+
+.calendario-dia-nao-faz-parte-mes-atual {
+    color: #aaa;
+}

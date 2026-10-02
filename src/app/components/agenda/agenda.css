@@ -5,7 +5,7 @@
 }
 
 main {
-    width: 80vw;
+    width: 83vw;
     min-height: 100%;
 }
 
@@ -72,56 +72,39 @@ header p {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    border: 1px solid;
+    border: 2px solid #f0f0f0;
     border-radius: 7px;
     margin: 5px;
+    padding: 5px;
     width: 75%;
     min-height: 95%;
 }
 
 .agendamento-calendar {
-    border: 1px solid;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border: 2px solid #f0f0f0;
     border-radius: 7px;
     margin: 5px;
+    padding: 5px;
     width: 25%;
     min-height: 95%;
 }
 
-.agenda-title {
-    display: flex;
-    margin-left: 5px;
-    height: 5%;
-    gap: 8px;
-    align-items: center;
-    font-family: 'Montserrat';
-    font-size: 15px;
-}
-
 .agenda {
-    min-height: 94%;
-    width: 99%;
+    min-height: 100%;
+    width: 100%;
     font-family: 'Montserrat';
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 1px;
+    border: 2px solid #1C3112;
+    border-radius: 7px;
 }
 
 .agenda th {
-    border: 1px solid;
+    border: 1px solid #f0f0f0;
+    padding: 2px;
     font-size: 13px;
     font-weight: 500;
-}
-
-.back {
-    border-radius: 100%;
-    border: 1px solid;
-    height: 17px;
-    width: 17px;
-    cursor: pointer;
-}
-
-.forward {
-    border-radius: 100%;
-    border: 1px solid;
-    height: 17px;
-    width: 17px;
-    cursor: pointer;
 }
