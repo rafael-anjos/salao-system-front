@@ -2,10 +2,11 @@ import { Component, OnInit } from '@angular/core';
 import { Navbar } from '../navbar/navbar';
 import { Calendario } from './calendario/calendario';
 import { DatePipe } from '@angular/common';
+import { NovoAgendamento } from './novo-agendamento/novo-agendamento';
 
 @Component({
   selector: 'app-agenda-component',
-  imports: [Navbar, Calendario, DatePipe],
+  imports: [Navbar, Calendario, NovoAgendamento, DatePipe],
   templateUrl: './agenda.html',
   styleUrl: './agenda.css',
 })
