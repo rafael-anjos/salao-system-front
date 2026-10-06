@@ -2,17 +2,16 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    border: 1px solid #b3b3b3;
-    border-radius: 7px;
-    box-shadow: 1px 2px 5px #b3b3b3;
-    height: 12cm;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    box-shadow: 1px 3px 7px #555;
+    height: 13cm;
     width: 9.5cm;
     gap: 20px;
     font-family: 'Montserrat';
     padding: 20px;
     background-color: white;
     z-index: 1000;
-    position: absolute;
 }
 
 .titulo {
@@ -31,7 +30,7 @@
 .cliente input {
     box-sizing: border-box;
     width: 100%;
-    height: 0.8cm;
+    height: 1cm;
     background-color: white;
     border: 1px solid #b3b3b3;
     border-radius: 7px;
@@ -44,3 +43,30 @@
 .cliente input:focus {
     border: 1px solid #555;
 }
+
+.servico {
+    width: 100%;
+}
+
+.servico p {
+    font-size: 12px;
+    margin-bottom: 5px;
+}
+
+.servico input {
+    box-sizing: border-box;
+    width: 100%;
+    height: 1cm;
+    background-color: white;
+    border: 1px solid #b3b3b3;
+    border-radius: 7px;
+    outline: none;
+    padding-left: 10px;
+    font-family: 'Montserrat';
+    transition: 0.1s ease-out;
+}
+
+.servico input:focus{
+    border: 1px solid #555;
+}
+
