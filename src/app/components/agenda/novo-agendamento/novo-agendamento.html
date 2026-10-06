@@ -1,3 +1,4 @@
+<div class="overlay">
 <div class="container">
     <div class="titulo">
         <section>
@@ -14,19 +15,20 @@
         <input type="search">
     </div>
     <div class="data">
-        <p>Data do agendamento</p>
+        <b><p>Data do agendamento</p></b>
         <input type="date">
     </div>
     <div class="hora-inicio">
-        <p>Horario de inicio</p>
+        <b><p>Horario de inicio</p></b>
         <input type="datetime">
     </div>
     <div class="observacao">
-        <p>Observação (opcional)</p>
-        <input type="text">
+        <b><p>Observação (opcional)</p></b>
+        <textarea name="" id=""></textarea>
     </div>
     <div class="foot-btn">
-        <button class="cancel" type="submit">Cancelar</button>
-        <button class="save" type="submit">Salvar</button>
+        <button (click)="onCancelar()" class="cancel" type="submit">Cancelar</button>
+        <button (click)="onSalvar()" class="save" type="submit">Salvar</button>
+    </div>
     </div>
 </div>

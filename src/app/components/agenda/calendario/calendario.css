@@ -20,6 +20,7 @@
 }
 
 .calendario-titulo button {
+    font-weight: 500;
     height: 20px;
     width: 20px;
     border: 1px solid;

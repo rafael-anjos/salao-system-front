@@ -31,6 +31,12 @@ header p {
 }
 
 .agendamento-btn {
+    font-family: 'Montserrat';
+    font-weight: 500;
+    font-size: 15px;
+    height: 1cm;
+    width: 5cm;
+    box-sizing: border-box;
     background-color: #1C3112;
     border-radius: 10px;
     cursor: pointer;
@@ -46,9 +52,9 @@ header p {
     color: #1C3112;
 }
 
-.agendamento-btn p {
-    font-size: 15px;
-    margin: 5px 10px 5px 10px;
+.agendamento-btn:active{
+    background-color: #1C3112;
+    color: white;
 }
 
 .notification-btn {
@@ -120,15 +126,4 @@ header p {
     font-size: 13px;
     font-weight: 500;
     height: 90%;
-}
-
-.forms{
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: rgba(123, 123, 123, 0.5);
-    width: 100%;
-    height: 100%;
-    z-index: 1000;
-    position: absolute;
 }

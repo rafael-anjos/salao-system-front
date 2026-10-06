@@ -14,6 +14,15 @@ export class AgendaComponent implements OnInit{
   dataAtual: Date = new Date();
   diasSemana: string[] = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
   diasAgenda: Date[] = [];
+  mostrarFormulario = false;
+
+  abrirFormulario(){
+    this.mostrarFormulario = true;
+  }
+
+  fecharFormulario(){
+    this.mostrarFormulario = false;
+  }
 
   ngOnInit(){
     this.construirAgenda();

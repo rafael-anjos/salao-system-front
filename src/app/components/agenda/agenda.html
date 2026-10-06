@@ -5,7 +5,8 @@
             <p>Agenda</p>
             <div class="header-btn">
                 <button class="notification-btn"><img src="notification-green.svg" alt="Notificações"></button>
-                <button class="agendamento-btn" type="submit"><p>Novo Agendamento</p></button>
+                <button (click)="abrirFormulario()" class="agendamento-btn" type="submit">Novo Agendamento</button>
+                
             </div>
         </header>
         <div class="agendamento">
@@ -36,10 +37,11 @@
             </section>
         </div>
     </main>
-    <div class="forms">
-        <app-novo-agendamento/>
-    </div>
-
+    @if (mostrarFormulario) {
+        <app-novo-agendamento
+            (cancelar)="fecharFormulario()"
+            (salvar)="fecharFormulario()" />
+    }
 </div>
 
 
