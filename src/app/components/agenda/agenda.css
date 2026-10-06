@@ -2,20 +2,23 @@
     display: flex;
     justify-content: space-between;
     min-height: 100vh;
+    width: 100%;
 }
 
 main {
     box-sizing: border-box;
-    width: 83vw;
+    width: 100%;
     min-height: 100%;
 }
 
 header {
+    box-sizing: border-box;
     display: flex;
     align-items: center;
     justify-content: space-between;
     height: 10%;
     width: 100%;
+    box-shadow: 1px 1px 7px 1px #b3b3b3;
 }
 
 header p {
@@ -25,9 +28,12 @@ header p {
 }
 
 .header-btn {
+    box-sizing: border-box;
     display: flex;
-    gap: 10px;
-    margin-right: 10px;
+    justify-content: space-between;
+    align-items: center;
+    width: 6.8cm;
+    padding-right: 10px;
 }
 
 .agendamento-btn {
@@ -58,19 +64,60 @@ header p {
 }
 
 .notification-btn {
-    border-style: hidden;
-    background-color: transparent;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid #1C3112;
+    background-color: white;
     cursor: pointer;
+    height: 35px;
+    width: 35px;
+    border-radius: 100%;
+    transition: 0.1s ease-out;
 }
 
 .header-btn button img {
-    height: 25px;
-    width: 25px;
+    height: 20px;
+    width: 20px;
+}
+
+.notification-btn .img-hover,
+.notification-btn .img-active{
+    display: none;
+}
+
+.notification-btn:hover:not(:active) .img-padrao {
+    display: none;
+}
+
+.notification-btn:hover:not(:active) .img-hover {
+    display: inline-block;
+}
+
+.notification-btn:active .img-padrao,
+.notification-btn:active .img-hover{
+    display: none;
+}
+
+.notification-btn:active .img-active{
+    display: inline-block;
+}
+
+.notification-btn:hover {
+    background-color: #1C3112;
+    border: none;
+}
+
+.notification-btn:active {
+    background-color: white;
+    border: 1px solid #1C3112;
 }
 
 .agendamento {
     box-sizing: border-box;
     display: flex;
+    padding-bottom: 5px;
+    padding-top: 10px;
     height: 90%;
     width: 100%;
 }
@@ -80,12 +127,9 @@ header p {
     display: flex;
     box-sizing: border-box;
     flex-direction: column;
-    border: 2px solid #f0f0f0;
-    border-radius: 7px;
-    margin: 5px;
     padding: 5px;
     width: 75%;
-    min-height: 30%;
+    min-height: 100%;
 }
 
 .agendamento-calendar {
@@ -93,37 +137,55 @@ header p {
     box-sizing: border-box;
     flex-direction: column;
     justify-content: space-between;
-    border: 2px solid #f0f0f0;
-    border-radius: 7px;
-    margin: 5px;
     padding: 5px;
     width: 25%;
-    min-height: 95%;
+    min-height: 100%;
 }
 
 .agenda {
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
     min-height: 100%;
     width: 100%;
     font-family: 'Montserrat';
-    border-collapse: separate;
-    border-spacing: 1px;
-    border: 2px solid #1C3112;
-    border-radius: 7px;
+    border: 1px solid #aaa;
+    border-radius: 10px;
 }
 
-.agenda thead th {
-    border: 1px solid #f0f0f0;
-    padding: 2px;
-    font-size: 13px;
+.head{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    text-align: center;
+    color: #1C3112;
+    font-size: 15px;
     font-weight: 500;
     height: 10%;
+    border-bottom: 1px solid #aaa;
 }
 
-.agenda tbody th {
-    border: 1px solid #f0f0f0;
-    padding: 2px;
+.head span{
+    width: 100%;
+    height: 100%;
+    margin-top: 40px;
+}
+
+.body {
+    display: flex;
+    justify-content: space-between;
     font-size: 13px;
     font-weight: 500;
     height: 90%;
+}
+
+.body div{
+    box-sizing:border-box;
+    border-right: 1px solid #aaa;
+    width: 100%;
+    height: 100%;
+}
+
+.body div:nth-child(7){
+    border-right: none;
 }
