@@ -1,11 +1,17 @@
-import { Component, signal } from '@angular/core';
+import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { AgendaComponent } from './components/agenda/agenda';
+import { EstoqueComponent } from './components/estoque/estoque.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, AgendaComponent],
+  standalone: true,
+  imports: [
+    RouterOutlet,
+    EstoqueComponent
+  ],
   templateUrl: './app.html',
-  styleUrl: './app.css'
+  styleUrls: ['./app.css']
 })
-export class App {}
+export class AppComponent {
+  title = 'salao-system-front';
+}

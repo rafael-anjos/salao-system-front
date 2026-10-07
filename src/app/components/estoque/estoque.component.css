@@ -1,0 +1,173 @@
+/* O box-sizing garante que o padding não aumente o tamanho total fixado para os elementos */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    /* Corrigido: margin com 'i' */
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.container-estoque {
+    background-color: #f8f9fa;
+    padding: 24px;
+    min-height: 100vh;
+}
+
+.header-pagina {
+    display: flex;
+    justify-content: space-between;
+    /* Empurra o título para a esquerda e a busca para a direita */
+    align-items: center;
+    /* Alinha o conteúdo verticalmente no centro */
+    margin-bottom: 24px;
+}
+
+.titulo-secao h1 {
+    font-size: 24px;
+    color: #1a1a1a;
+    font-weight: 600;
+}
+
+.titulo-secao p {
+    font-size: 14px;
+    color: #666;
+    margin-top: 4px;
+}
+
+/* Alinhando o input e o sininho lado a lado */
+.busca-notificacao {
+    /* Corrigido: sem o 'r' para bater com o HTML */
+    display: flex;
+    gap: 12px;
+    /* Espaço de 12px entre o input e o botão */
+}
+
+.busca-notificacao input {
+    padding: 8px 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    width: 240px;
+}
+
+.barra-acoes {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 8px;
+    margin-bottom: 24px;
+}
+
+.abas {
+    display: flex;
+    gap: 16px;
+}
+
+.btn-aba {
+    background: none;
+    /* Corrigido: 'none' em vez de nome */
+    border: none;
+    padding: 8px 4px;
+    color: #666;
+    /* Corrigido: cor cinza para o texto */
+    cursor: pointer;
+    /* Adicionado: transforma a seta do mouse na mãozinha de clique */
+    font-size: 16px;
+}
+
+/* Classe especial para a aba que estiver selecionada */
+.btn-aba.ativo {
+    color: #1a1a1a;
+    font-weight: 600;
+    border-bottom: 2px solid #1a1a1a;
+    /* Corrigido: 2px junto */
+}
+
+/* Adicionado: Estilo base do botão verde */
+.btn-novo-produto {
+    background-color: #2ec4b6;
+    /* Verde do salão */
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-novo-produto:hover {
+    background-color: #25a195;
+}
+
+.card-alerta {
+    display: flex;
+    justify-content: space-between;
+    /* Texto na esquerda, botão na direita */
+    align-items: center;
+    /* Alinha tudo verticalmente no centro */
+    background-color: #fff9db;
+    /* Fundo amarelo claro de aviso */
+    border: 1px solid #ffe066;
+    /* Borda amarela um pouco mais escura */
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+}
+
+.alerta-conteudo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    /* Espaço entre o ícone ⚠️ e o texto */
+    color: #856404;
+    /* Tom de marrom escuro para o texto do alerta ficar legível */
+    font-size: 14px;
+}
+
+.alerta-icone {
+    font-size: 18px;
+}
+
+.btn-ver-produtos {
+    background: none;
+    border: none;
+    color: #856404;
+    font-weight: 600;
+    text-decoration: underline;
+    /* Deixa o texto sublinhado como um link */
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.btn-ver-produtos:hover {
+    color: #533f03;
+    /* Escurece um pouco ao passar o mouse */
+}
+
+.barra-filtros {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.barra-filtros input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #333;
+}
+
+.barra-filtros select {
+    width: 220px;
+    /* Largura fixa para a caixinha de categorias */
+    padding: 12px 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #666;
+    background-color: white;
+    cursor: pointer;
+
+}
