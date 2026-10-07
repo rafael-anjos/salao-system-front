@@ -1,8 +1,6 @@
-/* O box-sizing garante que o padding não aumente o tamanho total fixado para os elementos */
 * {
     box-sizing: border-box;
     margin: 0;
-    /* Corrigido: margin com 'i' */
     padding: 0;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
@@ -16,9 +14,7 @@
 .header-pagina {
     display: flex;
     justify-content: space-between;
-    /* Empurra o título para a esquerda e a busca para a direita */
     align-items: center;
-    /* Alinha o conteúdo verticalmente no centro */
     margin-bottom: 24px;
 }
 
@@ -34,12 +30,9 @@
     margin-top: 4px;
 }
 
-/* Alinhando o input e o sininho lado a lado */
 .busca-notificacao {
-    /* Corrigido: sem o 'r' para bater com o HTML */
     display: flex;
     gap: 12px;
-    /* Espaço de 12px entre o input e o botão */
 }
 
 .busca-notificacao input {
@@ -65,28 +58,21 @@
 
 .btn-aba {
     background: none;
-    /* Corrigido: 'none' em vez de nome */
     border: none;
     padding: 8px 4px;
     color: #666;
-    /* Corrigido: cor cinza para o texto */
     cursor: pointer;
-    /* Adicionado: transforma a seta do mouse na mãozinha de clique */
     font-size: 16px;
 }
 
-/* Classe especial para a aba que estiver selecionada */
 .btn-aba.ativo {
     color: #1a1a1a;
     font-weight: 600;
     border-bottom: 2px solid #1a1a1a;
-    /* Corrigido: 2px junto */
 }
 
-/* Adicionado: Estilo base do botão verde */
 .btn-novo-produto {
     background-color: #2ec4b6;
-    /* Verde do salão */
     color: white;
     border: none;
     padding: 10px 20px;
@@ -102,13 +88,9 @@
 .card-alerta {
     display: flex;
     justify-content: space-between;
-    /* Texto na esquerda, botão na direita */
     align-items: center;
-    /* Alinha tudo verticalmente no centro */
     background-color: #fff9db;
-    /* Fundo amarelo claro de aviso */
     border: 1px solid #ffe066;
-    /* Borda amarela um pouco mais escura */
     border-radius: 8px;
     padding: 16px 20px;
     margin-bottom: 24px;
@@ -118,9 +100,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    /* Espaço entre o ícone ⚠️ e o texto */
     color: #856404;
-    /* Tom de marrom escuro para o texto do alerta ficar legível */
     font-size: 14px;
 }
 
@@ -134,14 +114,12 @@
     color: #856404;
     font-weight: 600;
     text-decoration: underline;
-    /* Deixa o texto sublinhado como um link */
     cursor: pointer;
     font-size: 14px;
 }
 
 .btn-ver-produtos:hover {
     color: #533f03;
-    /* Escurece um pouco ao passar o mouse */
 }
 
 .barra-filtros {
@@ -161,7 +139,6 @@
 
 .barra-filtros select {
     width: 220px;
-    /* Largura fixa para a caixinha de categorias */
     padding: 12px 16px;
     border: 1px solid #e0e0e0;
     border-radius: 8px;
@@ -169,5 +146,146 @@
     color: #666;
     background-color: white;
     cursor: pointer;
+}
 
+.container-tabela {
+    background-color: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.tabela-estoque {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 14px;
+}
+
+.tabela-estoque th {
+    background-color: #fcfcfc;
+    color: #666;
+    font-weight: 600;
+    padding: 16px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.tabela-estoque td {
+    padding: 16px;
+    border-bottom: 1px solid #f0f0f0;
+    color: #333;
+}
+
+.tabela-estoque tbody tr:hover {
+    background-color: #f9f9f9;
+}
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.status-badge.critico {
+    background-color: #fff5f5;
+    color: #e03131;
+}
+
+.status-badge.baixo {
+    background-color: #fff9db;
+    color: #f59f00;
+}
+
+.status-badge.ativo {
+    background-color: #e6fcf5;
+    color: #0ca678;
+}
+
+.acoes-botoes {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-tabela {
+    background-color: white;
+    border: 1px solid #ced4da;
+    color: #495057;
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-tabela:hover {
+    background-color: #f8f9fa;
+    border-color: #adb5bd;
+}
+
+.rodape-tabela {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    font-size: 13px;
+    color: #666;
+    background-color: #fcfcfc;
+    border-top: 1px solid #e0e0e0;
+}
+
+.paginacao {
+    display: flex;
+    gap: 4px;
+}
+
+.btn-pag {
+    background-color: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 6px 12px;
+    cursor: pointer;
+    color: #333;
+}
+
+.btn-pag.ativo {
+    background-color: #1a1a1a;
+    color: white;
+    border-color: #1a1a1a;
+}
+
+.btn-pag:disabled {
+    background-color: #f5f5f5;
+    color: #ccc;
+    cursor: not-allowed;
+}
+
+.sub-filtros-uso {
+    display: flex;
+    background-color: #e9ecef;
+    padding: 4px;
+    border-radius: 8px;
+    gap: 4px;
+    width: fit-content;
+    margin-bottom: 24px;
+}
+
+.btn-sub-filtro {
+    background: none;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #495057;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-sub-filtro.ativo {
+    background-color: white;
+    color: #1a1a1a;
+    font-weight: 600;
+    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.05);
 }
