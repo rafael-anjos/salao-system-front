@@ -1,0 +1,106 @@
+<div class="container-estoque"> 
+
+    <!-- Bloco 1: Cabeçalho da página -->
+    <div class="header-pagina">
+        <div class="titulo-secao">
+            <h1>Estoque</h1>
+            <p>Controle de produtos e insumos</p>
+        </div>
+        
+        <div class="busca-notificacao">
+            <input type="text" placeholder="Buscar produto...">
+            <button class="btn-sininho">🔔</button>
+        </div>
+    </div>
+
+    <!-- Bloco 2: Abas e Botão Novo Produto -->
+    <div class="barra-acoes">
+        <div class="abas">
+            <button class="btn-aba ativo">Produtos</button>
+            <button class="btn-aba">Categorias</button> 
+        </div>
+        <button class="btn-novo-produto">Novo Produto</button>
+    </div>
+
+    <!-- Bloco 3: Card de Alerta (Estoque Baixo) -->
+    <div class="card-alerta">
+        <div class="alerta-conteudo">
+            <span class="alerta-icone">⚠️</span>
+            <div> 
+                <strong>Atenção:</strong>
+                <span>Existem 3 produtos com nível de estoque abaixo do mínimo recomendado.</span>
+            </div>
+        </div>
+        <button class="btn-ver-produtos">Ver produtos</button> 
+    </div>
+
+    <!-- Bloco 4: Barra de Filtros -->
+    <div class="barra-filtros">
+        <input type="text" placeholder="Buscar produto por nome...">
+        
+        <select>
+            <option value="">Todas as categorias</option>
+            <option value="coloracao">Coloração</option>
+            <option value="tratamento">Tratamento</option>
+            <option value="finalizacao">Finalização</option>
+        </select>
+    </div>
+
+    <!-- Bloco 5: Tabela de Produtos -->
+    <div class="container-tabela">
+        <table class="tabela-estoque">
+            <thead>
+                <tr>
+                    <th>Produto</th>
+                    <th>Categoria</th>
+                    <th>Estoque Atual</th>
+                    <th>Estoque Mínimo</th>
+                    <th>Preço</th>
+                    <th>Status</th>E
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody> 
+                <tr>
+                    <td><strong>Shampoo Antiqueda 250ml</strong></td>
+                    <td>Tratamento</td>
+                    <td>15 un</td>
+                    <td>10 un</td>
+                    <td>R$ 45,00</td>
+                    <td><span class="status-badge ativo">Normal</span></td>
+                    <td>
+                        <div class="acoes-botoes">
+                            <button class="btn-acao editar">✏️ Editar</button>
+                            <button class="btn-acao excluir">🗑️ Excluir</button>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Condicionador Hidratante</strong></td>
+                    <td>Tratamento</td>
+                    <td>3 un</td>
+                    <td>5 un</td>
+                    <td>R$ 49,90</td>
+                    <td><span class="status-badge baixo">Baixo</span></td>
+                    <td>
+                        <div class="acoes-botoes">
+                            <button class="btn-acao editar">✏️ Editar</button>
+                            <button class="btn-acao excluir">🗑️ Excluir</button>
+                        </div>
+                    </td>
+                </tr>
+            </tbody> 
+        </table>
+
+        <!-- Rodapé da tabela com a paginação -->
+        <div class="rodape-tabela">
+            <span>Mostrando 1-2 de 2 produtos</span>
+            <div class="paginacao"> 
+                <button class="btn-pag" disabled>&lt;</button>
+                <button class="btn-pag num ativo">1</button>
+                <button class="btn-pag">&gt;</button>
+            </div>
+        </div>
+    </div>
+
+</div> <!-- Este fecha a div principal container-estoque -->

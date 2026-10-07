@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { AgendaComponent } from './components/agenda/agenda';
 import { Navbar } from './components/navbar/navbar';
@@ -7,6 +7,8 @@ import { Navbar } from './components/navbar/navbar';
   selector: 'app-root',
   imports: [RouterOutlet, AgendaComponent, Navbar],
   templateUrl: './app.html',
-  styleUrl: './app.css'
+  styleUrls: ['./app.css']
 })
-export class App {}
+export class AppComponent {
+  title = 'salao-system-front';
+}
