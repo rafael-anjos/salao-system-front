@@ -1,18 +1,27 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
 .container {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    border: 1px solid #b3b3b3;
-    border-radius: 7px;
-    box-shadow: 1px 2px 5px #b3b3b3;
-    height: 12cm;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    box-shadow: 1px 3px 7px #555;
+    height: 15.5cm;
     width: 9.5cm;
     gap: 20px;
     font-family: 'Montserrat';
     padding: 20px;
     background-color: white;
     z-index: 1000;
-    position: absolute;
 }
 
 .titulo {
@@ -31,7 +40,7 @@
 .cliente input {
     box-sizing: border-box;
     width: 100%;
-    height: 0.8cm;
+    height: 1cm;
     background-color: white;
     border: 1px solid #b3b3b3;
     border-radius: 7px;
@@ -43,4 +52,155 @@
 
 .cliente input:focus {
     border: 1px solid #555;
+}
+
+.servico {
+    width: 100%;
+}
+
+.servico p {
+    font-size: 12px;
+    margin-bottom: 5px;
+}
+
+.servico input {
+    box-sizing: border-box;
+    width: 100%;
+    height: 1cm;
+    background-color: white;
+    border: 1px solid #b3b3b3;
+    border-radius: 7px;
+    outline: none;
+    padding-left: 10px;
+    font-family: 'Montserrat';
+    transition: 0.1s ease-out;
+}
+
+.servico input:focus{
+    border: 1px solid #555;
+}
+
+.data {
+    width: 50%;
+}
+
+.data p {
+    font-size: 12px;
+    margin-bottom: 5px;
+}
+
+.data input {
+    box-sizing: border-box;
+    width: 100%;
+    height: 1cm;
+    background-color: white;
+    border: 1px solid #b3b3b3;
+    border-radius: 7px;
+    outline: none;
+    padding-left: 10px;
+    font-family: 'Montserrat';
+    transition: 0.1s ease-out;
+}
+
+.data input:focus{
+    border: 1px solid #555;
+}
+
+.hora-inicio {
+    width: 50%;
+}
+
+.hora-inicio p {
+    font-size: 12px;
+    margin-bottom: 5px;
+}
+
+.hora-inicio input {
+    width: 100%;
+    box-sizing: border-box;
+    height: 1cm;
+    background-color: white;
+    border: 1px solid #b3b3b3;
+    outline: none;
+    border-radius: 7px;
+    padding-left: 10px;
+    font-family: 'Montserrat';
+    transition: 0.1s ease-out;
+}
+
+.hora-inicio input:focus {
+    border: 1px solid #555;
+}
+
+.observacao {
+    width: 100%;
+}
+
+.observacao p{
+    font-size: 12px;
+    margin-bottom: 5px;
+}
+
+.observacao textarea {
+    width: 100%;
+    box-sizing: border-box;
+    height: 3cm;
+    background-color: white;
+    border: 1px solid #b3b3b3;
+    border-radius: 7px;
+    outline: none;
+    padding: 12px 20px;
+    font-family: 'Montserrat';
+    transition: 0.1s ease-out;
+    resize: none;
+}
+
+.foot-btn {
+    display: flex;
+    justify-content: space-between;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.foot-btn button {
+    width: 4cm;
+    height: 1cm;
+    border-radius: 7px;
+    font-family: 'Montserrat';
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.cancel {
+    background-color: white;
+    border: 1px solid #555;
+    transition: 0.1s ease-out;
+}
+
+.cancel:hover {
+    color: crimson;
+    border: 1px solid crimson;
+}
+
+.cancel:active {
+    background-color: crimson;
+    color: white;
+}
+
+.save {
+    background-color: #1C3112;
+    color: white;
+    border: none;
+    transition: 0.1s ease-out;
+}
+
+.save:hover {
+    color: #1C3112;
+    background-color: white;
+    border: 1px solid #1C3112;
+}
+
+.save:active {
+    background-color: #1C3112;
+    color: white;
 }

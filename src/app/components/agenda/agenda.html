@@ -1,44 +1,45 @@
 <div class="container">
-    <app-navbar/>
     <main>
         <header>
             <p>Agenda</p>
             <div class="header-btn">
-                <button class="notification-btn"><img src="notification-green.svg" alt="Notificações"></button>
-                <button class="agendamento-btn" type="submit"><p>Novo Agendamento</p></button>
+                <button class="notification-btn">
+                    <img class="img-padrao" src="notification-green.svg" alt="Notificações">
+                    <img class="img-hover" src="notification.svg" alt="">
+                    <img class="img-active" src="notification-green.svg" alt="">
+                </button>
+                <button (click)="abrirFormulario()" class="agendamento-btn" type="submit">Novo Agendamento</button>
             </div>
         </header>
         <div class="agendamento">
             <section class="agendamento-agenda">
-                <table class="agenda">
-                    <thead>
-                        <tr>
-                            @for (dia of diasAgenda; track $index) {
-                                <th>{{diasSemana.at(dia.getDay())}}, {{dia | date: 'dd'}}</th>
+                <div class="agenda">
+                    <div class="head">
+                        @for (dia of diasAgenda; track $index) {
+                                <span>{{diasSemana.at(dia.getDay())}}, {{dia | date: 'dd'}}</span>
                             }
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                        </tr>
-                    </tbody>
-                </table>
+                    </div>     
+                    <div class="body">
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                    </div>
+                </div>
             </section>
             <section class="agendamento-calendar">
                 <app-calendario/>
             </section>
         </div>
     </main>
-    <div class="forms">
-        <app-novo-agendamento/>
-    </div>
+    @if (mostrarFormulario) {
+        <app-novo-agendamento
+            (cancelar)="fecharFormulario()"
+            (salvar)="fecharFormulario()" />
+    }
 </div>
 
 
