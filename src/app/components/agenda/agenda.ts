@@ -6,7 +6,7 @@ import { NovoAgendamento } from './novo-agendamento/novo-agendamento';
 
 @Component({
   selector: 'app-agenda-component',
-  imports: [Navbar, Calendario, NovoAgendamento, DatePipe],
+  imports: [Calendario, NovoAgendamento, DatePipe],
   templateUrl: './agenda.html',
   styleUrl: './agenda.css',
 })

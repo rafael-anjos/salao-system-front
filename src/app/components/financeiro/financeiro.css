@@ -48,19 +48,52 @@
     border: 1px solid #1C3112;
 }
 
-.header-btns button {
+.notification-btn {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 35px;
-    width: 35px;
-    border-radius: 100%;
     border: 1px solid #1C3112;
     background-color: white;
     cursor: pointer;
+    height: 35px;
+    width: 35px;
+    border-radius: 100%;
+    transition: 0.1s ease-out;
 }
 
-.header-btns img {
+.notification-btn img {
     height: 20px;
     width: 20px;
+}
+
+.notification-btn .img-hover,
+.notification-btn .img-active{
+    display: none;
+}
+
+.notification-btn:hover:not(:active) .img-padrao {
+    display: none;
+}
+
+.notification-btn:hover:not(:active) .img-hover {
+    display: inline-block;
+}
+
+.notification-btn:active .img-padrao,
+.notification-btn:active .img-hover{
+    display: none;
+}
+
+.notification-btn:active .img-active{
+    display: inline-block;
+}
+
+.notification-btn:hover {
+    background-color: #1C3112;
+    border: none;
+}
+
+.notification-btn:active {
+    background-color: white;
+    border: 1px solid #1C3112;
 }

@@ -14,21 +14,9 @@
             </a>
         </li>
         <li>
-            <a routerLink="/clientes" routerLinkActive #clientActive="routerLinkActive" [routerLinkActiveOptions]="{exact: true}" [class.active]="clientActive.isActive">
-                <img class="nav-icon" [src]="clientActive.isActive ? 'client-green.svg' : 'client.svg'" alt="Client Icon">
-                Clientes
-            </a>
-        </li>
-        <li>
-            <a routerLink="/servicos" routerLinkActive #serviceActive="routerLinkActive" [routerLinkActiveOptions]="{exact: true}" [class.active]="serviceActive.isActive">
-                <img class="nav-icon" [src]="serviceActive.isActive ? 'services-green.svg' : 'services.svg'" alt="Services Icon">
-                Serviços
-            </a>
-        </li>
-        <li>
-            <a routerLink="/profissionais" routerLinkActive #professionalActive="routerLinkActive" [routerLinkActiveOptions]="{exact: true}" [class.active]="professionalActive.isActive">
-                <img class="nav-icon" [src]="professionalActive.isActive ? 'professional-green.svg' : 'professional.svg'" alt="Professional Icon">
-                Profissionais
+            <a routerLink="/caixa" routerLinkActive #caixaActive="routerLinkActive" [routerLinkActiveOptions]="{exact: true}" [class.active]="caixaActive.isActive">
+                <img class="nav-icon" [src]="caixaActive.isActive ? 'caixa-green.svg' : 'caixa.svg'" alt="Caixa Icon">
+                Caixa
             </a>
         </li>
         <li>
@@ -47,6 +35,24 @@
             <a routerLink="/relatorio" routerLinkActive #reportActive="routerLinkActive" [routerLinkActiveOptions]="{exact: true}" [class.active]="reportActive.isActive">
                 <img class="nav-icon" [src]="reportActive.isActive ? 'report-green.svg' : 'report.svg'" alt="Report Icon">
                 Relatórios
+            </a>
+        </li>
+        <li>
+            <a routerLink="/servicos" routerLinkActive #serviceActive="routerLinkActive" [routerLinkActiveOptions]="{exact: true}" [class.active]="serviceActive.isActive">
+                <img class="nav-icon" [src]="serviceActive.isActive ? 'services-green.svg' : 'services.svg'" alt="Services Icon">
+                Serviços
+            </a>
+        </li>
+        <li>
+            <a routerLink="/profissionais" routerLinkActive #professionalActive="routerLinkActive" [routerLinkActiveOptions]="{exact: true}" [class.active]="professionalActive.isActive">
+                <img class="nav-icon" [src]="professionalActive.isActive ? 'professional-green.svg' : 'professional.svg'" alt="Professional Icon">
+                Profissionais
+            </a>
+        </li>
+        <li>
+            <a routerLink="/configuracoes" routerLinkActive #configurationActive="routerLinkActive" [routerLinkActiveOptions]="{exact:true}" [class.active]="configurationActive.isActive">
+                <img class="nav-icon" [src]="configurationActive.isActive ? 'configuration-green.svg' : 'configuration.svg'" alt="Configuration Icon">
+                Configurações
             </a>
         </li>
     </ul>

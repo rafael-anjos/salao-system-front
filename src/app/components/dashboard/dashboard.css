@@ -1,0 +1,140 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    background-color: #f0f0f0;
+    min-height: 100vh;
+    width: 100%;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0px 20px 0px 20px;
+    box-shadow: 1px 1px 7px 1px #b3b3b3;
+    background-color: white;
+    height: 10vh;
+    width: 100%;
+}
+
+.box-titulo {
+    display: flex;
+    flex-direction: column;
+    font-family: 'Montserrat';
+    gap: 5px;
+}
+
+.box-titulo .titulo {
+    font-size: 30px;
+}
+
+.box-titulo .data {
+    font-size: 17px;
+    font-weight: 400;
+}
+
+.notification-btn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid #1C3112;
+    background-color: white;
+    cursor: pointer;
+    height: 35px;
+    width: 35px;
+    border-radius: 100%;
+    transition: 0.1s ease-out;
+}
+
+.notification-btn img {
+    height: 20px;
+    width: 20px;
+}
+
+.notification-btn .img-hover,
+.notification-btn .img-active{
+    display: none;
+}
+
+.notification-btn:hover:not(:active) .img-padrao {
+    display: none;
+}
+
+.notification-btn:hover:not(:active) .img-hover {
+    display: inline-block;
+}
+
+.notification-btn:active .img-padrao,
+.notification-btn:active .img-hover{
+    display: none;
+}
+
+.notification-btn:active .img-active{
+    display: inline-block;
+}
+
+.notification-btn:hover {
+    background-color: #1C3112;
+    border: none;
+}
+
+.notification-btn:active {
+    background-color: white;
+    border: 1px solid #1C3112;
+}
+
+main {
+    height: 90vh;
+    width: 100%;
+}
+
+.cards {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 25%;
+    padding: 0px 10px 0px 10px;
+}
+
+.cards div{
+    height: 90%;
+    background-color: white;
+    width: 24.5%;
+    border-radius: 10px;
+    box-shadow: 1px 1px 7px 1px #b3b3b3;
+}
+
+.statistics {
+    display: flex;
+    height: 75%;
+    width: 100%;
+}
+
+.shedule-data{
+    width: 60%;
+    height: 100%;
+    padding: 0px 10px 10px 10px;
+}
+
+.shedule-data div{
+    height: 100%;
+    border-radius: 10px;
+    background-color: white;
+    box-shadow: 1px 1px 7px 1px #b3b3b3;
+}
+
+.info{
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 40%;
+    height: 100%;
+    padding: 0px 10px 10px 0px;
+}
+
+.info div {
+    background-color: white;
+    border-radius: 10px;
+    height: 49%;
+    box-shadow: 1px 1px 7px 1px #b3b3b3;
+}
