@@ -25,7 +25,7 @@
       <button class="btn-sub-filtro">Venda</button>
     </div>
 
-    <button class="btn-novo-produto">
+    <button class="btn-novo-produto" (click)="mudarAba('cadastro')">
       {{ abaAtiva === 'produtos' ? 'Novo Produto' : 'Nova Categoria' }}
     </button>
   </div>
@@ -161,6 +161,100 @@
         <span>3 categorias cadastradas</span>
       </div>
     </div>
+  </div>
+
+  <div class="modal-overlay" *ngIf="abaAtiva === 'cadastro'">
+
+    <div class="modal-card">
+
+      <div class="modal-header">
+        <h2>Novo Produto</h2>
+        <p>Cadastre informações sobre o novo produto.</p>
+        <button class="btn-fechar" (click)="mudarAba('produtos')">✖</button>
+      </div>
+
+      <form>
+
+        <div class="form-group">
+          <label>Nome</label>
+          <input type="text" placeholder="Digite o nome do produto">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Tipo de Uso</label>
+            <select>
+              <option value="">Selecione o destino</option>
+              <option value="interno">Uso no salão(Uso Interno)</option>
+              <option value="revenda">Venda (Revenda para Clientes)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Categoria</label>
+            <select>
+              <option value="">Selecione uma categoria</option>
+              <option value="coloracao">Coloração</option>
+              <option value="finalizacao">Finalização</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Unidade de medida (opcional)</label>
+            <select>
+              <option value="">Selecione uma unidade</option>
+              <option value="ml">ml</option>
+              <option value="g">g</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Código de Barras (opcional)</label>
+            <input type="text" placeholder="Digite ou escaneie o código">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Preço de Custo</label>
+            <input type="number" placeholder="R$ 0,00">
+          </div>
+
+          <div class="form-group">
+            <label>Preço de Venda</label>
+            <input type="number" placeholder="R$ 0,00">
+          </div>
+        </div>
+
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Estoque Mínimo(Alerta)</label>
+            <input type="number" placeholder="Ex: 5">
+          </div>
+
+          <div class="form-group">
+            <label>Estoque Atual</label>
+            <input type="number" placeholder="Ex: 10">
+          </div>
+
+          <div class="form-group"></div>
+        </div>
+
+        <div class="modal-footer">
+          <span class="texto-ajuda">Campos opcionais podem ser preenchidos depois</span>
+          <div class="botoes-footer">
+            <button type="button" class="btn-cancelar" (click)="mudarAba('produtos')">Cancelar</button>
+            <button type="submit" class="btn-salvar">Cadastrar produto</button>
+          </div>
+        </div>
+        
+      </form>
+
+    </div>
+
   </div>
 
 </div>
