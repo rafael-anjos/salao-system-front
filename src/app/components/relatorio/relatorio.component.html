@@ -1,0 +1,46 @@
+<div class="container-relatorio">
+
+    <div class="header-pagina">
+        <div class="titulo-secao">
+            <h1>Relatórios</h1>
+            <p>Análise de desempenho e financeiro</p>
+        </div>
+
+        <div class="busca-notificacao">
+            <input type="text" placeholder="Buscar produto...">
+            <button class="btn-sininho">🔔</button>
+        </div>
+    </div>
+
+        <div class="barra-acoes">
+            <div class="abas">
+
+                <button class="btn-aba" [class.ativo]="abaAtiva === 'Hoje'">
+                    (click)="mudarAba('Hoje')">Hoje</button>
+                <button class="btn-aba" [class.ativo]="abaAtiva === 'Esta semana'">
+                    (click)="mudarAba('Esta semana')">Esta semana</button>
+                <button class="btn-aba" [class.ativo]="abaAtiva === 'Este mês'">
+                    (click)="mudarAba('Este mês')">Este mês</button>
+
+            </div>
+        </div>
+
+        <div *ngIf="abaAtiva === 'produtos'">
+
+            
+
+
+
+
+        </div>
+
+
+
+
+
+        
+
+
+
+
+</div>
