@@ -1,34 +1,44 @@
-<div class="overlay">
-<div class="container">
-    <div class="titulo">
-        <section>
-            <h3>Novo Agendamento</h3>
+<div class="overlay" (click)="onCancelar()">
+    <div
+        class="sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="novo-agendamento-titulo"
+        (click)="$event.stopPropagation()">
+        <header class="titulo">
+            <h2 id="novo-agendamento-titulo">Novo Agendamento</h2>
             <p>Preencha os campos para realizar um novo agendamento.</p>
-        </section>
-    </div>
-    <div class="cliente">
-        <b><p>Nome do cliente</p></b>
-        <input type="text">
-    </div>
-    <div class="servico">
-        <b><p>Serviço à fazer</p></b>
-        <input type="search">
-    </div>
-    <div class="data">
-        <b><p>Data do agendamento</p></b>
-        <input type="date">
-    </div>
-    <div class="hora-inicio">
-        <b><p>Horario de inicio</p></b>
-        <input type="datetime">
-    </div>
-    <div class="observacao">
-        <b><p>Observação (opcional)</p></b>
-        <textarea name="" id=""></textarea>
-    </div>
-    <div class="foot-btn">
-        <button (click)="onCancelar()" class="cancel" type="submit">Cancelar</button>
-        <button (click)="onSalvar()" class="save" type="submit">Salvar</button>
-    </div>
+        </header>
+
+        <label class="field">
+            Nome do cliente
+            <input type="text" name="cliente" autocomplete="name">
+        </label>
+
+        <label class="field">
+            Serviço a fazer
+            <input type="search" name="servico">
+        </label>
+
+        <div class="row">
+            <label class="field">
+                Data do agendamento
+                <input type="date" name="data">
+            </label>
+            <label class="field">
+                Horário de início
+                <input type="time" name="hora">
+            </label>
+        </div>
+
+        <label class="field">
+            Observação (opcional)
+            <textarea name="observacao" rows="4"></textarea>
+        </label>
+
+        <div class="foot-btn">
+            <button (click)="onCancelar()" class="cancel" type="button">Cancelar</button>
+            <button (click)="onSalvar()" class="save" type="button">Salvar</button>
+        </div>
     </div>
 </div>

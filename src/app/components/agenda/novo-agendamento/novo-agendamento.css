@@ -1,206 +1,162 @@
-.overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
+:host {
+    --agenda-ink: #1c3112;
+    --agenda-muted: #5a6854;
+    --agenda-line: color-mix(in srgb, #1c3112 16%, white);
+    font-family: 'Montserrat', sans-serif;
 }
 
-.container {
+.overlay {
+    position: fixed;
+    inset: 0;
+    background: color-mix(in srgb, #1c3112 28%, transparent);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1.25rem;
+    overflow: auto;
+}
+
+.sheet {
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    border: 1px solid transparent;
-    border-radius: 10px;
-    box-shadow: 1px 3px 7px #555;
-    height: 17cm;
-    width: 9.5cm;
-    gap: 20px;
-    font-family: 'Montserrat';
-    padding: 20px;
-    background-color: white;
-    z-index: 1000;
+    gap: 1rem;
+    width: min(26rem, 100%);
+    padding: 1.5rem 1.5rem 1.25rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px color-mix(in srgb, #1c3112 18%, transparent);
+    color: var(--agenda-ink);
+    margin: auto;
 }
 
-.titulo {
+.titulo h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+.titulo p {
+    margin-top: 0.3rem;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: var(--agenda-muted);
+}
+
+.row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.field {
     display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--agenda-ink);
 }
 
-.cliente {
+.field input,
+.field textarea {
     width: 100%;
-}
-
-.cliente p {
-    font-size: 12px;
-    margin-bottom: 5px;
-}
-
-.cliente input {
-    box-sizing: border-box;
-    width: 100%;
-    height: 1cm;
-    background-color: white;
-    border: 1px solid #b3b3b3;
-    border-radius: 7px;
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: var(--agenda-ink);
+    background: white;
+    border: 1px solid var(--agenda-line);
+    border-radius: 8px;
     outline: none;
-    padding-left: 10px;
-    font-family: 'Montserrat';
-    transition: 0.1s ease-out;
+    padding: 0.65rem 0.75rem;
+    transition: border-color 160ms ease-out, box-shadow 160ms ease-out;
 }
 
-.cliente input:focus {
-    border: 1px solid #555;
-}
-
-.servico {
-    width: 100%;
-}
-
-.servico p {
-    font-size: 12px;
-    margin-bottom: 5px;
-}
-
-.servico input {
-    box-sizing: border-box;
-    width: 100%;
-    height: 1cm;
-    background-color: white;
-    border: 1px solid #b3b3b3;
-    border-radius: 7px;
-    outline: none;
-    padding-left: 10px;
-    font-family: 'Montserrat';
-    transition: 0.1s ease-out;
-}
-
-.servico input:focus{
-    border: 1px solid #555;
-}
-
-.data {
-    width: 50%;
-}
-
-.data p {
-    font-size: 12px;
-    margin-bottom: 5px;
-}
-
-.data input {
-    box-sizing: border-box;
-    width: 100%;
-    height: 1cm;
-    background-color: white;
-    border: 1px solid #b3b3b3;
-    border-radius: 7px;
-    outline: none;
-    padding-left: 10px;
-    font-family: 'Montserrat';
-    transition: 0.1s ease-out;
-}
-
-.data input:focus{
-    border: 1px solid #555;
-}
-
-.hora-inicio {
-    width: 50%;
-}
-
-.hora-inicio p {
-    font-size: 12px;
-    margin-bottom: 5px;
-}
-
-.hora-inicio input {
-    width: 100%;
-    box-sizing: border-box;
-    height: 1cm;
-    background-color: white;
-    border: 1px solid #b3b3b3;
-    outline: none;
-    border-radius: 7px;
-    padding-left: 10px;
-    font-family: 'Montserrat';
-    transition: 0.1s ease-out;
-}
-
-.hora-inicio input:focus {
-    border: 1px solid #555;
-}
-
-.observacao {
-    width: 100%;
-}
-
-.observacao p{
-    font-size: 12px;
-    margin-bottom: 5px;
-}
-
-.observacao textarea {
-    width: 100%;
-    box-sizing: border-box;
-    height: 3cm;
-    background-color: white;
-    border: 1px solid #b3b3b3;
-    border-radius: 7px;
-    outline: none;
-    padding: 12px 20px;
-    font-family: 'Montserrat';
-    transition: 0.1s ease-out;
+.field textarea {
+    min-height: 6.5rem;
     resize: none;
+}
+
+.field input:hover,
+.field textarea:hover {
+    border-color: color-mix(in srgb, #1c3112 40%, white);
+}
+
+.field input:focus,
+.field textarea:focus {
+    border-color: var(--agenda-ink);
+    box-shadow: 0 0 0 3px color-mix(in srgb, #1c3112 12%, transparent);
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+    color: var(--agenda-muted);
+}
+
+.field input::selection,
+.field textarea::selection {
+    background: color-mix(in srgb, #1c3112 18%, white);
 }
 
 .foot-btn {
     display: flex;
     justify-content: space-between;
-    box-sizing: border-box;
-    width: 100%;
+    gap: 0.75rem;
+    margin-top: 0.25rem;
 }
 
 .foot-btn button {
-    width: 4cm;
-    height: 1cm;
-    border-radius: 7px;
-    font-family: 'Montserrat';
+    flex: 1;
+    height: 2.5rem;
+    border-radius: 8px;
+    font-family: inherit;
     font-weight: 600;
+    font-size: 0.875rem;
     cursor: pointer;
+}
+
+.foot-btn button:focus-visible {
+    outline: 2px solid var(--agenda-ink);
+    outline-offset: 2px;
 }
 
 .cancel {
     background-color: white;
-    border: 1px solid #555;
-    transition: 0.1s ease-out;
+    color: var(--agenda-ink);
+    border: 1px solid color-mix(in srgb, #1c3112 28%, white);
+    transition: border-color 160ms ease-out, color 160ms ease-out;
 }
 
 .cancel:hover {
-    color: crimson;
-    border: 1px solid crimson;
+    color: #9b1c2c;
+    border-color: #9b1c2c;
 }
 
 .cancel:active {
-    background-color: crimson;
+    background-color: #9b1c2c;
     color: white;
 }
 
 .save {
-    background-color: #1C3112;
+    background-color: var(--agenda-ink);
     color: white;
-    border: none;
-    transition: 0.1s ease-out;
+    border: 1px solid var(--agenda-ink);
+    transition: background-color 160ms ease-out, color 160ms ease-out;
 }
 
 .save:hover {
-    color: #1C3112;
+    color: var(--agenda-ink);
     background-color: white;
-    border: 1px solid #1C3112;
 }
 
 .save:active {
-    background-color: #1C3112;
+    background-color: var(--agenda-ink);
     color: white;
+}
+
+@media (max-width: 520px) {
+    .row {
+        grid-template-columns: 1fr;
+    }
 }

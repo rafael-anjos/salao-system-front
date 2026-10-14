@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, EventEmitter, OnInit, Output } from '@angular/core';
 
 @Component({
   selector: 'app-calendario',
@@ -7,8 +7,11 @@ import { Component, OnInit } from '@angular/core';
   templateUrl: './calendario.html',
   styleUrl: './calendario.css',
 })
-export class Calendario implements OnInit{
+export class Calendario implements OnInit {
+  @Output() dataSelecionada = new EventEmitter<Date>();
+
   dataAtual: Date = new Date();
+  diaSelecionado: Date = new Date();
   diasCalendario: Date[] = [];
 
   ngOnInit() {
@@ -19,16 +22,13 @@ export class Calendario implements OnInit{
     const ano = this.dataAtual.getFullYear();
     const mes = this.dataAtual.getMonth();
 
-    const primeiroDiaDaSemana = 0;
-    const ultimoDiaDaSemana = 6;
-
     const dataInicial = new Date(ano, mes, 1);
-    while (dataInicial.getDay() !== primeiroDiaDaSemana) {
+    while (dataInicial.getDay() !== 0) {
       dataInicial.setDate(dataInicial.getDate() - 1);
     }
 
     const dataFinal = new Date(ano, mes + 1, 0);
-    while (dataFinal.getDay() !== ultimoDiaDaSemana) {
+    while (dataFinal.getDay() !== 6) {
       dataFinal.setDate(dataFinal.getDate() + 1);
     }
 
@@ -43,8 +43,37 @@ export class Calendario implements OnInit{
   }
 
   alterarMes(offsetMes: number) {
-    this.dataAtual.setMonth(this.dataAtual.getMonth() + offsetMes);
-    this.dataAtual = new Date(this.dataAtual.getTime());
+    this.dataAtual = new Date(
+      this.dataAtual.getFullYear(),
+      this.dataAtual.getMonth() + offsetMes,
+      1
+    );
     this.construirCalendario();
+  }
+
+  selecionarDia(dia: Date) {
+    this.diaSelecionado = new Date(dia.getTime());
+    if (dia.getMonth() !== this.dataAtual.getMonth()) {
+      this.dataAtual = new Date(dia.getFullYear(), dia.getMonth(), 1);
+      this.construirCalendario();
+    }
+    this.dataSelecionada.emit(new Date(dia.getTime()));
+  }
+
+  ehHoje(dia: Date): boolean {
+    const hoje = new Date();
+    return (
+      dia.getDate() === hoje.getDate() &&
+      dia.getMonth() === hoje.getMonth() &&
+      dia.getFullYear() === hoje.getFullYear()
+    );
+  }
+
+  ehSelecionado(dia: Date): boolean {
+    return (
+      dia.getDate() === this.diaSelecionado.getDate() &&
+      dia.getMonth() === this.diaSelecionado.getMonth() &&
+      dia.getFullYear() === this.diaSelecionado.getFullYear()
+    );
   }
 }

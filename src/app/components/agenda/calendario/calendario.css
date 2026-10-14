@@ -1,63 +1,116 @@
+:host {
+    --agenda-ink: #1c3112;
+    --agenda-muted: #5a6854;
+    --agenda-line: color-mix(in srgb, #1c3112 14%, white);
+    font-family: 'Montserrat', sans-serif;
+    color: var(--agenda-ink);
+    width: 100%;
+}
+
 .calendario {
-    box-sizing: border-box;
-    font-family: 'Montserrat';
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    border: 1px solid #aaa;
-    color: #1c3112;
-    background-color: white;
-    border-radius: 10px;
     width: 100%;
-    height: 100%;
+    padding: 1rem 1rem 1.1rem;
+    background-color: white;
+    border: 1px solid var(--agenda-line);
+    border-radius: 12px;
 }
 
 .calendario-titulo {
     display: grid;
-    margin-top: 10px;
-    grid-template-columns: 1fr 3fr 1fr;
+    grid-template-columns: 2rem 1fr 2rem;
+    align-items: center;
+    gap: 0.5rem;
     text-align: center;
-    gap: 10px;
 }
 
 .calendario-titulo button {
-    font-weight: 500;
-    height: 20px;
-    width: 20px;
-    border: 1px solid #1c3112;
-    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    height: 2rem;
+    width: 2rem;
+    border: 1px solid var(--agenda-line);
+    border-radius: 8px;
     background-color: #fff;
+    color: var(--agenda-ink);
     cursor: pointer;
+    transition: background-color 180ms ease-out, border-color 180ms ease-out;
+}
+
+.calendario-titulo button:hover {
+    border-color: var(--agenda-ink);
+    background: color-mix(in srgb, #1c3112 6%, white);
+}
+
+.calendario-titulo button:focus-visible,
+.calendario-dia:focus-visible {
+    outline: 2px solid var(--agenda-ink);
+    outline-offset: 2px;
+}
+
+.calendario-titulo button svg {
+    width: 14px;
+    height: 14px;
 }
 
 .calendario-titulo-mes-ano {
-    font-size: 18px;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    text-transform: capitalize;
 }
 
+.calendario-dias-semana,
 .calendario-dias {
     display: grid;
-    margin-top: 10px;
-    margin-bottom: 10px;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(7, minmax(0, 1fr));
     text-align: center;
 }
 
-.calendario-dias div {
-    font-size: 18px;
-    padding: 5px;
-}
-
 .calendario-dias-semana {
-    display: flex;
-    justify-content: center;
-    gap: 23px;
-    width: 80%;
-    margin-top: 5px;
-    padding: 10px;
-    border-bottom: 1px solid #1c3112;
+    margin-top: 0.85rem;
+    padding-bottom: 0.45rem;
+    border-bottom: 1px solid var(--agenda-line);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--agenda-muted);
 }
 
-.calendario-dia-nao-faz-parte-mes-atual {
-    color: #aec0a6;
+.calendario-dias {
+    margin-top: 0.4rem;
+}
+
+.calendario-dia {
+    appearance: none;
+    font-family: inherit;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: inherit;
+    background: transparent;
+    border: none;
+    width: 100%;
+    aspect-ratio: 1;
+    max-height: 2.5rem;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background-color 160ms ease-out, color 160ms ease-out;
+}
+
+.calendario-dia.fora {
+    color: color-mix(in srgb, #1c3112 38%, white);
+}
+
+.calendario-dia:hover {
+    background: color-mix(in srgb, #1c3112 8%, white);
+}
+
+.calendario-dia.hoje:not(.selecionado) {
+    box-shadow: inset 0 0 0 1px var(--agenda-ink);
+}
+
+.calendario-dia.selecionado {
+    background: var(--agenda-ink);
+    color: white;
 }

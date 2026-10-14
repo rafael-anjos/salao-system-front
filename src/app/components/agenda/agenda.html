@@ -1,38 +1,45 @@
 <div class="container">
     <main>
         <header>
-            <p>Agenda</p>
+            <h1>Agenda</h1>
             <div class="header-btn">
-                <button class="notification-btn">
-                    <img class="img-padrao" src="notification-green.svg" alt="Notificações">
+                <button class="notification-btn" type="button" aria-label="Notificações">
+                    <img class="img-padrao" src="notification-green.svg" alt="">
                     <img class="img-hover" src="notification.svg" alt="">
                     <img class="img-active" src="notification-green.svg" alt="">
                 </button>
-                <button (click)="abrirFormulario()" class="agendamento-btn" type="submit">Novo Agendamento</button>
+                <button (click)="abrirFormulario()" class="agendamento-btn" type="button">Novo Agendamento</button>
             </div>
         </header>
         <div class="agendamento">
-            <section class="agendamento-agenda">
-                <div class="agenda">
-                    <div class="head">
+            <section class="agendamento-agenda" aria-label="Semana">
+                <div class="semana" role="grid" aria-label="Grade da semana">
+                    <div class="cell gutter head"></div>
+                    @for (dia of diasAgenda; track dia.getTime()) {
+                        <div
+                            class="cell dia-head"
+                            [class.hoje]="ehHoje(dia)"
+                            role="columnheader">
+                            <span class="dow">{{ diasSemana[dia.getDay()] }}</span>
+                            <span class="num">{{ dia | date: 'dd' }}</span>
+                        </div>
+                    }
+                    @for (hora of horas; track hora) {
+                        <div class="cell gutter hora">{{ hora }}</div>
                         @for (dia of diasAgenda; track $index) {
-                                <span>{{diasSemana.at(dia.getDay())}}, {{dia | date: 'dd'}}</span>
-                            }
-                    </div>     
-                    <div class="body">
-                        <div></div>
-                        <div></div>
-                        <div></div>
-                        <div></div>
-                        <div></div>
-                        <div></div>
-                        <div></div>
-                    </div>
+                            <div
+                                class="cell slot"
+                                [class.hoje]="ehHoje(dia)"
+                                role="gridcell"
+                                [attr.aria-label]="diasSemana[dia.getDay()] + ', ' + (dia | date: 'dd') + ' às ' + hora">
+                            </div>
+                        }
+                    }
                 </div>
             </section>
-            <section class="agendamento-calendar">
-                <app-calendario/>
-            </section>
+            <aside class="agendamento-calendar">
+                <app-calendario (dataSelecionada)="onDataCalendario($event)" />
+            </aside>
         </div>
     </main>
     @if (mostrarFormulario) {
@@ -41,6 +48,3 @@
             (salvar)="fecharFormulario()" />
     }
 </div>
-
-
-

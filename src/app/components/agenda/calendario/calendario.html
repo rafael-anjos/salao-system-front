@@ -1,30 +1,40 @@
 <div class="calendario">
     <div class="calendario-titulo">
-        <div>
-            <button (click)="alterarMes(-1)"><</button>
-        </div>
-        <div class="calendario-titulo-mes-ano">{{dataAtual | date : 'MMM yyyy'}}</div>
-        <div>
-            <button (click)="alterarMes(+1)">></button>
-        </div>
+        <button type="button" (click)="alterarMes(-1)" aria-label="Mês anterior">
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M10.2 2.6 5.8 8l4.4 5.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+        <div class="calendario-titulo-mes-ano">{{ dataAtual | date : 'MMM yyyy' }}</div>
+        <button type="button" (click)="alterarMes(+1)" aria-label="Próximo mês">
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M5.8 2.6 10.2 8l-4.4 5.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
     </div>
-    <div class="calendario-dias-semana">
-        <p>D</p>
-        <p>S</p>
-        <p>T</p>
-        <p>Q</p>
-        <p>Q</p>
-        <p>S</p>
-        <p>S</p>
+    <div class="calendario-dias-semana" aria-hidden="true">
+        <span>D</span>
+        <span>S</span>
+        <span>T</span>
+        <span>Q</span>
+        <span>Q</span>
+        <span>S</span>
+        <span>S</span>
     </div>
     <div class="calendario-dias">
         @for (dia of diasCalendario; track $index) {
-            <div
-            class="calendario-dia"
-            [class.calendario-quebrar-linha]="$index % 7 === 0"
-            [class.calendario-dia-nao-faz-parte-mes-atual]="dataAtual.getMonth() !== dia.getMonth()">
-            {{dia | date : 'dd'}}
-            </div>
+            <button
+                type="button"
+                class="calendario-dia"
+                [class.fora]="dataAtual.getMonth() !== dia.getMonth()"
+                [class.hoje]="ehHoje(dia)"
+                [class.selecionado]="ehSelecionado(dia)"
+                [attr.aria-current]="ehHoje(dia) ? 'date' : null"
+                [attr.aria-pressed]="ehSelecionado(dia)"
+                [attr.aria-label]="dia | date: 'fullDate'"
+                (click)="selecionarDia(dia)">
+                {{ dia | date : 'dd' }}
+            </button>
         }
     </div>
 </div>
