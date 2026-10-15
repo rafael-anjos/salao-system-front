@@ -1,260 +1,289 @@
-<div class="container-estoque">
-
-  <div class="header-pagina">
-    <div class="titulo-secao">
+<div class="container">
+  <main>
+    <header>
       <h1>Estoque</h1>
-      <p>Controle de produtos e insumos</p>
-    </div>
-    <div class="busca-notificacao">
-      <input type="text" placeholder="Buscar produto...">
-      <button class="btn-sininho">🔔</button>
-    </div>
-  </div>
-
-  <div class="barra-acoes">
-    <div class="abas">
-      <button class="btn-aba" [class.ativo]="abaAtiva === 'produtos'"
-        (click)="mudarAba('produtos')">Produtos</button>
-      <button class="btn-aba" [class.ativo]="abaAtiva === 'categorias'"
-        (click)="mudarAba('categorias')">Categorias</button>
-    </div>
-
-    <div class="sub-filtros-uso" *ngIf="abaAtiva === 'produtos'">
-      <button class="btn-sub-filtro ativo">Todos</button>
-      <button class="btn-sub-filtro">Uso no Salão</button>
-      <button class="btn-sub-filtro">Venda</button>
-    </div>
-
-    <button class="btn-novo-produto" (click)="mudarAba('cadastro')">
-      {{ abaAtiva === 'produtos' ? 'Novo Produto' : 'Nova Categoria' }}
-    </button>
-  </div>
-
-  <div *ngIf="abaAtiva === 'produtos'">
-
-    <div class="card-alerta">
-      <div class="alerta-conteudo">
-        <span class="alerta-icone">⚠️</span>
-        <div>
-          <strong>Atenção:</strong>
-          <span>Existem 3 produtos com nível de estoque abaixo do mínimo recomendado.</span>
-        </div>
+      <div class="header-btn">
+        <button class="notification-btn" type="button" aria-label="Notificações">
+          <img class="img-padrao" src="notification-green.svg" alt="">
+          <img class="img-hover" src="notification.svg" alt="">
+          <img class="img-active" src="notification-green.svg" alt="">
+        </button>
+        <button class="agendamento-btn" type="button" (click)="abrirCadastro()">
+          {{ rotuloCadastro }}
+        </button>
       </div>
-      <button class="btn-ver-produtos">Ver produtos</button>
-    </div>
+    </header>
 
-    <div class="barra-filtros">
-      <input type="text" placeholder="Buscar produto por nome...">
-      <select>
-        <option value="">Todas as categorias</option>
-        <option value="coloracao">Coloração</option>
-        <option value="tratamento">Tratamento</option>
-        <option value="finalizacao">Finalização</option>
-      </select>
-    </div>
-
-    <div class="container-tabela">
-      <table class="tabela-estoque">
-        <thead>
-          <tr>
-            <th>Produto</th>
-            <th>Categoria</th>
-            <th>Estoque Atual</th>
-            <th>Estoque Mínimo</th>
-            <th>Preço</th>
-            <th>Status</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><strong>Ox 20 Volumes</strong></td>
-            <td>Coloração</td>
-            <td style="color: #e03131; font-weight: 600;">2</td>
-            <td>10</td>
-            <td>R$ 18,90</td>
-            <td><span class="status-badge critico">Crítico</span></td>
-            <td>
-              <div class="acoes-botoes">
-                <button class="btn-tabela">Entrada</button>
-                <button class="btn-tabela">Saída</button>
-                <button class="btn-tabela">Editar</button>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td><strong>Máscara Hidratante</strong></td>
-            <td>Tratamento</td>
-            <td style="color: #f59f00; font-weight: 600;">3</td>
-            <td>8</td>
-            <td>R$ 62,00</td>
-            <td><span class="status-badge baixo">Baixo</span></td>
-            <td>
-              <div class="acoes-botoes">
-                <button class="btn-tabela">Entrada</button>
-                <button class="btn-tabela">Saída</button>
-                <button class="btn-tabela">Editar</button>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td><strong>Fluido Finalizador</strong></td>
-            <td>Finalização</td>
-            <td style="color: #0ca678; font-weight: 600;">12</td>
-            <td>5</td>
-            <td>R$ 52,00</td>
-            <td><span class="status-badge ativo">Normal</span></td>
-            <td>
-              <div class="acoes-botoes">
-                <button class="btn-tabela">Entrada</button>
-                <button class="btn-tabela">Saída</button>
-                <button class="btn-tabela">Editar</button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div class="rodape-tabela">
-        <span>Mostrando 1-3 de 3 produtos</span>
-        <div class="paginacao">
-          <button class="btn-pag" disabled>&lt;</button>
-          <button class="btn-pag num ativo">1</button>
-          <button class="btn-pag">&gt;</button>
-        </div>
-      </div>
-    </div>
-
-  </div>
-
-  <div *ngIf="abaAtiva === 'categorias'">
-    <div class="container-tabela">
-      <table class="tabela-estoque">
-        <thead>
-          <tr>
-            <th>Categoria</th>
-            <th>Produtos cadastrados</th>
-            <th>Críticos</th>
-            <th>Baixo</th>
-            <th>Normal</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><strong>Coloração</strong></td>
-            <td>3</td>
-            <td style="color: #e03131; font-weight: 600;">3</td>
-            <td>0</td>
-            <td>0</td>
-            <td>
-              <div class="acoes-botoes-categorias">
-                <button class="btn-tabela">👁️</button>
-                <button class="btn-tabela">✏️</button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div class="rodape-tabela-categorias">
-        <span>3 categorias cadastradas</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal-overlay" *ngIf="abaAtiva === 'cadastro'">
-
-    <div class="modal-card">
-
-      <div class="modal-header">
-        <h2>Novo Produto</h2>
-        <p>Cadastre informações sobre o novo produto.</p>
-        <button class="btn-fechar" (click)="mudarAba('produtos')">✖</button>
+    <div class="conteudo-estoque">
+      <div class="resumo">
+        <article class="card-resumo">
+          <span class="card-label">Produtos</span>
+          <strong>{{ totalProdutos }}</strong>
+        </article>
+        <article class="card-resumo">
+          <span class="card-label">Críticos</span>
+          <strong class="tom-critico">{{ totalCriticos }}</strong>
+        </article>
+        <article class="card-resumo">
+          <span class="card-label">Baixo estoque</span>
+          <strong class="tom-baixo">{{ totalBaixos }}</strong>
+        </article>
       </div>
 
-      <form>
-
-        <div class="form-group">
-          <label>Nome</label>
-          <input type="text" placeholder="Digite o nome do produto">
+      <div class="toolbar">
+        <div class="abas" role="tablist">
+          <button
+            class="btn-aba"
+            type="button"
+            role="tab"
+            [class.ativo]="abaAtiva === 'produtos'"
+            (click)="mudarAba('produtos')">
+            Produtos
+          </button>
+          <button
+            class="btn-aba"
+            type="button"
+            role="tab"
+            [class.ativo]="abaAtiva === 'categorias'"
+            (click)="mudarAba('categorias')">
+            Categorias
+          </button>
         </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label>Tipo de Uso</label>
-            <select>
-              <option value="">Selecione o destino</option>
-              <option value="interno">Uso no salão(Uso Interno)</option>
-              <option value="revenda">Venda (Revenda para Clientes)</option>
-            </select>
+        @if (abaAtiva === 'produtos') {
+          <div class="sub-filtros" role="group" aria-label="Tipo de uso">
+            <button
+              class="btn-sub-filtro"
+              type="button"
+              [class.ativo]="filtroUso === 'todos'"
+              (click)="mudarFiltroUso('todos')">
+              Todos
+            </button>
+            <button
+              class="btn-sub-filtro"
+              type="button"
+              [class.ativo]="filtroUso === 'salao'"
+              (click)="mudarFiltroUso('salao')">
+              Uso no salão
+            </button>
+            <button
+              class="btn-sub-filtro"
+              type="button"
+              [class.ativo]="filtroUso === 'venda'"
+              (click)="mudarFiltroUso('venda')">
+              Venda
+            </button>
           </div>
+        }
+      </div>
 
-          <div class="form-group">
-            <label>Categoria</label>
-            <select>
-              <option value="">Selecione uma categoria</option>
-              <option value="coloracao">Coloração</option>
-              <option value="finalizacao">Finalização</option>
-            </select>
+      @if (abaAtiva === 'produtos') {
+        @if (totalAbaixoDoMinimo > 0) {
+          <div class="alerta">
+            <p>{{ totalAbaixoDoMinimo }} {{ totalAbaixoDoMinimo === 1 ? 'produto está' : 'produtos estão' }} abaixo do mínimo.</p>
+            <button class="btn-link" type="button">Ver críticos</button>
           </div>
+        }
+
+        <div class="barra-filtros">
+          <input
+            type="search"
+            placeholder="Buscar produto"
+            [(ngModel)]="termoBusca"
+            name="buscaProduto">
+          <select [(ngModel)]="categoriaSelecionada" name="categoria">
+            <option value="">Todas as categorias</option>
+            <option value="coloração">Coloração</option>
+            <option value="tratamento">Tratamento</option>
+            <option value="finalização">Finalização</option>
+          </select>
         </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label>Unidade de medida (opcional)</label>
-            <select>
-              <option value="">Selecione uma unidade</option>
-              <option value="ml">ml</option>
-              <option value="g">g</option>
-            </select>
-          </div>
+        <div class="container-tabela">
+          <table class="tabela-estoque">
+            <thead>
+              <tr>
+                <th>Produto</th>
+                <th>Categoria</th>
+                <th>Atual</th>
+                <th>Mínimo</th>
+                <th>Preço</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (produto of produtosFiltrados; track produto.nome) {
+                <tr>
+                  <td class="nome">{{ produto.nome }}</td>
+                  <td>{{ produto.categoria }}</td>
+                  <td [class]="'qtd ' + produto.status">{{ produto.estoqueAtual }}</td>
+                  <td>{{ produto.estoqueMinimo }}</td>
+                  <td>{{ formatarPreco(produto.preco) }}</td>
+                  <td>
+                    <span class="status" [class]="produto.status">
+                      {{ rotuloStatus(produto.status) }}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="acoes">
+                      <button class="btn-acao" type="button">Entrada</button>
+                      <button class="btn-acao" type="button">Saída</button>
+                      <button class="btn-acao" type="button">Editar</button>
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td class="vazio" colspan="7">Nenhum produto encontrado.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
 
-          <div class="form-group">
-            <label>Código de Barras (opcional)</label>
-            <input type="text" placeholder="Digite ou escaneie o código">
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label>Preço de Custo</label>
-            <input type="number" placeholder="R$ 0,00">
-          </div>
-
-          <div class="form-group">
-            <label>Preço de Venda</label>
-            <input type="number" placeholder="R$ 0,00">
-          </div>
-        </div>
-
-
-        <div class="form-row">
-          <div class="form-group">
-            <label>Estoque Mínimo(Alerta)</label>
-            <input type="number" placeholder="Ex: 5">
-          </div>
-
-          <div class="form-group">
-            <label>Estoque Atual</label>
-            <input type="number" placeholder="Ex: 10">
-          </div>
-
-          <div class="form-group"></div>
-        </div>
-
-        <div class="modal-footer">
-          <span class="texto-ajuda">Campos opcionais podem ser preenchidos depois</span>
-          <div class="botoes-footer">
-            <button type="button" class="btn-cancelar" (click)="mudarAba('produtos')">Cancelar</button>
-            <button type="submit" class="btn-salvar">Cadastrar produto</button>
+          <div class="rodape-tabela">
+            <span>Mostrando {{ produtosFiltrados.length }} de {{ totalProdutos }} produtos</span>
           </div>
         </div>
-        
-      </form>
+      }
 
+      @if (abaAtiva === 'categorias') {
+        <div class="container-tabela">
+          <table class="tabela-estoque">
+            <thead>
+              <tr>
+                <th>Categoria</th>
+                <th>Produtos</th>
+                <th>Críticos</th>
+                <th>Baixo</th>
+                <th>Normal</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (categoria of categorias; track categoria.nome) {
+                <tr>
+                  <td class="nome">{{ categoria.nome }}</td>
+                  <td>{{ categoria.cadastrados }}</td>
+                  <td class="qtd critico">{{ categoria.criticos }}</td>
+                  <td class="qtd baixo">{{ categoria.baixo }}</td>
+                  <td class="qtd normal">{{ categoria.normal }}</td>
+                  <td>
+                    <div class="acoes">
+                      <button class="btn-acao" type="button">Ver</button>
+                      <button class="btn-acao" type="button">Editar</button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+
+          <div class="rodape-tabela">
+            <span>{{ categorias.length }} categorias cadastradas</span>
+          </div>
+        </div>
+      }
     </div>
+  </main>
 
-  </div>
+  @if (mostrarCadastro) {
+    <div class="overlay" (click)="fecharCadastro()">
+      <div
+        class="sheet"
+        role="dialog"
+        aria-modal="true"
+        [attr.aria-labelledby]="'cadastro-titulo'"
+        (click)="$event.stopPropagation()">
+        <header class="titulo">
+          <h2 id="cadastro-titulo">{{ rotuloCadastro }}</h2>
+          <p>
+            @if (abaAtiva === 'produtos') {
+              Cadastre as informações essenciais do produto.
+            } @else {
+              Crie uma categoria para organizar o estoque.
+            }
+          </p>
+        </header>
 
+        @if (abaAtiva === 'produtos') {
+          <form>
+            <label class="field">
+              Nome
+              <input type="text" name="nome" placeholder="Nome do produto">
+            </label>
+
+            <div class="row">
+              <label class="field">
+                Tipo de uso
+                <select name="uso">
+                  <option value="">Selecione</option>
+                  <option value="interno">Uso no salão</option>
+                  <option value="revenda">Venda</option>
+                </select>
+              </label>
+              <label class="field">
+                Categoria
+                <select name="categoria">
+                  <option value="">Selecione</option>
+                  <option value="coloracao">Coloração</option>
+                  <option value="tratamento">Tratamento</option>
+                  <option value="finalizacao">Finalização</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="row">
+              <label class="field">
+                Unidade
+                <select name="unidade">
+                  <option value="">Opcional</option>
+                  <option value="ml">ml</option>
+                  <option value="g">g</option>
+                </select>
+              </label>
+              <label class="field">
+                Código de barras
+                <input type="text" name="codigo" placeholder="Opcional">
+              </label>
+            </div>
+
+            <div class="row">
+              <label class="field">
+                Preço de custo
+                <input type="number" name="custo" placeholder="0,00">
+              </label>
+              <label class="field">
+                Preço de venda
+                <input type="number" name="venda" placeholder="0,00">
+              </label>
+            </div>
+
+            <div class="row">
+              <label class="field">
+                Estoque mínimo
+                <input type="number" name="minimo" placeholder="5">
+              </label>
+              <label class="field">
+                Estoque atual
+                <input type="number" name="atual" placeholder="10">
+              </label>
+            </div>
+          </form>
+        } @else {
+          <form>
+            <label class="field">
+              Nome da categoria
+              <input type="text" name="categoriaNome" placeholder="Ex: Coloração">
+            </label>
+          </form>
+        }
+
+        <div class="foot-btn">
+          <button class="cancel" type="button" (click)="fecharCadastro()">Cancelar</button>
+          <button class="save" type="button" (click)="fecharCadastro()">Salvar</button>
+        </div>
+      </div>
+    </div>
+  }
 </div>
