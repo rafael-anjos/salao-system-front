@@ -25,7 +25,20 @@ export interface Cliente {
 export interface Servico {
   id: string;
   nome: string;
+  descricao: string;
   preco: number;
+  duracaoMinutos: number;
+  ativo: boolean;
+  /** Cadastro anterior da agenda. Fica fora da tela de serviços. */
+  legado?: boolean;
+}
+
+export interface ServicoCadastro {
+  id?: string;
+  nome: string;
+  descricao: string;
+  preco: number;
+  duracaoMinutos: number;
 }
 
 export interface ProdutoEstoque {
@@ -169,12 +182,60 @@ export class SalaoEstadoService {
   ];
 
   readonly servicos: Servico[] = [
-    { id: 'srv-coloracao', nome: 'Coloração', preco: 280 },
-    { id: 'srv-corte', nome: 'Corte e escova', preco: 150 },
-    { id: 'srv-mani', nome: 'Manicure e pedicure', preco: 90 },
-    { id: 'srv-hidra', nome: 'Hidratação', preco: 180 },
-    { id: 'srv-sobran', nome: 'Design de sobrancelha', preco: 70 },
-    { id: 'srv-progressiva', nome: 'Escova progressiva', preco: 320 },
+    {
+      id: 'srv-escova',
+      nome: 'Escova',
+      descricao: 'Escova modeladora com finalização.',
+      preco: 60,
+      duracaoMinutos: 60,
+      ativo: true,
+    },
+    {
+      id: 'srv-corte-lista',
+      nome: 'Corte',
+      descricao: 'Corte feminino ou masculino.',
+      preco: 50,
+      duracaoMinutos: 45,
+      ativo: true,
+    },
+    {
+      id: 'srv-coloracao-lista',
+      nome: 'Coloração',
+      descricao: 'Coloração completa dos fios.',
+      preco: 150,
+      duracaoMinutos: 120,
+      ativo: true,
+    },
+    {
+      id: 'srv-progressiva-lista',
+      nome: 'Progressiva',
+      descricao: 'Alisamento progressivo.',
+      preco: 200,
+      duracaoMinutos: 180,
+      ativo: true,
+    },
+    {
+      id: 'srv-hidratacao',
+      nome: 'Hidratação',
+      descricao: 'Tratamento de hidratação capilar.',
+      preco: 80,
+      duracaoMinutos: 90,
+      ativo: true,
+    },
+    {
+      id: 'srv-mechas',
+      nome: 'Mechas',
+      descricao: 'Mechas com técnica de luzes.',
+      preco: 180,
+      duracaoMinutos: 150,
+      ativo: true,
+    },
+    { id: 'srv-coloracao', nome: 'Coloração', descricao: '', preco: 280, duracaoMinutos: 120, ativo: false, legado: true },
+    { id: 'srv-corte', nome: 'Corte e escova', descricao: '', preco: 150, duracaoMinutos: 75, ativo: false, legado: true },
+    { id: 'srv-mani', nome: 'Manicure e pedicure', descricao: '', preco: 90, duracaoMinutos: 60, ativo: false, legado: true },
+    { id: 'srv-hidra', nome: 'Hidratação', descricao: '', preco: 180, duracaoMinutos: 90, ativo: false, legado: true },
+    { id: 'srv-sobran', nome: 'Design de sobrancelha', descricao: '', preco: 70, duracaoMinutos: 30, ativo: false, legado: true },
+    { id: 'srv-progressiva', nome: 'Escova progressiva', descricao: '', preco: 320, duracaoMinutos: 180, ativo: false, legado: true },
   ];
 
   readonly produtos: ProdutoEstoque[] = [
@@ -618,6 +679,77 @@ export class SalaoEstadoService {
           .map((pagamento) => sinal * pagamento.valor);
       }),
     );
+  }
+
+  listarServicos(somenteAtivos = true): Servico[] {
+    return this.servicos.filter((servico) => !servico.legado && (!somenteAtivos || servico.ativo));
+  }
+
+  salvarServico(dados: ServicoCadastro): ResultadoOperacao {
+    const nome = dados.nome.trim();
+    const descricao = dados.descricao.trim();
+    const preco = arredondar(Number(dados.preco));
+    const duracao = Math.floor(Number(dados.duracaoMinutos));
+
+    if (!nome) {
+      return { ok: false, mensagem: 'Informe o nome do serviço.' };
+    }
+    if (!descricao) {
+      return { ok: false, mensagem: 'Informe a descrição do serviço.' };
+    }
+    if (!Number.isFinite(preco) || preco <= 0) {
+      return { ok: false, mensagem: 'Informe um preço de venda válido.' };
+    }
+    if (!Number.isFinite(duracao) || duracao < 1) {
+      return { ok: false, mensagem: 'Informe a duração em minutos.' };
+    }
+
+    const nomeIgual = nome.toLowerCase();
+    const duplicado = this.servicos.some(
+      (servico) => !servico.legado && servico.id !== dados.id && servico.nome.trim().toLowerCase() === nomeIgual,
+    );
+    if (duplicado) {
+      return { ok: false, mensagem: 'Já existe um serviço com esse nome.' };
+    }
+
+    if (dados.id) {
+      const atual = this.servicos.find((servico) => servico.id === dados.id && !servico.legado);
+      if (!atual) {
+        return { ok: false, mensagem: 'Serviço não encontrado.' };
+      }
+      atual.nome = nome;
+      atual.descricao = descricao;
+      atual.preco = preco;
+      atual.duracaoMinutos = duracao;
+      return { ok: true, mensagem: 'Serviço atualizado.', id: atual.id };
+    }
+
+    const criado: Servico = {
+      id: this.novoId('srv'),
+      nome,
+      descricao,
+      preco,
+      duracaoMinutos: duracao,
+      ativo: true,
+    };
+    this.servicos.push(criado);
+    return { ok: true, mensagem: 'Serviço cadastrado.', id: criado.id };
+  }
+
+  definirServicoAtivo(id: string, ativo: boolean): ResultadoOperacao {
+    const servico = this.servicos.find((item) => item.id === id && !item.legado);
+    if (!servico) {
+      return { ok: false, mensagem: 'Serviço não encontrado.' };
+    }
+    if (servico.ativo === ativo) {
+      return { ok: false, mensagem: ativo ? 'Este serviço já está ativo.' : 'Este serviço já está desativado.' };
+    }
+    servico.ativo = ativo;
+    return {
+      ok: true,
+      mensagem: ativo ? 'Serviço reativado.' : 'Serviço desativado.',
+      id: servico.id,
+    };
   }
 
   private atualizarStatus(produto: ProdutoEstoque): void {

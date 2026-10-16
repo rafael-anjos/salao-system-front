@@ -180,7 +180,7 @@ export class Caixa {
     }
 
     const servicos: Sugestao[] = this.estado.servicos
-      .filter((servico) => servico.nome.toLowerCase().includes(termo))
+      .filter((servico) => servico.ativo && !servico.legado && servico.nome.toLowerCase().includes(termo))
       .map((servico) => ({
         tipo: 'servico',
         id: servico.id,

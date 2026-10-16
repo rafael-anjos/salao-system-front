@@ -4,12 +4,14 @@ import { Financeiro } from './components/financeiro/financeiro';
 import { EstoqueComponent } from './components/estoque/estoque.component';
 import { Dashboard } from './components/dashboard/dashboard';
 import { Caixa } from './components/caixa/caixa';
+import { Servicos } from './components/servicos/servicos';
 
 export const routes: Routes = [
     { path: '', component: Dashboard },
     { path: 'agenda', component: AgendaComponent },
     { path: 'caixa', component: Caixa },
     { path: 'financeiro', component: Financeiro },
-    { path: 'estoque', component: EstoqueComponent }
+    { path: 'estoque', component: EstoqueComponent },
+    { path: 'servicos', component: Servicos },
 
 ];

@@ -1,0 +1,169 @@
+<div class="container">
+  <main>
+    <header>
+      <h1>Serviços</h1>
+      <div class="header-btn">
+        <button class="notification-btn" type="button" aria-label="Notificações">
+          <img class="img-padrao" src="notification-green.svg" alt="">
+          <img class="img-hover" src="notification.svg" alt="">
+          <img class="img-active" src="notification-green.svg" alt="">
+        </button>
+        <button class="agendamento-btn" type="button" (click)="abrirCadastro()">Novo serviço</button>
+      </div>
+    </header>
+
+    <div class="conteudo">
+      <div class="resumo">
+        <article class="card-resumo">
+          <span class="card-label">Ativos</span>
+          <strong>{{ totalAtivos }}</strong>
+        </article>
+        <article class="card-resumo">
+          <span class="card-label">Preço médio</span>
+          <strong>{{ precoMedio | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
+        </article>
+        <article class="card-resumo">
+          <span class="card-label">Duração média</span>
+          <strong>{{ formatarDuracao(duracaoMedia) }}</strong>
+        </article>
+      </div>
+
+      <div class="toolbar">
+        <div class="abas" role="tablist">
+          <button
+            class="btn-aba"
+            type="button"
+            role="tab"
+            [class.ativo]="lista === 'ativos'"
+            (click)="mudarLista('ativos')">
+            Ativos
+          </button>
+          <button
+            class="btn-aba"
+            type="button"
+            role="tab"
+            [class.ativo]="lista === 'inativos'"
+            (click)="mudarLista('inativos')">
+            Inativos
+          </button>
+        </div>
+      </div>
+
+      <div class="barra-filtros">
+        <input
+          type="search"
+          placeholder="Buscar serviço"
+          [(ngModel)]="termoBusca"
+          name="buscaServico">
+      </div>
+
+      <div class="container-tabela">
+        <table class="tabela">
+          <thead>
+            <tr>
+              <th>Serviço</th>
+              <th>Descrição</th>
+              <th>Preço</th>
+              <th>Duração</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (servico of servicosVisiveis; track servico.id) {
+              <tr>
+                <td class="nome">{{ servico.nome }}</td>
+                <td class="descricao">{{ servico.descricao }}</td>
+                <td>{{ servico.preco | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</td>
+                <td>{{ formatarDuracao(servico.duracaoMinutos) }}</td>
+                <td>
+                  <div class="acoes">
+                    <button class="btn-acao" type="button" (click)="abrirEdicao(servico)">Editar</button>
+                    <button class="btn-acao" type="button" (click)="abrirStatus(servico)">
+                      {{ servico.ativo ? 'Desativar' : 'Reativar' }}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td class="vazio" colspan="5">
+                  {{ lista === 'ativos' ? 'Nenhum serviço ativo encontrado.' : 'Nenhum serviço inativo encontrado.' }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        <div class="rodape-tabela">
+          <span>Mostrando {{ servicosVisiveis.length }} {{ lista === 'ativos' ? 'serviços ativos' : 'serviços inativos' }}</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  @if (painel) {
+    <div class="overlay" (click)="fecharPainel()">
+      <div
+        class="sheet"
+        role="dialog"
+        aria-modal="true"
+        [attr.aria-labelledby]="'servico-titulo'"
+        (click)="$event.stopPropagation()">
+        <header class="titulo">
+          <h2 id="servico-titulo">{{ tituloPainel }}</h2>
+          @if (painel === 'formulario') {
+            <p>Nome, descrição, preço de venda e duração em minutos.</p>
+          } @else if (alvo?.ativo) {
+            <p>{{ alvo?.nome }} sai da lista de ativos e deixa de aparecer nas vendas.</p>
+          } @else {
+            <p>{{ alvo?.nome }} volta para a lista de serviços ativos.</p>
+          }
+        </header>
+
+        @if (painel === 'formulario') {
+          <form (ngSubmit)="salvar()">
+            <label class="field">
+              Nome
+              <input type="text" name="nome" [(ngModel)]="nome" placeholder="Nome do serviço" required>
+            </label>
+
+            <label class="field">
+              Descrição
+              <textarea name="descricao" rows="3" [(ngModel)]="descricao" placeholder="O que está incluso" required></textarea>
+            </label>
+
+            <div class="row">
+              <label class="field">
+                Preço de venda
+                <input type="number" name="preco" min="0.01" step="0.01" [(ngModel)]="preco" placeholder="0,00" required>
+              </label>
+              <label class="field">
+                Duração (minutos)
+                <input type="number" name="duracao" min="1" step="1" [(ngModel)]="duracaoMinutos" placeholder="60" required>
+              </label>
+            </div>
+
+            @if (erro) {
+              <p class="erro" role="alert">{{ erro }}</p>
+            }
+
+            <div class="foot-btn">
+              <button class="cancel" type="button" (click)="fecharPainel()">Cancelar</button>
+              <button class="save" type="submit">Salvar</button>
+            </div>
+          </form>
+        } @else {
+          @if (erro) {
+            <p class="erro" role="alert">{{ erro }}</p>
+          }
+          <div class="foot-btn">
+            <button class="cancel" type="button" (click)="fecharPainel()">Cancelar</button>
+            <button class="save" type="button" (click)="confirmarStatus()">
+              {{ alvo?.ativo ? 'Desativar' : 'Reativar' }}
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>
