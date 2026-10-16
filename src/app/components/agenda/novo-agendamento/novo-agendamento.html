@@ -6,39 +6,80 @@
         aria-labelledby="novo-agendamento-titulo"
         (click)="$event.stopPropagation()">
         <header class="titulo">
-            <h2 id="novo-agendamento-titulo">Novo Agendamento</h2>
-            <p>Preencha os campos para realizar um novo agendamento.</p>
+            <h2 id="novo-agendamento-titulo">{{ titulo }}</h2>
+            <p>
+                @if (somenteLeitura) {
+                    Este atendimento já foi finalizado.
+                } @else {
+                    Cliente, serviço, profissional, data e horário de início.
+                }
+            </p>
         </header>
 
-        <label class="field">
-            Nome do cliente
-            <input type="text" name="cliente" autocomplete="name">
-        </label>
-
-        <label class="field">
-            Serviço a fazer
-            <input type="search" name="servico">
-        </label>
-
-        <div class="row">
+        <form (ngSubmit)="onSalvar()">
             <label class="field">
-                Data do agendamento
-                <input type="date" name="data">
+                Nome do cliente
+                <input
+                    type="text"
+                    name="cliente"
+                    list="clientes-agenda"
+                    autocomplete="name"
+                    [(ngModel)]="clienteNome"
+                    [disabled]="somenteLeitura"
+                    required>
+                <datalist id="clientes-agenda">
+                    @for (cliente of clientes; track cliente) {
+                        <option [value]="cliente"></option>
+                    }
+                </datalist>
             </label>
+
             <label class="field">
-                Horário de início
-                <input type="time" name="hora">
+                Serviço a fazer
+                <select name="servico" [(ngModel)]="servicoId" [disabled]="somenteLeitura" required>
+                    <option value="">Selecione</option>
+                    @for (servico of servicos; track servico.id) {
+                        <option [value]="servico.id">{{ servico.nome }}</option>
+                    }
+                </select>
             </label>
-        </div>
 
-        <label class="field">
-            Observação (opcional)
-            <textarea name="observacao" rows="4"></textarea>
-        </label>
+            <label class="field">
+                Profissional
+                <select name="profissional" [(ngModel)]="profissionalId" [disabled]="somenteLeitura" required>
+                    <option value="">Selecione</option>
+                    @for (profissional of profissionais; track profissional.id) {
+                        <option [value]="profissional.id">{{ profissional.nome }}</option>
+                    }
+                </select>
+            </label>
 
-        <div class="foot-btn">
-            <button (click)="onCancelar()" class="cancel" type="button">Cancelar</button>
-            <button (click)="onSalvar()" class="save" type="button">Salvar</button>
-        </div>
+            <div class="row">
+                <label class="field">
+                    Data do agendamento
+                    <input type="date" name="data" [(ngModel)]="data" [disabled]="somenteLeitura" required>
+                </label>
+                <label class="field">
+                    Horário de início
+                    <input type="time" name="hora" [(ngModel)]="hora" [disabled]="somenteLeitura" required>
+                </label>
+            </div>
+
+            <label class="field">
+                Observação (opcional)
+                <textarea name="observacao" rows="4" [(ngModel)]="observacao" [disabled]="somenteLeitura"></textarea>
+            </label>
+
+            @if (erro) {
+                <p class="erro" role="alert">{{ erro }}</p>
+            }
+
+            <div class="foot-btn">
+                <button (click)="onCancelar()" class="cancel" type="button">{{ somenteLeitura ? 'Fechar' : 'Cancelar' }}</button>
+                @if (!somenteLeitura) {
+                    <button class="save" type="submit">Salvar</button>
+                }
+            </div>
+        </form>
     </div>
 </div>

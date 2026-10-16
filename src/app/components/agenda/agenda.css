@@ -139,6 +139,23 @@ header h1 {
     flex: 1;
     min-width: 0;
     min-height: 0;
+    gap: 0.5rem;
+}
+
+.aviso-agenda {
+    margin: 0;
+    padding: 0.55rem 0.75rem;
+    border-radius: 10px;
+    background: white;
+    border: 1px solid var(--agenda-line);
+    color: var(--agenda-ink);
+    font-size: 0.8125rem;
+    font-weight: 500;
+}
+
+.aviso-agenda.erro {
+    border-color: #8a2a1a;
+    color: #8a2a1a;
 }
 
 .agendamento-calendar {
@@ -151,7 +168,7 @@ header h1 {
 .semana {
     display: grid;
     grid-template-columns: 3.25rem repeat(7, minmax(0, 1fr));
-    grid-template-rows: auto repeat(12, minmax(3rem, 1fr));
+    grid-template-rows: auto repeat(12, 4.5rem);
     height: 100%;
     background-color: white;
     border: 1px solid var(--agenda-line);
@@ -165,7 +182,8 @@ header h1 {
     border-bottom: 1px solid var(--agenda-line);
 }
 
-.cell:nth-child(8n) {
+.semana > .dia-head:nth-child(8),
+.semana > .dia-eventos:last-child {
     border-right: none;
 }
 
@@ -234,8 +252,169 @@ header h1 {
     color: white;
 }
 
-.slot.hoje {
+.dia-eventos {
+    position: relative;
+    z-index: 1;
+    min-height: 0;
+    border-right: 1px solid var(--agenda-line);
+    background-color: white;
+    background-image: repeating-linear-gradient(
+        to bottom,
+        transparent 0,
+        transparent calc(4.5rem - 1px),
+        var(--agenda-line) calc(4.5rem - 1px),
+        var(--agenda-line) 4.5rem
+    );
+}
+
+.dia-eventos.hoje {
+    background-color: var(--agenda-today);
+}
+
+.dia-eventos.recebendo,
+.dia-eventos.recebendo .hora-alvo {
+    cursor: copy;
+}
+
+.hora-alvo {
+    position: absolute;
+    left: 0;
+    right: 0;
+    z-index: 0;
+    cursor: pointer;
+}
+
+.previsto {
+    position: absolute;
+    left: 3px;
+    right: 3px;
+    border: 2px dashed var(--agenda-ink);
+    border-radius: 6px;
+    background: color-mix(in srgb, #1c3112 16%, white);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.compromisso {
+    position: absolute;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.05rem;
+    padding: 0.15rem 0.35rem;
+    border: none;
+    border-left: 3px solid var(--agenda-ink);
+    border-radius: 6px;
+    background: color-mix(in srgb, #1c3112 8%, white);
+    color: var(--agenda-ink);
+    font-family: inherit;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    line-height: 1.25;
+    text-align: left;
+    cursor: pointer;
+    overflow: hidden;
+    pointer-events: auto;
+    z-index: 1;
+}
+
+.compromisso.compacto .linha-extra {
+    display: none;
+}
+
+.compromisso .linha-extra {
+    font-weight: 400;
+    color: var(--agenda-muted);
+}
+
+.compromisso .estado {
+    font-size: 0.625rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.compromisso.movendo {
+    opacity: 0.4;
+    outline: 2px dashed var(--agenda-ink);
+    outline-offset: -2px;
+}
+
+.compromisso span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.compromisso[data-status='Aguardando'] {
+    border-left-style: dashed;
+    border-left-color: #8a6a1a;
+    background: color-mix(in srgb, #8a6a1a 12%, white);
+}
+
+.compromisso[data-status='Em andamento'] {
+    border-left-color: #8a6a1a;
+}
+
+.compromisso[data-status='Concluído'] {
+    color: var(--agenda-muted);
+}
+
+.menu-agendamento {
+    position: fixed;
+    z-index: 40;
+    min-width: 12.5rem;
+    padding: 0.35rem;
+    background: white;
+    border: 1px solid var(--agenda-line);
+    border-radius: 10px;
+    box-shadow: 0 10px 28px rgb(28 49 18 / 14%);
+}
+
+.menu-titulo,
+.menu-nota {
+    margin: 0;
+    padding: 0.35rem 0.5rem 0.45rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.menu-nota {
+    font-weight: 500;
+    color: var(--agenda-muted);
+}
+
+.menu-agendamento button {
+    display: flex;
+    width: 100%;
+    padding: 0.45rem 0.5rem;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--agenda-ink);
+    font-family: inherit;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+}
+
+.menu-agendamento button[aria-checked='true'] {
+    background: color-mix(in srgb, #1c3112 8%, white);
+}
+
+.menu-agendamento button:hover {
     background: var(--agenda-today);
+}
+
+.menu-agendamento button.perigo {
+    color: #8a2a1a;
+}
+
+.menu-agendamento button:focus-visible {
+    outline: 2px solid var(--agenda-ink);
+    outline-offset: -2px;
 }
 
 @media (max-width: 720px) {
