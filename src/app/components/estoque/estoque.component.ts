@@ -1,20 +1,10 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ProdutoEstoque, SalaoEstadoService, StatusEstoque } from '../../core/salao-estado.service';
 
 type AbaEstoque = 'produtos' | 'categorias';
 type FiltroUso = 'todos' | 'salao' | 'venda';
-type StatusEstoque = 'critico' | 'baixo' | 'normal';
-
-interface ProdutoEstoque {
-  nome: string;
-  categoria: string;
-  estoqueAtual: number;
-  estoqueMinimo: number;
-  preco: number;
-  status: StatusEstoque;
-  uso: FiltroUso;
-}
 
 interface CategoriaEstoque {
   nome: string;
@@ -32,41 +22,16 @@ interface CategoriaEstoque {
   styleUrls: ['./estoque.component.css'],
 })
 export class EstoqueComponent {
+  private readonly estado = inject(SalaoEstadoService);
   abaAtiva: AbaEstoque = 'produtos';
   mostrarCadastro = false;
   termoBusca = '';
   categoriaSelecionada = '';
   filtroUso: FiltroUso = 'todos';
 
-  produtos: ProdutoEstoque[] = [
-    {
-      nome: 'Ox 20 Volumes',
-      categoria: 'Coloração',
-      estoqueAtual: 2,
-      estoqueMinimo: 10,
-      preco: 18.9,
-      status: 'critico',
-      uso: 'salao',
-    },
-    {
-      nome: 'Máscara Hidratante',
-      categoria: 'Tratamento',
-      estoqueAtual: 3,
-      estoqueMinimo: 8,
-      preco: 62,
-      status: 'baixo',
-      uso: 'venda',
-    },
-    {
-      nome: 'Fluido Finalizador',
-      categoria: 'Finalização',
-      estoqueAtual: 12,
-      estoqueMinimo: 5,
-      preco: 52,
-      status: 'normal',
-      uso: 'salao',
-    },
-  ];
+  get produtos(): ProdutoEstoque[] {
+    return this.estado.produtos;
+  }
 
   categorias: CategoriaEstoque[] = [
     { nome: 'Coloração', cadastrados: 3, criticos: 3, baixo: 0, normal: 0 },

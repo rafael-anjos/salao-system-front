@@ -1,16 +1,7 @@
 import { CurrencyPipe } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-
-export type StatusAgendamento = 'Confirmado' | 'Em andamento' | 'Aguardando' | 'Concluído';
-
-export interface AgendamentoDoDia {
-  hora: string;
-  cliente: string;
-  servico: string;
-  status: StatusAgendamento;
-  preco: number;
-}
+import { SalaoEstadoService } from '../../core/salao-estado.service';
 
 export interface Notificacao {
   horario: string;
@@ -30,55 +21,18 @@ export interface AlertaEstoque {
   styleUrl: './dashboard.css',
 })
 export class Dashboard {
+  private readonly estado = inject(SalaoEstadoService);
   hoje = new Date();
   saudacao = this.montarSaudacao();
   dataExtenso = this.formatarData(this.hoje);
-  caixaAberto = true;
 
-  agendaDoDia: AgendamentoDoDia[] = [
-    {
-      hora: '09:00',
-      cliente: 'Maria Silva',
-      servico: 'Coloração',
-      status: 'Concluído',
-      preco: 280,
-    },
-    {
-      hora: '10:30',
-      cliente: 'Ana Costa',
-      servico: 'Corte e escova',
-      status: 'Em andamento',
-      preco: 150,
-    },
-    {
-      hora: '13:00',
-      cliente: 'Juliana Alves',
-      servico: 'Manicure e pedicure',
-      status: 'Confirmado',
-      preco: 90,
-    },
-    {
-      hora: '15:00',
-      cliente: 'Carla Mendes',
-      servico: 'Hidratação',
-      status: 'Confirmado',
-      preco: 180,
-    },
-    {
-      hora: '16:30',
-      cliente: 'Beatriz Nunes',
-      servico: 'Design de sobrancelha',
-      status: 'Aguardando',
-      preco: 70,
-    },
-    {
-      hora: '18:00',
-      cliente: 'Fernanda Rocha',
-      servico: 'Escova progressiva',
-      status: 'Confirmado',
-      preco: 320,
-    },
-  ];
+  get agendaDoDia() {
+    return this.estado.agendamentos;
+  }
+
+  get caixaAberto(): boolean {
+    return this.estado.caixaAberto;
+  }
 
   notificacoes: Notificacao[] = [
     { horario: '16:12', texto: 'Beatriz Nunes confirmou o horário das 16:30.' },

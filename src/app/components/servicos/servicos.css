@@ -1,0 +1,411 @@
+:host {
+    --ink: #1c3112;
+    --muted: #5a6854;
+    --line: color-mix(in srgb, #1c3112 14%, white);
+    --canvas: #f3f4f2;
+    --critico: #9b1c2c;
+    font-family: 'Montserrat', sans-serif;
+    color: var(--ink);
+}
+
+.container {
+    display: flex;
+    background-color: var(--canvas);
+    min-height: 100vh;
+    width: 100%;
+}
+
+main {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-height: 100vh;
+}
+
+main > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 10vh;
+    width: 100%;
+    padding: 0 1.25rem;
+    background-color: white;
+    box-shadow: 1px 1px 7px 1px #b3b3b3;
+}
+
+main > header h1 {
+    font-size: 1.875rem;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+}
+
+.header-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.agendamento-btn,
+.notification-btn,
+.btn-aba,
+.btn-acao,
+.cancel,
+.save {
+    font-family: inherit;
+}
+
+.agendamento-btn {
+    font-weight: 500;
+    font-size: 0.9375rem;
+    height: 2.375rem;
+    padding: 0 1.1rem;
+    background-color: var(--ink);
+    border-radius: 10px;
+    cursor: pointer;
+    border: 1px solid var(--ink);
+    color: white;
+}
+
+.agendamento-btn:hover,
+.save:hover {
+    background-color: white;
+    color: var(--ink);
+}
+
+.notification-btn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid var(--ink);
+    background-color: white;
+    cursor: pointer;
+    height: 35px;
+    width: 35px;
+    border-radius: 100%;
+}
+
+.header-btn button img {
+    height: 20px;
+    width: 20px;
+}
+
+.notification-btn .img-hover,
+.notification-btn .img-active {
+    display: none;
+}
+
+.notification-btn:hover:not(:active) .img-padrao {
+    display: none;
+}
+
+.notification-btn:hover:not(:active) .img-hover {
+    display: inline-block;
+}
+
+.notification-btn:active .img-padrao,
+.notification-btn:active .img-hover {
+    display: none;
+}
+
+.notification-btn:active .img-active {
+    display: inline-block;
+}
+
+.notification-btn:hover {
+    background-color: var(--ink);
+}
+
+.notification-btn:active {
+    background-color: white;
+}
+
+.agendamento-btn:focus-visible,
+.notification-btn:focus-visible,
+.btn-aba:focus-visible,
+.btn-acao:focus-visible,
+.cancel:focus-visible,
+.save:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+}
+
+.conteudo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    padding: 0.75rem 0.75rem 1.25rem;
+    flex: 1;
+}
+
+.resumo {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.card-resumo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.95rem 1rem;
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+}
+
+.card-label {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.card-resumo strong {
+    font-size: 1.375rem;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+}
+
+.toolbar {
+    display: flex;
+    align-items: center;
+    min-height: 2.5rem;
+}
+
+.abas {
+    display: flex;
+    gap: 1.25rem;
+}
+
+.btn-aba {
+    background: none;
+    border: none;
+    padding: 0.4rem 0;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    border-bottom: 2px solid transparent;
+}
+
+.btn-aba.ativo {
+    color: var(--ink);
+    border-bottom-color: var(--ink);
+}
+
+.barra-filtros input,
+.field input,
+.field textarea {
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: var(--ink);
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    outline: none;
+    padding: 0.7rem 0.85rem;
+}
+
+.barra-filtros input {
+    width: 100%;
+}
+
+.barra-filtros input:focus,
+.field input:focus,
+.field textarea:focus {
+    border-color: var(--ink);
+    box-shadow: 0 0 0 3px color-mix(in srgb, #1c3112 12%, transparent);
+}
+
+.barra-filtros input::placeholder,
+.field input::placeholder,
+.field textarea::placeholder {
+    color: var(--muted);
+}
+
+.container-tabela {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: auto;
+}
+
+.tabela {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.tabela th {
+    padding: 0.85rem 1rem;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--line);
+}
+
+.tabela td {
+    padding: 0.9rem 1rem;
+    font-size: 0.875rem;
+    color: var(--ink);
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+}
+
+.tabela tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.tabela tbody tr:hover td {
+    background: color-mix(in srgb, #1c3112 4%, white);
+}
+
+.nome {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+}
+
+.descricao {
+    max-width: 28rem;
+    color: var(--muted);
+    line-height: 1.4;
+}
+
+.acoes {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.35rem;
+}
+
+.btn-acao {
+    background: none;
+    border: none;
+    padding: 0.2rem 0.35rem;
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.btn-acao:hover {
+    color: var(--ink);
+}
+
+.vazio {
+    text-align: center;
+    color: var(--muted);
+}
+
+.rodape-tabela {
+    padding: 0.75rem 1rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+    border-top: 1px solid var(--line);
+}
+
+.overlay {
+    position: fixed;
+    inset: 0;
+    background: color-mix(in srgb, #1c3112 28%, transparent);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1.25rem;
+    overflow: auto;
+}
+
+.sheet {
+    width: min(32rem, 100%);
+    padding: 1.5rem 1.5rem 1.25rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px color-mix(in srgb, #1c3112 18%, transparent);
+    margin: auto;
+}
+
+.titulo h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+.titulo p {
+    margin-top: 0.3rem;
+    margin-bottom: 1rem;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: var(--muted);
+}
+
+.row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.field input,
+.field textarea {
+    width: 100%;
+    border-radius: 8px;
+    resize: vertical;
+}
+
+.erro {
+    margin-bottom: 0.75rem;
+    font-size: 0.8125rem;
+    color: var(--critico);
+}
+
+.foot-btn {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.foot-btn button {
+    flex: 1;
+    height: 2.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
+.cancel {
+    background-color: white;
+    color: var(--ink);
+    border: 1px solid color-mix(in srgb, #1c3112 28%, white);
+}
+
+.cancel:hover {
+    color: var(--critico);
+    border-color: var(--critico);
+}
+
+.save {
+    background-color: var(--ink);
+    color: white;
+    border: 1px solid var(--ink);
+}
+
+@media (max-width: 860px) {
+    .resumo,
+    .row {
+        grid-template-columns: 1fr;
+    }
+}
