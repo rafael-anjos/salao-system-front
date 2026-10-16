@@ -1,0 +1,734 @@
+<div class="container">
+  <header>
+    <div class="box-titulo">
+      <h1>Financeiro / Caixa</h1>
+      <p class="data">{{ estado.salao }} · {{ dataExtenso }}</p>
+    </div>
+    <div class="header-acoes">
+      <label class="busca">
+        <span class="sr-only">{{ placeholderBusca }}</span>
+        <input type="search" [placeholder]="placeholderBusca" [(ngModel)]="termoCabecalho" name="buscaCabecalho">
+      </label>
+      <button class="notification-btn" type="button" aria-label="Notificações">
+        <img class="img-padrao" src="notification-green.svg" alt="">
+        <img class="img-hover" src="notification.svg" alt="">
+        <img class="img-active" src="notification-green.svg" alt="">
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <div class="abas" role="tablist" aria-label="Financeiro">
+      <button class="btn-aba" type="button" role="tab" [class.ativo]="aba === 'caixa'" [attr.aria-selected]="aba === 'caixa'" (click)="mudarAba('caixa')">Caixa</button>
+      <button class="btn-aba" type="button" role="tab" [class.ativo]="aba === 'historico'" [attr.aria-selected]="aba === 'historico'" (click)="mudarAba('historico')">Histórico</button>
+      <button class="btn-aba" type="button" role="tab" [class.ativo]="aba === 'relatorios'" [attr.aria-selected]="aba === 'relatorios'" (click)="mudarAba('relatorios')">Relatórios</button>
+      <button class="btn-aba" type="button" role="tab" [class.ativo]="aba === 'pendentes'" [attr.aria-selected]="aba === 'pendentes'" (click)="mudarAba('pendentes')">Pendentes</button>
+    </div>
+
+    @if (mensagem) {
+      <p class="aviso" [class.ok]="mensagemTipo === 'ok'" [class.erro]="mensagemTipo === 'erro'" role="status">{{ mensagem }}</p>
+    }
+
+    @if (aba === 'caixa') {
+      <section class="estado" [class.aberto]="!!caixaAberto" aria-labelledby="titulo-estado">
+        @if (caixaAberto; as caixa) {
+          <div class="estado-topo">
+            <div>
+              <h2 id="titulo-estado">Caixa aberto</h2>
+              <p>Aberto às {{ hora(caixa.abertoEm) }} por {{ caixa.responsavelAbertura }} · {{ caixa.id }}</p>
+            </div>
+            <span class="pill">Aberto</span>
+          </div>
+          @if (resumoAberto; as resumo) {
+            <dl class="metricas">
+              <div>
+                <dt>Saldo inicial</dt>
+                <dd>{{ resumo.saldoInicial | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</dd>
+              </div>
+              <div>
+                <dt>Entradas</dt>
+                <dd>{{ resumo.entradas | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</dd>
+              </div>
+              <div>
+                <dt>Saídas</dt>
+                <dd>{{ resumo.saidas | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</dd>
+              </div>
+              <div>
+                <dt>Saldo atual</dt>
+                <dd class="destaque">{{ resumo.saldoAtual | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</dd>
+              </div>
+            </dl>
+          }
+          <div class="acoes">
+            <button class="secundario" type="button" (click)="abrirMovimento()">Movimentação</button>
+            <button class="secundario" type="button" (click)="mudarAba('historico')">Histórico</button>
+            <button class="secundario" type="button" (click)="abrirFechamento()">Fechar caixa</button>
+          </div>
+        } @else {
+          <div class="estado-topo">
+            <div>
+              <h2 id="titulo-estado">Caixa fechado</h2>
+              <p>Informe o dinheiro em gaveta para começar o atendimento.</p>
+            </div>
+            <span class="pill fechado">Fechado</span>
+          </div>
+          <form class="abrir" (ngSubmit)="abrirCaixa()">
+            <label class="field">
+              Saldo inicial
+              <input type="number" name="saldoInicial" min="0" step="0.01" placeholder="0,00" [(ngModel)]="saldoInicial">
+            </label>
+            <button class="primario" type="submit">Abrir caixa</button>
+          </form>
+        }
+      </section>
+
+      @if (caixaAberto) {
+      <section class="painel" aria-labelledby="titulo-venda">
+        <header class="painel-cabecalho">
+          <h2 id="titulo-venda">Nova venda</h2>
+        </header>
+
+        <form (ngSubmit)="finalizarVenda()">
+          <div class="row">
+            <label class="field">
+              Profissional
+              <select name="profissional" [(ngModel)]="profissionalId" [disabled]="!caixaAberto">
+                <option value="">Selecione</option>
+                @for (profissional of estado.profissionais; track profissional.id) {
+                  <option [value]="profissional.id">{{ profissional.nome }}</option>
+                }
+              </select>
+            </label>
+            <label class="field">
+              Cliente
+              <select name="cliente" [(ngModel)]="clienteId" [disabled]="!caixaAberto">
+                <option value="">Venda avulsa</option>
+                @for (cliente of estado.clientes; track cliente.id) {
+                  <option [value]="cliente.id">{{ cliente.nome }}</option>
+                }
+              </select>
+            </label>
+          </div>
+
+          <div class="busca-item">
+            <label class="field">
+              Buscar serviço ou produto
+              <input
+                type="search"
+                name="termoItem"
+                placeholder="Nome do serviço ou produto"
+                [(ngModel)]="termoItem"
+                [disabled]="!caixaAberto"
+                autocomplete="off">
+            </label>
+            @if (termoItem.trim() && sugestoes.length === 0) {
+              <p class="vazio">Nenhum serviço ou produto encontrado.</p>
+            }
+            @if (sugestoes.length > 0) {
+              <ul class="sugestoes">
+                @for (item of sugestoes; track item.tipo + item.id) {
+                  <li>
+                    <button type="button" (click)="adicionarSugestao(item)" [disabled]="!caixaAberto">
+                      <span class="tag">{{ item.detalhe }}</span>
+                      <span class="nome-item">{{ item.nome }}</span>
+                      <span class="preco-item">{{ item.preco | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+
+          <div class="listas">
+            <div>
+              <h3>Serviços</h3>
+              @if (linhasServico.length === 0) {
+                <p class="vazio">Nenhum serviço nesta venda.</p>
+              } @else {
+                <ul class="itens">
+                  @for (linha of linhasServico; track linha.id) {
+                    <li>
+                      <span class="nome-item">{{ linha.nome }}</span>
+                      <label class="qtd">
+                        <span class="sr-only">Quantidade de {{ linha.nome }}</span>
+                        <input type="number" min="1" step="1" [name]="'qtd-' + linha.id" [(ngModel)]="linha.quantidade" (ngModelChange)="normalizarQuantidade(linha)">
+                      </label>
+                      <span class="preco-item">{{ linha.precoUnitario | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
+                      <strong>{{ linha.quantidade * linha.precoUnitario | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
+                      <button class="btn-acao" type="button" (click)="removerLinha(linha)">Remover</button>
+                    </li>
+                  }
+                </ul>
+              }
+            </div>
+            <div>
+              <h3>Produtos</h3>
+              @if (linhasProduto.length === 0) {
+                <p class="vazio">Nenhum produto nesta venda.</p>
+              } @else {
+                <ul class="itens">
+                  @for (linha of linhasProduto; track linha.id) {
+                    <li>
+                      <span class="nome-item">{{ linha.nome }}</span>
+                      <label class="qtd">
+                        <span class="sr-only">Quantidade de {{ linha.nome }}</span>
+                        <input type="number" min="1" step="1" [name]="'qtd-' + linha.id" [(ngModel)]="linha.quantidade" (ngModelChange)="normalizarQuantidade(linha)">
+                      </label>
+                      <span class="preco-item">{{ linha.precoUnitario | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
+                      <strong>{{ linha.quantidade * linha.precoUnitario | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
+                      <button class="btn-acao" type="button" (click)="removerLinha(linha)">Remover</button>
+                    </li>
+                  }
+                </ul>
+              }
+            </div>
+          </div>
+
+          <div class="row">
+            <label class="field">
+              Desconto (R$)
+              <input type="number" name="desconto" min="0" step="0.01" [(ngModel)]="desconto" [disabled]="!caixaAberto">
+            </label>
+            <label class="field">
+              Forma de pagamento
+              <select name="forma" [(ngModel)]="forma" [disabled]="!caixaAberto">
+                @for (opcao of estado.formasPagamento; track opcao) {
+                  <option [value]="opcao">{{ opcao }}</option>
+                }
+              </select>
+            </label>
+          </div>
+
+          @if (descontoInvalido) {
+            <p class="aviso erro">{{ textoDesconto }}</p>
+          }
+
+          <label class="check">
+            <input type="checkbox" name="dividir" [(ngModel)]="dividir" [disabled]="!caixaAberto">
+            Dividir pagamento
+          </label>
+
+          @if (dividir) {
+            <div class="row">
+              <label class="field">
+                Segunda forma
+                <select name="forma2" [(ngModel)]="forma2">
+                  @for (opcao of estado.formasPagamento; track opcao) {
+                    <option [value]="opcao">{{ opcao }}</option>
+                  }
+                </select>
+              </label>
+              <label class="field">
+                Valor da segunda forma
+                <input type="number" name="valor2" min="0" step="0.01" [(ngModel)]="valor2">
+              </label>
+            </div>
+          }
+
+          <footer class="resumo-venda">
+            <div>
+              <p>Subtotal {{ subtotal | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</p>
+              <p>Desconto {{ descontoAplicado | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</p>
+              <p class="forma-resumo">{{ dividir ? forma + ' e ' + forma2 : forma }}</p>
+              <p class="total-final">Total {{ totalVenda | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</p>
+            </div>
+            <button
+              class="primario"
+              type="submit"
+              [disabled]="processando || !caixaAberto || linhas.length === 0 || !profissionalId || descontoInvalido">
+              Finalizar venda
+            </button>
+          </footer>
+        </form>
+      </section>
+      }
+    }
+
+    @if (aba === 'historico') {
+      <section class="painel" aria-labelledby="titulo-historico">
+        <header class="painel-cabecalho">
+          <div>
+            <h2 id="titulo-historico">Histórico</h2>
+            @if (caixaEmFoco; as caixa) {
+              <p>
+                {{ caixa.id }} · {{ caixa.status === 'aberto' ? 'Aberto' : 'Fechado' }}
+                às {{ hora(caixa.abertoEm) }} por {{ caixa.responsavelAbertura }}
+              </p>
+            }
+          </div>
+          @if (estado.caixas.length > 1) {
+            <label class="field campo-curto">
+              Caixa
+              <select name="caixaHistorico" [(ngModel)]="caixaSelecionadoId">
+                @for (caixa of estado.caixas; track caixa.id) {
+                  <option [value]="caixa.id">{{ caixa.id }} · {{ caixa.status === 'aberto' ? 'Aberto' : 'Fechado' }}</option>
+                }
+              </select>
+            </label>
+          }
+        </header>
+
+        @if (caixaEmFoco?.status === 'fechado' && caixaEmFoco?.fechadoEm) {
+          <p class="nota">
+            Fechado às {{ hora(caixaEmFoco?.fechadoEm) }} por {{ caixaEmFoco?.responsavelFechamento }}.
+            Contado {{ caixaEmFoco?.valorContado ?? 0 | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}.
+            @if (caixaEmFoco?.diferencaDinheiro === 0) {
+              Sem diferença.
+            } @else {
+              Diferença {{ caixaEmFoco?.diferencaDinheiro ?? 0 | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}.
+            }
+          </p>
+        }
+
+        <div class="filtros">
+          <label class="field">
+            Tipo
+            <select name="filtroTipo" [(ngModel)]="filtroTipo">
+              <option value="todos">Todos</option>
+              <option value="venda">Venda</option>
+              <option value="entrada">Entrada</option>
+              <option value="saida">Saída</option>
+              <option value="estorno">Estorno</option>
+            </select>
+          </label>
+          <label class="field">
+            Pagamento
+            <select name="filtroForma" [(ngModel)]="filtroForma">
+              <option value="todas">Todas</option>
+              @for (opcao of estado.formasPagamento; track opcao) {
+                <option [value]="opcao">{{ opcao }}</option>
+              }
+            </select>
+          </label>
+          <label class="field">
+            De
+            <input type="date" name="filtroInicio" [(ngModel)]="filtroInicio">
+          </label>
+          <label class="field">
+            Até
+            <input type="date" name="filtroFim" [(ngModel)]="filtroFim">
+          </label>
+        </div>
+
+        @if (!caixaEmFoco) {
+          <p class="vazio">Nenhum caixa aberto ou encerrado nesta sessão.</p>
+        } @else if (historico.length === 0) {
+          <p class="vazio">Nenhuma movimentação neste caixa.</p>
+        } @else {
+          <div class="tabela-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Horário</th>
+                  <th>Descrição</th>
+                  <th>Cliente</th>
+                  <th>Profissional</th>
+                  <th>Pagamento</th>
+                  <th>Tipo</th>
+                  <th>Valor</th>
+                  <th>Registro</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of historico; track item.id) {
+                  <tr>
+                    <td>{{ hora(item.dataHora) }}</td>
+                    <td>
+                      <span class="nome-item">{{ item.id }}</span>
+                      <span class="sub">{{ textoItens(item) }}</span>
+                    </td>
+                    <td>{{ item.cliente || 'Avulsa' }}</td>
+                    <td>{{ item.profissional || '—' }}</td>
+                    <td>{{ textoPagamento(item) }}</td>
+                    <td><span class="tag" [attr.data-tipo]="item.tipo">{{ rotuloTipo(item.tipo) }}</span></td>
+                    <td class="numero">{{ item.valor | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</td>
+                    <td>{{ item.responsavel }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+    }
+
+    @if (aba === 'relatorios') {
+      <section class="painel" aria-labelledby="titulo-relatorio">
+        <header class="painel-cabecalho">
+          <h2 id="titulo-relatorio">Relatórios</h2>
+          <div class="sub-filtros" role="group" aria-label="Formato do relatório">
+            <button class="btn-sub" type="button" [class.ativo]="formatoRelatorio === 'resumido'" (click)="formatoRelatorio = 'resumido'">Relatório resumido</button>
+            <button class="btn-sub" type="button" [class.ativo]="formatoRelatorio === 'detalhado'" (click)="formatoRelatorio = 'detalhado'">Relatório detalhado</button>
+          </div>
+        </header>
+
+        <div class="filtros">
+          <label class="field">
+            De
+            <input type="date" name="relInicio" [(ngModel)]="relInicio">
+          </label>
+          <label class="field">
+            Até
+            <input type="date" name="relFim" [(ngModel)]="relFim">
+          </label>
+          <label class="field">
+            Profissional
+            <select name="relProfissional" [(ngModel)]="relProfissional">
+              <option value="todos">Todos</option>
+              @for (profissional of estado.profissionais; track profissional.id) {
+                <option [value]="profissional.id">{{ profissional.nome }}</option>
+              }
+            </select>
+          </label>
+          <label class="field">
+            Pagamento
+            <select name="relForma" [(ngModel)]="relForma">
+              <option value="todas">Todas</option>
+              @for (opcao of estado.formasPagamento; track opcao) {
+                <option [value]="opcao">{{ opcao }}</option>
+              }
+            </select>
+          </label>
+          <label class="field">
+            Tipo
+            <select name="relTipo" [(ngModel)]="relTipo">
+              <option value="todos">Todos</option>
+              <option value="venda">Venda</option>
+              <option value="entrada">Entrada</option>
+              <option value="saida">Saída</option>
+              <option value="estorno">Estorno</option>
+            </select>
+          </label>
+        </div>
+
+        @if (formatoRelatorio === 'resumido') {
+          @if (filtroRelatorioExtra) {
+            <p class="nota">Os cards usam os lançamentos filtrados. Os saldos de cada caixa consideram todas as movimentações dele.</p>
+          }
+          <div class="metricas relatorio">
+            <div>
+              <p class="rotulo">Vendas</p>
+              <strong>{{ totaisRelatorio.vendas | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
+            </div>
+            <div>
+              <p class="rotulo">Serviços</p>
+              <strong>{{ totaisRelatorio.servicos | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
+            </div>
+            <div>
+              <p class="rotulo">Produtos</p>
+              <strong>{{ totaisRelatorio.produtos | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
+            </div>
+            <div>
+              <p class="rotulo">Entradas</p>
+              <strong>{{ totaisRelatorio.entradas | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
+            </div>
+            <div>
+              <p class="rotulo">Saídas</p>
+              <strong>{{ totaisRelatorio.saidas | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
+            </div>
+            <div>
+              <p class="rotulo">Descontos</p>
+              <strong>{{ totaisRelatorio.descontos | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
+            </div>
+          </div>
+
+          <div class="blocos">
+            <article>
+              <h3>Por forma de pagamento</h3>
+              @if (totaisRelatorio.porForma.length === 0) {
+                <p class="vazio">Nenhum recebimento no período.</p>
+              } @else {
+                <ul class="lista-valor">
+                  @for (item of totaisRelatorio.porForma; track item.forma) {
+                    <li>
+                      <span>{{ item.forma }}</span>
+                      <strong>{{ item.total | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
+                    </li>
+                  }
+                </ul>
+              }
+            </article>
+            <article>
+              <h3>Caixas do período</h3>
+              @if (caixasDoPeriodo.length === 0) {
+                <p class="vazio">Nenhum caixa neste período.</p>
+              } @else {
+                <ul class="lista-valor">
+                  @for (caixa of caixasDoPeriodo; track caixa.id) {
+                    <li>
+                      <span>{{ caixa.id }} · inicial {{ resumoDoCaixa(caixa.id).saldoInicial | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
+                      <strong>{{ resumoDoCaixa(caixa.id).saldoAtual | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
+                    </li>
+                  }
+                </ul>
+              }
+            </article>
+          </div>
+        } @else {
+          @if (lancamentosRelatorio.length === 0) {
+            <p class="vazio">Nenhum lançamento no período.</p>
+          } @else {
+            <div class="tabela-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Quando</th>
+                    <th>Venda</th>
+                    <th>Caixa</th>
+                    <th>Cliente</th>
+                    <th>Profissional</th>
+                    <th>Itens</th>
+                    <th>Desconto</th>
+                    <th>Total</th>
+                    <th>Pagamento</th>
+                    <th>Responsável</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of lancamentosRelatorio; track item.id) {
+                    <tr>
+                      <td>{{ dataHora(item.dataHora) }}</td>
+                      <td>{{ item.id }}</td>
+                      <td>{{ item.caixaId }}</td>
+                      <td>{{ item.cliente || 'Avulsa' }}</td>
+                      <td>{{ item.profissional || '—' }}</td>
+                      <td>{{ textoItens(item) }}</td>
+                      <td class="numero">{{ item.desconto | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</td>
+                      <td class="numero">{{ item.valor | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</td>
+                      <td>{{ textoPagamento(item) }}</td>
+                      <td>{{ item.responsavel }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+      </section>
+    }
+
+    @if (aba === 'pendentes') {
+      <section class="painel" aria-labelledby="titulo-pendentes">
+        <header class="painel-cabecalho">
+          <div>
+            <h2 id="titulo-pendentes">Pendentes de hoje</h2>
+            <p>Atendimentos do dia que ainda não foram finalizados.</p>
+          </div>
+        </header>
+
+        @if (!caixaAberto) {
+          <p class="nota">O caixa está fechado. Abra o caixa para finalizar atendimentos.</p>
+        }
+
+        @if (pendentes.length === 0) {
+          <p class="vazio">Não existem atendimentos pendentes para o dia.</p>
+        } @else {
+          <ul class="pendentes">
+            @for (item of pendentes; track item.id) {
+              <li>
+                <time>{{ item.hora }}</time>
+                <div>
+                  <p class="nome-item">{{ item.cliente }}</p>
+                  <p class="sub">{{ item.profissional }} · {{ item.servico }}</p>
+                </div>
+                <span class="tag" [attr.data-status]="item.status">{{ item.status }}</span>
+                <strong>{{ item.preco | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
+                <button class="secundario" type="button" (click)="abrirAtendimento(item)" [disabled]="!caixaAberto">Finalizar atendimento</button>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    }
+  </main>
+
+  @if (mostrarMovimento) {
+    <div class="overlay" (click)="mostrarMovimento = false">
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="titulo-movimento" (click)="$event.stopPropagation()">
+        <header class="titulo">
+          <h2 id="titulo-movimento">Movimentação</h2>
+          <p>Entrada de troco ou saída, como sangria.</p>
+        </header>
+        <form (ngSubmit)="confirmarMovimento()">
+          <label class="field">
+            Tipo
+            <select name="tipoMovimento" [(ngModel)]="tipoMovimento">
+              <option value="entrada">Entrada</option>
+              <option value="saida">Saída</option>
+            </select>
+          </label>
+          <div class="row">
+            <label class="field">
+              Valor
+              <input type="number" name="valorMovimento" min="0" step="0.01" [(ngModel)]="valorMovimento">
+            </label>
+            <label class="field">
+              Forma
+              <select name="formaMovimento" [(ngModel)]="formaMovimento">
+                @for (opcao of estado.formasPagamento; track opcao) {
+                  <option [value]="opcao">{{ opcao }}</option>
+                }
+              </select>
+            </label>
+          </div>
+          <label class="field">
+            Descrição
+            <input type="text" name="descricaoMovimento" [(ngModel)]="descricaoMovimento" placeholder="Ex.: sangria para troco">
+          </label>
+          <div class="foot-btn">
+            <button class="secundario" type="button" (click)="mostrarMovimento = false">Cancelar</button>
+            <button class="primario" type="submit" [disabled]="processando">Registrar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  @if (mostrarFechamento && resumoAberto; as resumo) {
+    <div class="overlay" (click)="mostrarFechamento = false">
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="titulo-fechar" (click)="$event.stopPropagation()">
+        <header class="titulo">
+          <h2 id="titulo-fechar">Fechar caixa</h2>
+          <p>Confira os valores antes de encerrar. Novas vendas exigem outro caixa.</p>
+        </header>
+        <ul class="lista-valor">
+          <li><span>Saldo inicial</span><strong>{{ resumo.saldoInicial | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong></li>
+          <li><span>Entradas</span><strong>{{ resumo.entradas | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong></li>
+          <li><span>Saídas</span><strong>{{ resumo.saidas | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong></li>
+          <li><span>Saldo esperado</span><strong>{{ resumo.saldoAtual | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong></li>
+          <li><span>Esperado em dinheiro</span><strong>{{ resumo.esperadoDinheiro | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong></li>
+        </ul>
+        @if (resumo.porForma.length > 0) {
+          <ul class="lista-valor compacta">
+            @for (item of resumo.porForma; track item.forma) {
+              <li><span>{{ item.forma }}</span><strong>{{ item.total | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong></li>
+            }
+          </ul>
+        }
+        <form (ngSubmit)="confirmarFechamento()">
+          <label class="field">
+            Valor contado em dinheiro
+            <input type="number" name="valorContado" min="0" step="0.01" [(ngModel)]="valorContado">
+          </label>
+          @if (diferencaContagem !== null) {
+            <p class="nota" [class.falta]="diferencaContagem < 0">
+              {{ textoDiferenca(diferencaContagem) }}
+              {{ diferencaContagem | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}
+            </p>
+          }
+          <div class="foot-btn">
+            <button class="secundario" type="button" (click)="mostrarFechamento = false">Cancelar</button>
+            <button class="primario" type="submit" [disabled]="processando">Confirmar fechamento</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  @if (rascunho; as atendimento) {
+    <div class="overlay" (click)="rascunho = null">
+      <div class="sheet sheet-larga" role="dialog" aria-modal="true" aria-labelledby="titulo-atendimento" (click)="$event.stopPropagation()">
+        <header class="titulo">
+          <h2 id="titulo-atendimento">Finalizar atendimento</h2>
+          <p>{{ atendimento.hora }} · {{ atendimento.cliente }} · {{ atendimento.profissional }}</p>
+        </header>
+
+        <fieldset class="servicos">
+          <legend>Serviços realizados</legend>
+          @for (servico of atendimento.servicos; track servico.id) {
+            <label class="check">
+              <input type="checkbox" [(ngModel)]="servico.confirmar" [name]="'srv-' + servico.id">
+              <span>{{ servico.nome }}</span>
+              <strong>{{ servico.preco | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
+            </label>
+          }
+        </fieldset>
+
+        <label class="field">
+          Adicionar produto
+          <input type="search" name="termoAtendimento" placeholder="Buscar produto do estoque" [(ngModel)]="atendimento.termo" autocomplete="off">
+        </label>
+        @if (atendimento.termo.trim() && sugestoesAtendimento.length === 0) {
+          <p class="vazio">Nenhum produto encontrado.</p>
+        }
+        @if (sugestoesAtendimento.length > 0) {
+          <ul class="sugestoes">
+            @for (item of sugestoesAtendimento; track item.id) {
+              <li>
+                <button type="button" (click)="adicionarSugestao(item, atendimento.produtos)">
+                  <span class="tag">{{ item.detalhe }}</span>
+                  <span class="nome-item">{{ item.nome }}</span>
+                  <span class="preco-item">{{ item.preco | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
+                </button>
+              </li>
+            }
+          </ul>
+        }
+        @if (atendimento.produtos.length > 0) {
+          <ul class="itens">
+            @for (linha of atendimento.produtos; track linha.id) {
+              <li>
+                <span class="nome-item">{{ linha.nome }}</span>
+                <label class="qtd">
+                  <span class="sr-only">Quantidade de {{ linha.nome }}</span>
+                  <input type="number" min="1" step="1" [name]="'at-' + linha.id" [(ngModel)]="linha.quantidade" (ngModelChange)="normalizarQuantidade(linha)">
+                </label>
+                <strong>{{ linha.quantidade * linha.precoUnitario | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
+                <button class="btn-acao" type="button" (click)="removerLinha(linha, atendimento.produtos)">Remover</button>
+              </li>
+            }
+          </ul>
+        }
+
+        <div class="row">
+          <label class="field">
+            Desconto (R$)
+            <input type="number" name="descontoAtendimento" min="0" step="0.01" [(ngModel)]="atendimento.desconto">
+          </label>
+          <label class="field">
+            Forma de pagamento
+            <select name="formaAtendimento" [(ngModel)]="atendimento.forma">
+              @for (opcao of estado.formasPagamento; track opcao) {
+                <option [value]="opcao">{{ opcao }}</option>
+              }
+            </select>
+          </label>
+        </div>
+        @if (descontoAtendimentoInvalido) {
+          <p class="aviso erro">{{ textoDescontoAtendimento }}</p>
+        }
+        <label class="check">
+          <input type="checkbox" name="dividirAtendimento" [(ngModel)]="atendimento.dividir">
+          Dividir pagamento
+        </label>
+        @if (atendimento.dividir) {
+          <div class="row">
+            <label class="field">
+              Segunda forma
+              <select name="forma2Atendimento" [(ngModel)]="atendimento.forma2">
+                @for (opcao of estado.formasPagamento; track opcao) {
+                  <option [value]="opcao">{{ opcao }}</option>
+                }
+              </select>
+            </label>
+            <label class="field">
+              Valor da segunda forma
+              <input type="number" name="valor2Atendimento" min="0" step="0.01" [(ngModel)]="atendimento.valor2">
+            </label>
+          </div>
+        }
+
+        <footer class="resumo-venda">
+          <div>
+            <p>Subtotal {{ subtotalAtendimento | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</p>
+            <p>Desconto {{ descontoAtendimento | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</p>
+            <p class="total-final">Total {{ totalAtendimento | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</p>
+          </div>
+          <button class="primario" type="button" (click)="confirmarAtendimento()" [disabled]="processando || descontoAtendimentoInvalido">
+            Confirmar venda
+          </button>
+        </footer>
+      </div>
+    </div>
+  }
+</div>
