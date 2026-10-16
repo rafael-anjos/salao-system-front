@@ -15,6 +15,14 @@ export type StatusCaixa = 'aberto' | 'fechado';
 export interface Profissional {
   id: string;
   nome: string;
+  telefone: string;
+  ativo: boolean;
+}
+
+export interface ProfissionalCadastro {
+  id?: string;
+  nome: string;
+  telefone: string;
 }
 
 export interface Cliente {
@@ -25,7 +33,20 @@ export interface Cliente {
 export interface Servico {
   id: string;
   nome: string;
+  descricao: string;
   preco: number;
+  duracaoMinutos: number;
+  ativo: boolean;
+  /** Cadastro anterior da agenda. Fica fora da tela de serviços. */
+  legado?: boolean;
+}
+
+export interface ServicoCadastro {
+  id?: string;
+  nome: string;
+  descricao: string;
+  preco: number;
+  duracaoMinutos: number;
 }
 
 export interface ProdutoEstoque {
@@ -155,8 +176,10 @@ export class SalaoEstadoService {
   readonly formasPagamento = FORMAS_PAGAMENTO;
 
   readonly profissionais: Profissional[] = [
-    { id: 'pro-eula', nome: 'Eula Moraes' },
-    { id: 'pro-paula', nome: 'Paula' },
+    { id: 'pro-paula', nome: 'Paula', telefone: '(11) 98811-2040', ativo: true },
+    { id: 'pro-valentina', nome: 'Valentina', telefone: '(11) 99720-4418', ativo: true },
+    { id: 'pro-ana', nome: 'Ana', telefone: '(11) 98155-7732', ativo: true },
+    { id: 'pro-eula', nome: 'Eula Moraes', telefone: '(11) 99900-1100', ativo: false },
   ];
 
   readonly clientes: Cliente[] = [
@@ -169,12 +192,60 @@ export class SalaoEstadoService {
   ];
 
   readonly servicos: Servico[] = [
-    { id: 'srv-coloracao', nome: 'Coloração', preco: 280 },
-    { id: 'srv-corte', nome: 'Corte e escova', preco: 150 },
-    { id: 'srv-mani', nome: 'Manicure e pedicure', preco: 90 },
-    { id: 'srv-hidra', nome: 'Hidratação', preco: 180 },
-    { id: 'srv-sobran', nome: 'Design de sobrancelha', preco: 70 },
-    { id: 'srv-progressiva', nome: 'Escova progressiva', preco: 320 },
+    {
+      id: 'srv-escova',
+      nome: 'Escova',
+      descricao: 'Escova modeladora com finalização.',
+      preco: 60,
+      duracaoMinutos: 60,
+      ativo: true,
+    },
+    {
+      id: 'srv-corte-lista',
+      nome: 'Corte',
+      descricao: 'Corte feminino ou masculino.',
+      preco: 50,
+      duracaoMinutos: 45,
+      ativo: true,
+    },
+    {
+      id: 'srv-coloracao-lista',
+      nome: 'Coloração',
+      descricao: 'Coloração completa dos fios.',
+      preco: 150,
+      duracaoMinutos: 120,
+      ativo: true,
+    },
+    {
+      id: 'srv-progressiva-lista',
+      nome: 'Progressiva',
+      descricao: 'Alisamento progressivo.',
+      preco: 200,
+      duracaoMinutos: 180,
+      ativo: true,
+    },
+    {
+      id: 'srv-hidratacao',
+      nome: 'Hidratação',
+      descricao: 'Tratamento de hidratação capilar.',
+      preco: 80,
+      duracaoMinutos: 90,
+      ativo: true,
+    },
+    {
+      id: 'srv-mechas',
+      nome: 'Mechas',
+      descricao: 'Mechas com técnica de luzes.',
+      preco: 180,
+      duracaoMinutos: 150,
+      ativo: true,
+    },
+    { id: 'srv-coloracao', nome: 'Coloração', descricao: '', preco: 280, duracaoMinutos: 120, ativo: false, legado: true },
+    { id: 'srv-corte', nome: 'Corte e escova', descricao: '', preco: 150, duracaoMinutos: 75, ativo: false, legado: true },
+    { id: 'srv-mani', nome: 'Manicure e pedicure', descricao: '', preco: 90, duracaoMinutos: 60, ativo: false, legado: true },
+    { id: 'srv-hidra', nome: 'Hidratação', descricao: '', preco: 180, duracaoMinutos: 90, ativo: false, legado: true },
+    { id: 'srv-sobran', nome: 'Design de sobrancelha', descricao: '', preco: 70, duracaoMinutos: 30, ativo: false, legado: true },
+    { id: 'srv-progressiva', nome: 'Escova progressiva', descricao: '', preco: 320, duracaoMinutos: 180, ativo: false, legado: true },
   ];
 
   readonly produtos: ProdutoEstoque[] = [
@@ -398,6 +469,9 @@ export class SalaoEstadoService {
     if (!profissional) {
       return { ok: false, mensagem: 'Selecione o profissional responsável.' };
     }
+    if (!profissional.ativo && !pedido.agendamentoId) {
+      return { ok: false, mensagem: 'Esta profissional está inativa.' };
+    }
 
     let cliente: Cliente | undefined;
     if (pedido.clienteId) {
@@ -618,6 +692,171 @@ export class SalaoEstadoService {
           .map((pagamento) => sinal * pagamento.valor);
       }),
     );
+  }
+
+  listarProfissionais(somenteAtivos = true): Profissional[] {
+    return this.profissionais.filter((profissional) => !somenteAtivos || profissional.ativo);
+  }
+
+  atendimentosDoProfissional(id: string): number {
+    return this.agendamentos.filter((agendamento) => agendamento.profissionalId === id).length;
+  }
+
+  salvarProfissional(dados: ProfissionalCadastro): ResultadoOperacao {
+    const nome = dados.nome.trim();
+    const telefone = this.formatarTelefone(dados.telefone);
+    const digitos = telefone.replace(/\D/g, '');
+
+    if (!nome) {
+      return { ok: false, mensagem: 'Informe o nome da profissional.' };
+    }
+    if (digitos.length < 10 || digitos.length > 11) {
+      return { ok: false, mensagem: 'Informe um telefone válido.' };
+    }
+
+    const nomeIgual = nome.toLowerCase();
+    const duplicado = this.profissionais.some(
+      (profissional) => profissional.id !== dados.id && profissional.nome.trim().toLowerCase() === nomeIgual,
+    );
+    if (duplicado) {
+      return { ok: false, mensagem: 'Já existe uma profissional com esse nome.' };
+    }
+
+    if (dados.id) {
+      const atual = this.profissionais.find((profissional) => profissional.id === dados.id);
+      if (!atual) {
+        return { ok: false, mensagem: 'Profissional não encontrada.' };
+      }
+      atual.nome = nome;
+      atual.telefone = telefone;
+      this.atualizarNomeNoHistorico(atual.id, nome);
+      return { ok: true, mensagem: 'Profissional atualizada.', id: atual.id };
+    }
+
+    const criada: Profissional = {
+      id: this.novoId('pro'),
+      nome,
+      telefone,
+      ativo: true,
+    };
+    this.profissionais.push(criada);
+    return { ok: true, mensagem: 'Profissional cadastrada.', id: criada.id };
+  }
+
+  definirProfissionalAtivo(id: string, ativo: boolean): ResultadoOperacao {
+    const profissional = this.profissionais.find((item) => item.id === id);
+    if (!profissional) {
+      return { ok: false, mensagem: 'Profissional não encontrada.' };
+    }
+    if (profissional.ativo === ativo) {
+      return {
+        ok: false,
+        mensagem: ativo ? 'Esta profissional já está ativa.' : 'Esta profissional já está inativa.',
+      };
+    }
+    profissional.ativo = ativo;
+    return {
+      ok: true,
+      mensagem: ativo ? 'Profissional reativada.' : 'Profissional desativada.',
+      id: profissional.id,
+    };
+  }
+
+  listarServicos(somenteAtivos = true): Servico[] {
+    return this.servicos.filter((servico) => !servico.legado && (!somenteAtivos || servico.ativo));
+  }
+
+  salvarServico(dados: ServicoCadastro): ResultadoOperacao {
+    const nome = dados.nome.trim();
+    const descricao = dados.descricao.trim();
+    const preco = arredondar(Number(dados.preco));
+    const duracao = Math.floor(Number(dados.duracaoMinutos));
+
+    if (!nome) {
+      return { ok: false, mensagem: 'Informe o nome do serviço.' };
+    }
+    if (!descricao) {
+      return { ok: false, mensagem: 'Informe a descrição do serviço.' };
+    }
+    if (!Number.isFinite(preco) || preco <= 0) {
+      return { ok: false, mensagem: 'Informe um preço de venda válido.' };
+    }
+    if (!Number.isFinite(duracao) || duracao < 1) {
+      return { ok: false, mensagem: 'Informe a duração em minutos.' };
+    }
+
+    const nomeIgual = nome.toLowerCase();
+    const duplicado = this.servicos.some(
+      (servico) => !servico.legado && servico.id !== dados.id && servico.nome.trim().toLowerCase() === nomeIgual,
+    );
+    if (duplicado) {
+      return { ok: false, mensagem: 'Já existe um serviço com esse nome.' };
+    }
+
+    if (dados.id) {
+      const atual = this.servicos.find((servico) => servico.id === dados.id && !servico.legado);
+      if (!atual) {
+        return { ok: false, mensagem: 'Serviço não encontrado.' };
+      }
+      atual.nome = nome;
+      atual.descricao = descricao;
+      atual.preco = preco;
+      atual.duracaoMinutos = duracao;
+      return { ok: true, mensagem: 'Serviço atualizado.', id: atual.id };
+    }
+
+    const criado: Servico = {
+      id: this.novoId('srv'),
+      nome,
+      descricao,
+      preco,
+      duracaoMinutos: duracao,
+      ativo: true,
+    };
+    this.servicos.push(criado);
+    return { ok: true, mensagem: 'Serviço cadastrado.', id: criado.id };
+  }
+
+  definirServicoAtivo(id: string, ativo: boolean): ResultadoOperacao {
+    const servico = this.servicos.find((item) => item.id === id && !item.legado);
+    if (!servico) {
+      return { ok: false, mensagem: 'Serviço não encontrado.' };
+    }
+    if (servico.ativo === ativo) {
+      return { ok: false, mensagem: ativo ? 'Este serviço já está ativo.' : 'Este serviço já está desativado.' };
+    }
+    servico.ativo = ativo;
+    return {
+      ok: true,
+      mensagem: ativo ? 'Serviço reativado.' : 'Serviço desativado.',
+      id: servico.id,
+    };
+  }
+
+  private atualizarNomeNoHistorico(profissionalId: string, nome: string): void {
+    for (const agendamento of this.agendamentos) {
+      if (agendamento.profissionalId === profissionalId) {
+        agendamento.profissional = nome;
+      }
+    }
+    for (const movimento of this.movimentacoes) {
+      if (movimento.profissionalId === profissionalId) {
+        movimento.profissional = nome;
+      }
+    }
+  }
+
+  private formatarTelefone(valor: string): string {
+    const digitos = valor.replace(/\D/g, '').slice(0, 11);
+    if (digitos.length < 10) {
+      return valor.trim();
+    }
+    const ddd = digitos.slice(0, 2);
+    const numero = digitos.slice(2);
+    if (numero.length === 9) {
+      return `(${ddd}) ${numero.slice(0, 5)}-${numero.slice(5)}`;
+    }
+    return `(${ddd}) ${numero.slice(0, 4)}-${numero.slice(4)}`;
   }
 
   private atualizarStatus(produto: ProdutoEstoque): void {

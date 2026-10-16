@@ -1,0 +1,156 @@
+<div class="container">
+  <main>
+    <header>
+      <h1>Profissionais</h1>
+      <div class="header-btn">
+        <button class="notification-btn" type="button" aria-label="Notificações">
+          <img class="img-padrao" src="notification-green.svg" alt="">
+          <img class="img-hover" src="notification.svg" alt="">
+          <img class="img-active" src="notification-green.svg" alt="">
+        </button>
+        <button class="agendamento-btn" type="button" (click)="abrirCadastro()">Nova profissional</button>
+      </div>
+    </header>
+
+    <div class="conteudo">
+      <div class="resumo">
+        <article class="card-resumo">
+          <span class="card-label">Ativas</span>
+          <strong>{{ totalAtivas }}</strong>
+        </article>
+        <article class="card-resumo">
+          <span class="card-label">Inativas</span>
+          <strong>{{ totalInativas }}</strong>
+        </article>
+        <article class="card-resumo">
+          <span class="card-label">Atendimentos</span>
+          <strong>{{ totalAtendimentos }}</strong>
+        </article>
+      </div>
+
+      <div class="toolbar">
+        <div class="abas" role="tablist">
+          <button
+            class="btn-aba"
+            type="button"
+            role="tab"
+            [class.ativo]="lista === 'ativas'"
+            (click)="mudarLista('ativas')">
+            Ativas
+          </button>
+          <button
+            class="btn-aba"
+            type="button"
+            role="tab"
+            [class.ativo]="lista === 'inativas'"
+            (click)="mudarLista('inativas')">
+            Inativas
+          </button>
+        </div>
+      </div>
+
+      <div class="barra-filtros">
+        <input
+          type="search"
+          placeholder="Buscar profissional"
+          [(ngModel)]="termoBusca"
+          name="buscaProfissional">
+      </div>
+
+      <div class="container-tabela">
+        <table class="tabela">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Telefone</th>
+              <th>Atendimentos</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (profissional of profissionaisVisiveis; track profissional.id) {
+              <tr>
+                <td class="nome">{{ profissional.nome }}</td>
+                <td>{{ profissional.telefone }}</td>
+                <td>{{ atendimentos(profissional.id) }}</td>
+                <td>
+                  <div class="acoes">
+                    <button class="btn-acao" type="button" (click)="abrirEdicao(profissional)">Editar</button>
+                    <button class="btn-acao" type="button" (click)="abrirStatus(profissional)">
+                      {{ profissional.ativo ? 'Desativar' : 'Reativar' }}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td class="vazio" colspan="4">
+                  {{ lista === 'ativas' ? 'Nenhuma profissional ativa encontrada.' : 'Nenhuma profissional inativa encontrada.' }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        <div class="rodape-tabela">
+          <span>Mostrando {{ profissionaisVisiveis.length }} {{ lista === 'ativas' ? 'profissionais ativas' : 'profissionais inativas' }}</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  @if (painel) {
+    <div class="overlay" (click)="fecharPainel()">
+      <div
+        class="sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="profissional-titulo"
+        (click)="$event.stopPropagation()">
+        <header class="titulo">
+          <h2 id="profissional-titulo">{{ tituloPainel }}</h2>
+          @if (painel === 'formulario') {
+            <p>Nome e telefone. O histórico de atendimentos permanece ligado a esta profissional.</p>
+          } @else if (alvo?.ativo) {
+            <p>{{ alvo?.nome }} sai da lista de ativas. Os atendimentos já registrados continuam no histórico.</p>
+          } @else {
+            <p>{{ alvo?.nome }} volta para a lista de profissionais ativas.</p>
+          }
+        </header>
+
+        @if (painel === 'formulario') {
+          <form (ngSubmit)="salvar()">
+            <label class="field">
+              Nome
+              <input type="text" name="nome" [(ngModel)]="nome" placeholder="Nome da profissional" required>
+            </label>
+
+            <label class="field">
+              Telefone
+              <input type="tel" name="telefone" [(ngModel)]="telefone" placeholder="(11) 90000-0000" required>
+            </label>
+
+            @if (erro) {
+              <p class="erro" role="alert">{{ erro }}</p>
+            }
+
+            <div class="foot-btn">
+              <button class="cancel" type="button" (click)="fecharPainel()">Cancelar</button>
+              <button class="save" type="submit">Salvar</button>
+            </div>
+          </form>
+        } @else {
+          @if (erro) {
+            <p class="erro" role="alert">{{ erro }}</p>
+          }
+          <div class="foot-btn">
+            <button class="cancel" type="button" (click)="fecharPainel()">Cancelar</button>
+            <button class="save" type="button" (click)="confirmarStatus()">
+              {{ alvo?.ativo ? 'Desativar' : 'Reativar' }}
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

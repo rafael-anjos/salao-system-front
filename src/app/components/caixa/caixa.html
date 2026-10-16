@@ -94,7 +94,7 @@
               Profissional
               <select name="profissional" [(ngModel)]="profissionalId" [disabled]="!caixaAberto">
                 <option value="">Selecione</option>
-                @for (profissional of estado.profissionais; track profissional.id) {
+                @for (profissional of estado.listarProfissionais(); track profissional.id) {
                   <option [value]="profissional.id">{{ profissional.nome }}</option>
                 }
               </select>
