@@ -1,7 +1,7 @@
 import { CurrencyPipe } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { SalaoEstadoService } from '../../core/salao-estado.service';
+import { SalaoEstadoService, dataIso } from '../../core/salao-estado.service';
 
 export interface Notificacao {
   horario: string;
@@ -27,7 +27,10 @@ export class Dashboard {
   dataExtenso = this.formatarData(this.hoje);
 
   get agendaDoDia() {
-    return this.estado.agendamentos;
+    const hoje = dataIso();
+    return this.estado.agendamentos
+      .filter((item) => item.data === hoje)
+      .sort((a, b) => a.hora.localeCompare(b.hora));
   }
 
   get caixaAberto(): boolean {

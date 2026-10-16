@@ -5,6 +5,7 @@ import {
   AgendamentoDia,
   arredondar,
   CaixaRegistro,
+  dataIso,
   FormaPagamento,
   ItemPedido,
   Movimentacao,
@@ -271,7 +272,7 @@ export class Caixa {
   get pendentes(): AgendamentoDia[] {
     const termo = this.termoBusca.trim().toLowerCase();
     return this.estado.agendamentos
-      .filter((item) => item.status !== 'Concluído' && !item.vendaId)
+      .filter((item) => item.status !== 'Concluído' && !item.vendaId && item.data <= dataIso())
       .filter((item) => {
         if (!termo) {
           return true;

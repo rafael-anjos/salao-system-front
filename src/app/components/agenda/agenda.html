@@ -13,7 +13,15 @@
         </header>
         <div class="agendamento">
             <section class="agendamento-agenda" aria-label="Semana">
-                <div class="semana" role="grid" aria-label="Grade da semana">
+                @if (movendo) {
+                    <p class="aviso-agenda" role="status">
+                        Movendo {{ movendo.cliente }}. Clique no dia e no horário de destino. Esc cancela.
+                    </p>
+                }
+                @if (aviso) {
+                    <p class="aviso-agenda erro" role="alert">{{ aviso }}</p>
+                }
+                <div class="semana" role="grid" aria-label="Grade da semana" (scroll)="menu = null">
                     <div class="cell gutter head"></div>
                     @for (dia of diasAgenda; track dia.getTime()) {
                         <div
@@ -26,14 +34,49 @@
                     }
                     @for (hora of horas; track hora) {
                         <div class="cell gutter hora">{{ hora }}</div>
-                        @for (dia of diasAgenda; track $index) {
-                            <div
-                                class="cell slot"
-                                [class.hoje]="ehHoje(dia)"
-                                role="gridcell"
-                                [attr.aria-label]="diasSemana[dia.getDay()] + ', ' + (dia | date: 'dd') + ' às ' + hora">
-                            </div>
-                        }
+                    }
+                    @for (dia of diasAgenda; track dia.getTime(); let coluna = $index) {
+                        <div
+                            class="dia-eventos"
+                            [class.hoje]="ehHoje(dia)"
+                            [class.recebendo]="!!movendo"
+                            [style.grid-column]="coluna + 2"
+                            [style.grid-row]="'2 / span ' + horas.length"
+                            (mousemove)="atualizarDestino($event, dia)">
+                            @for (hora of horas; track hora; let indice = $index) {
+                                <div
+                                    class="hora-alvo"
+                                    role="gridcell"
+                                    [attr.aria-label]="diasSemana[dia.getDay()] + ', ' + (dia | date: 'dd') + ' às ' + hora"
+                                    [style.top.%]="(indice * 100) / horas.length"
+                                    [style.height.%]="100 / horas.length"
+                                    (click)="clicarHora($event, dia, hora)">
+                                </div>
+                            }
+                            @if (previsao(dia); as previa) {
+                                <div class="previsto" [style.top.%]="previa.top" [style.height.%]="previa.height"></div>
+                            }
+                            @for (bloco of blocosDoDia(dia); track bloco.item.id) {
+                                <button
+                                    class="compromisso"
+                                    [class.movendo]="movendo?.id === bloco.item.id"
+                                    [class.compacto]="bloco.height < 8"
+                                    type="button"
+                                    [attr.data-status]="bloco.item.status"
+                                    [style.top.%]="bloco.top"
+                                    [style.height.%]="bloco.height"
+                                    [style.left]="'calc(' + bloco.left + '% + 2px)'"
+                                    [style.width]="'calc(' + bloco.width + '% - 4px)'"
+                                    [attr.title]="bloco.item.cliente + ' · ' + bloco.item.servico + ' · ' + duracaoDe(bloco.item) + ' min · ' + rotuloStatus(bloco.item.status) + '. Duplo clique para mover. Botão direito para excluir ou mudar o estado.'"
+                                    (click)="clicarCompromisso($event, bloco.item)"
+                                    (dblclick)="iniciarMovimento($event, bloco.item)"
+                                    (contextmenu)="abrirMenu($event, bloco.item)">
+                                    <span>{{ bloco.item.hora }} · {{ bloco.item.cliente }}</span>
+                                    <span class="linha-extra">{{ bloco.item.servico }} · {{ duracaoDe(bloco.item) }} min</span>
+                                    <span class="linha-extra estado">{{ rotuloStatus(bloco.item.status) }}</span>
+                                </button>
+                            }
+                        </div>
                     }
                 </div>
             </section>
@@ -44,7 +87,27 @@
     </main>
     @if (mostrarFormulario) {
         <app-novo-agendamento
+            [agendamento]="editando"
+            [dataInicial]="dataInicial"
+            [horaInicial]="horaInicial"
             (cancelar)="fecharFormulario()"
             (salvar)="fecharFormulario()" />
+    }
+    @if (menu) {
+        <div
+            class="menu-agendamento"
+            role="menu"
+            [style.top.px]="menu.y"
+            [style.left.px]="menu.x"
+            (contextmenu)="$event.preventDefault()">
+            <p class="menu-titulo">{{ menu.item.cliente }}</p>
+            @if (bloqueado(menu.item)) {
+                <p class="menu-nota">Este atendimento já foi finalizado.</p>
+            } @else {
+                <button type="button" role="menuitemradio" [attr.aria-checked]="menu.item.status === 'Aguardando'" (click)="definirStatus('Aguardando')">Pendente</button>
+                <button type="button" role="menuitemradio" [attr.aria-checked]="menu.item.status === 'Confirmado'" (click)="definirStatus('Confirmado')">Confirmado</button>
+                <button type="button" class="perigo" role="menuitem" (click)="excluirSelecionado()">Excluir</button>
+            }
+        </div>
     }
 </div>

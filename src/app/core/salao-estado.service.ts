@@ -62,6 +62,7 @@ export interface ProdutoEstoque {
 
 export interface AgendamentoDia {
   id: string;
+  data: string;
   hora: string;
   cliente: string;
   clienteId: string;
@@ -71,7 +72,18 @@ export interface AgendamentoDia {
   profissionalId: string;
   status: StatusAgendamento;
   preco: number;
+  observacao?: string;
   vendaId?: string;
+}
+
+export interface AgendamentoCadastro {
+  id?: string;
+  clienteNome: string;
+  servicoId: string;
+  profissionalId: string;
+  data: string;
+  hora: string;
+  observacao?: string;
 }
 
 export interface ItemMovimento {
@@ -160,6 +172,15 @@ export const FORMAS_PAGAMENTO: FormaPagamento[] = [
   'Cartão de débito',
   'Cartão de crédito',
 ];
+
+export function dataIso(data = new Date()): string {
+  const ano = data.getFullYear();
+  const mes = String(data.getMonth() + 1).padStart(2, '0');
+  const dia = String(data.getDate()).padStart(2, '0');
+  return `${ano}-${mes}-${dia}`;
+}
+
+const HOJE = dataIso();
 
 export function arredondar(valor: number): number {
   return Math.round((valor + Number.EPSILON) * 100) / 100;
@@ -284,6 +305,7 @@ export class SalaoEstadoService {
   readonly agendamentos: AgendamentoDia[] = [
     {
       id: 'ag-maria',
+      data: HOJE,
       hora: '09:00',
       cliente: 'Maria Silva',
       clienteId: 'cli-maria',
@@ -296,6 +318,7 @@ export class SalaoEstadoService {
     },
     {
       id: 'ag-ana',
+      data: HOJE,
       hora: '10:30',
       cliente: 'Ana Costa',
       clienteId: 'cli-ana',
@@ -308,6 +331,7 @@ export class SalaoEstadoService {
     },
     {
       id: 'ag-juliana',
+      data: HOJE,
       hora: '13:00',
       cliente: 'Juliana Alves',
       clienteId: 'cli-juliana',
@@ -320,6 +344,7 @@ export class SalaoEstadoService {
     },
     {
       id: 'ag-carla',
+      data: HOJE,
       hora: '15:00',
       cliente: 'Carla Mendes',
       clienteId: 'cli-carla',
@@ -332,6 +357,7 @@ export class SalaoEstadoService {
     },
     {
       id: 'ag-beatriz',
+      data: HOJE,
       hora: '16:30',
       cliente: 'Beatriz Nunes',
       clienteId: 'cli-beatriz',
@@ -344,6 +370,7 @@ export class SalaoEstadoService {
     },
     {
       id: 'ag-fernanda',
+      data: HOJE,
       hora: '18:00',
       cliente: 'Fernanda Rocha',
       clienteId: 'cli-fernanda',
@@ -694,6 +721,136 @@ export class SalaoEstadoService {
     );
   }
 
+  salvarAgendamento(dados: AgendamentoCadastro): ResultadoOperacao {
+    const clienteNome = dados.clienteNome.trim();
+    const hora = this.normalizarHora(dados.hora);
+    const observacao = dados.observacao?.trim() ?? '';
+
+    if (!clienteNome) {
+      return { ok: false, mensagem: 'Informe o nome do cliente.' };
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dados.data) || Number.isNaN(new Date(`${dados.data}T00:00:00`).getTime())) {
+      return { ok: false, mensagem: 'Informe a data do agendamento.' };
+    }
+    if (!hora) {
+      return { ok: false, mensagem: 'Informe o horário de início.' };
+    }
+
+    const atual = dados.id ? this.agendamentos.find((item) => item.id === dados.id) : undefined;
+    if (dados.id && !atual) {
+      return { ok: false, mensagem: 'Agendamento não encontrado.' };
+    }
+    if (atual && (atual.status === 'Concluído' || atual.vendaId)) {
+      return { ok: false, mensagem: 'Este atendimento já foi finalizado.' };
+    }
+
+    const servico = this.servicos.find((item) => item.id === dados.servicoId);
+    if (!servico || (servico.id !== atual?.servicoId && (servico.legado || !servico.ativo))) {
+      return { ok: false, mensagem: 'Selecione um serviço ativo.' };
+    }
+
+    const profissional = this.profissionais.find((item) => item.id === dados.profissionalId);
+    if (!profissional || (!profissional.ativo && profissional.id !== atual?.profissionalId)) {
+      return { ok: false, mensagem: 'Selecione uma profissional ativa.' };
+    }
+
+    const inicio = this.minutos(hora);
+    const duracao = servico.duracaoMinutos;
+    const conflito = this.agendamentos.some((item) => {
+      if (item.id === atual?.id || item.data !== dados.data) {
+        return false;
+      }
+      const outroServico = this.servicos.find((cadastro) => cadastro.id === item.servicoId);
+      const outraDuracao = outroServico?.duracaoMinutos ?? 60;
+      const outroInicio = this.minutos(item.hora);
+      const mesmoHorario = inicio < outroInicio + outraDuracao && outroInicio < inicio + duracao;
+      if (!mesmoHorario) {
+        return false;
+      }
+      return item.profissionalId === profissional.id || item.cliente.trim().toLowerCase() === clienteNome.toLowerCase();
+    });
+    if (conflito) {
+      return { ok: false, mensagem: 'Esse horário já está ocupado para a profissional ou para o cliente.' };
+    }
+
+    const cliente = this.obterOuCriarCliente(clienteNome);
+    if (atual) {
+      atual.data = dados.data;
+      atual.hora = hora;
+      atual.cliente = cliente.nome;
+      atual.clienteId = cliente.id;
+      atual.servico = servico.nome;
+      atual.servicoId = servico.id;
+      atual.profissional = profissional.nome;
+      atual.profissionalId = profissional.id;
+      atual.preco = servico.preco;
+      atual.observacao = observacao || undefined;
+      return { ok: true, mensagem: 'Agendamento atualizado.', id: atual.id };
+    }
+
+    const criado: AgendamentoDia = {
+      id: this.novoId('ag'),
+      data: dados.data,
+      hora,
+      cliente: cliente.nome,
+      clienteId: cliente.id,
+      servico: servico.nome,
+      servicoId: servico.id,
+      profissional: profissional.nome,
+      profissionalId: profissional.id,
+      status: 'Confirmado',
+      preco: servico.preco,
+      observacao: observacao || undefined,
+    };
+    this.agendamentos.push(criado);
+    return { ok: true, mensagem: 'Agendamento salvo.', id: criado.id };
+  }
+
+  moverAgendamento(id: string, data: string, hora: string): ResultadoOperacao {
+    const atual = this.agendamentos.find((item) => item.id === id);
+    if (!atual) {
+      return { ok: false, mensagem: 'Agendamento não encontrado.' };
+    }
+    return this.salvarAgendamento({
+      id: atual.id,
+      clienteNome: atual.cliente,
+      servicoId: atual.servicoId,
+      profissionalId: atual.profissionalId,
+      data,
+      hora,
+      observacao: atual.observacao,
+    });
+  }
+
+  alterarStatusAgendamento(id: string, status: 'Aguardando' | 'Confirmado'): ResultadoOperacao {
+    const atual = this.agendamentos.find((item) => item.id === id);
+    if (!atual) {
+      return { ok: false, mensagem: 'Agendamento não encontrado.' };
+    }
+    if (atual.status === 'Concluído' || atual.vendaId) {
+      return { ok: false, mensagem: 'Este atendimento já foi finalizado.' };
+    }
+    atual.status = status;
+    return {
+      ok: true,
+      mensagem: status === 'Confirmado' ? 'Agendamento confirmado.' : 'Agendamento marcado como pendente.',
+      id: atual.id,
+    };
+  }
+
+  excluirAgendamento(id: string): ResultadoOperacao {
+    const index = this.agendamentos.findIndex((item) => item.id === id);
+    if (index < 0) {
+      return { ok: false, mensagem: 'Agendamento não encontrado.' };
+    }
+    const atual = this.agendamentos[index];
+    if (atual.status === 'Concluído' || atual.vendaId) {
+      return { ok: false, mensagem: 'Este atendimento já foi finalizado.' };
+    }
+    this.agendamentos.splice(index, 1);
+    return { ok: true, mensagem: 'Agendamento excluído.', id };
+  }
+
   listarProfissionais(somenteAtivos = true): Profissional[] {
     return this.profissionais.filter((profissional) => !somenteAtivos || profissional.ativo);
   }
@@ -831,6 +988,34 @@ export class SalaoEstadoService {
       mensagem: ativo ? 'Serviço reativado.' : 'Serviço desativado.',
       id: servico.id,
     };
+  }
+
+  private obterOuCriarCliente(nome: string): Cliente {
+    const existente = this.clientes.find((cliente) => cliente.nome.trim().toLowerCase() === nome.toLowerCase());
+    if (existente) {
+      return existente;
+    }
+    const criado: Cliente = { id: this.novoId('cli'), nome };
+    this.clientes.push(criado);
+    return criado;
+  }
+
+  private normalizarHora(valor: string): string {
+    const match = valor.trim().match(/^(\d{2}):(\d{2})/);
+    if (!match) {
+      return '';
+    }
+    const hora = Number(match[1]);
+    const minuto = Number(match[2]);
+    if (hora > 23 || minuto > 59) {
+      return '';
+    }
+    return `${match[1]}:${match[2]}`;
+  }
+
+  private minutos(hora: string): number {
+    const [horas, minutos] = hora.split(':').map(Number);
+    return horas * 60 + minutos;
   }
 
   private atualizarNomeNoHistorico(profissionalId: string, nome: string): void {
