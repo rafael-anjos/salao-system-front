@@ -8,6 +8,7 @@ import { Dashboard } from './components/dashboard/dashboard';
 export const routes: Routes = [
     { path: '', component: Dashboard },
     { path: 'agenda', component: AgendaComponent },
+    { path: 'caixa', component: Financeiro },
     { path: 'financeiro', component: Financeiro },
     { path: 'estoque', component: EstoqueComponent }
 
