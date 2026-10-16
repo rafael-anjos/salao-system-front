@@ -1,29 +1,107 @@
 <div class="container">
     <header>
         <div class="box-titulo">
-            <p class="titulo">Bom dia, Paula</p>
-            <p class="data">Quarta-feira, 07 de outubro de 2026</p>
+            <h1>{{ saudacao }}</h1>
+            <p class="data">{{ dataExtenso }}</p>
         </div>
-        <button class="notification-btn">
-            <img class="img-padrao" src="notification-green.svg" alt="Notificações">
+        <button class="notification-btn" type="button" aria-label="Notificações">
+            <img class="img-padrao" src="notification-green.svg" alt="">
             <img class="img-hover" src="notification.svg" alt="">
             <img class="img-active" src="notification-green.svg" alt="">
         </button>
     </header>
+
     <main>
-        <section class="cards">
-            <div></div>
-            <div></div>
-            <div></div>
-            <div></div>
+        <section class="indicadores" aria-label="Resumo do dia">
+            <article class="indicador">
+                <p class="valor">{{ totalAgendamentos }}</p>
+                <h2>Total de agendamentos</h2>
+                <a routerLink="/agenda">Ver agenda</a>
+            </article>
+            <article class="indicador">
+                <p class="valor">{{ receitaHoje | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</p>
+                <h2>Receita de hoje</h2>
+                <a routerLink="/financeiro">Ver financeiro</a>
+            </article>
+            <article class="indicador">
+                <p class="valor status" [class.aberto]="caixaAberto">
+                    {{ caixaAberto ? 'Aberto' : 'Fechado' }}
+                </p>
+                <h2>Status do caixa</h2>
+                <a routerLink="/caixa">Ver caixa</a>
+            </article>
+            <article class="indicador">
+                <p class="valor">{{ alertasEstoque }}</p>
+                <h2>Alertas de estoque</h2>
+                <a routerLink="/estoque">Ver estoque</a>
+            </article>
         </section>
-        <section class="statistics">
-            <div class="shedule-data">
-                <div></div>
-            </div>
-            <div class="info">
-                <div></div>
-                <div></div>
+
+        <section class="paineis">
+            <article class="painel agenda" aria-labelledby="titulo-agenda-hoje">
+                <header class="painel-cabecalho">
+                    <h2 id="titulo-agenda-hoje">Agenda de hoje</h2>
+                    <a routerLink="/agenda">Ver todos</a>
+                </header>
+                @if (agendaDoDia.length === 0) {
+                    <p class="vazio">Nenhum horário marcado para hoje.</p>
+                } @else {
+                    <ul class="lista-agenda">
+                        @for (item of agendaDoDia; track item.hora + item.cliente) {
+                            <li>
+                                <time>{{ item.hora }}</time>
+                                <div class="detalhe">
+                                    <p class="cliente">{{ item.cliente }}</p>
+                                    <p class="servico">{{ item.servico }}</p>
+                                </div>
+                                <span class="selo" [attr.data-status]="item.status">{{ item.status }}</span>
+                                <span class="preco">{{ item.preco | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
+                            </li>
+                        }
+                    </ul>
+                }
+            </article>
+
+            <div class="coluna">
+                <article class="painel" aria-labelledby="titulo-notificacoes">
+                    <header class="painel-cabecalho">
+                        <h2 id="titulo-notificacoes">Últimas notificações</h2>
+                    </header>
+                    @if (notificacoes.length === 0) {
+                        <p class="vazio">Nenhuma notificação recente.</p>
+                    } @else {
+                        <ul class="lista-simples">
+                            @for (nota of notificacoes; track nota.horario + nota.texto) {
+                                <li>
+                                    <time>{{ nota.horario }}</time>
+                                    <p>{{ nota.texto }}</p>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </article>
+
+                <article class="painel" aria-labelledby="titulo-estoque">
+                    <header class="painel-cabecalho">
+                        <h2 id="titulo-estoque">Estoque baixo</h2>
+                        <a routerLink="/estoque">Ver estoque</a>
+                    </header>
+                    @if (estoqueBaixo.length === 0) {
+                        <p class="vazio">Nenhum produto abaixo do mínimo.</p>
+                    } @else {
+                        <ul class="lista-estoque">
+                            @for (item of estoqueBaixo; track item.produto) {
+                                <li>
+                                    <div>
+                                        <p class="produto">{{ item.produto }}</p>
+                                        <p class="meta">{{ item.quantidade }} em estoque · mínimo {{ item.minimo }}</p>
+                                    </div>
+                                    <span class="faltando">{{ item.minimo - item.quantidade }} a repor</span>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </article>
             </div>
         </section>
     </main>
