@@ -82,6 +82,57 @@ export interface TrocaSenha {
   confirmacao: string;
 }
 
+export type PerfilUsuario = 'ADMIN' | 'OPERADOR';
+export type ModuloAcesso =
+  | 'inicio'
+  | 'agenda'
+  | 'caixa'
+  | 'financeiro'
+  | 'estoque'
+  | 'relatorios'
+  | 'servicos'
+  | 'profissionais'
+  | 'configuracoes';
+
+export const MODULOS_ACESSO: { id: ModuloAcesso; nome: string }[] = [
+  { id: 'inicio', nome: 'Início' },
+  { id: 'agenda', nome: 'Agenda' },
+  { id: 'caixa', nome: 'Caixa' },
+  { id: 'financeiro', nome: 'Financeiro' },
+  { id: 'estoque', nome: 'Estoque' },
+  { id: 'relatorios', nome: 'Relatórios' },
+  { id: 'servicos', nome: 'Serviços' },
+  { id: 'profissionais', nome: 'Profissionais' },
+  { id: 'configuracoes', nome: 'Configurações' },
+];
+
+export type TipoCategoria = 'estoque' | 'despesa';
+
+export interface UsuarioSalao {
+  id: string;
+  nome: string;
+  perfil: PerfilUsuario;
+  ativo: boolean;
+  acessos: ModuloAcesso[];
+}
+
+export interface UsuarioOperadorCadastro {
+  nome: string;
+  acessos: ModuloAcesso[];
+}
+
+export interface CategoriaSalao {
+  id: string;
+  nome: string;
+  tipo: TipoCategoria;
+}
+
+export interface CategoriaCadastro {
+  id?: string;
+  nome: string;
+  tipo: TipoCategoria;
+}
+
 export const DIAS_SEMANA: { dia: number; nome: string }[] = [
   { dia: 1, nome: 'Segunda' },
   { dia: 2, nome: 'Terça' },
@@ -144,6 +195,14 @@ export interface ItemMovimento {
 export interface PagamentoRegistrado {
   forma: FormaPagamento;
   valor: number;
+  parcelas?: number;
+}
+
+export interface FormaConfigurada {
+  forma: FormaPagamento;
+  ativa: boolean;
+  taxaPercentual: number;
+  maxParcelas: number;
 }
 
 export interface Movimentacao {
@@ -198,6 +257,8 @@ export interface TotaisFinanceiros {
   entradas: number;
   saidas: number;
   descontos: number;
+  taxas: number;
+  liquido: number;
   porForma: { forma: FormaPagamento; total: number }[];
 }
 
@@ -249,8 +310,22 @@ function dataIsoValida(valor: string): boolean {
 @Injectable({ providedIn: 'root' })
 export class SalaoEstadoService {
   readonly salao = 'Eula Moraes Studio';
+  readonly usuarioAtualId = 'usr-paula';
   readonly usuarioAtual = 'Paula';
-  readonly formasPagamento = FORMAS_PAGAMENTO;
+  readonly formas: FormaConfigurada[] = [
+    { forma: 'Dinheiro', ativa: true, taxaPercentual: 0, maxParcelas: 1 },
+    { forma: 'Pix', ativa: true, taxaPercentual: 0, maxParcelas: 1 },
+    { forma: 'Cartão de débito', ativa: true, taxaPercentual: 0, maxParcelas: 1 },
+    { forma: 'Cartão de crédito', ativa: true, taxaPercentual: 0, maxParcelas: 6 },
+  ];
+
+  get formasPagamento(): FormaPagamento[] {
+    return this.formas.filter((forma) => forma.ativa).map((forma) => forma.forma);
+  }
+
+  get formasConsulta(): FormaPagamento[] {
+    return this.formas.map((forma) => forma.forma);
+  }
 
   readonly horarios: HorarioFuncionamento[] = [
     { dia: 1, abertura: '09:00', fechamento: '19:00', ativo: true },
@@ -288,6 +363,25 @@ export class SalaoEstadoService {
   ];
 
   private senha = '123456';
+
+  readonly usuarios: UsuarioSalao[] = [
+    {
+      id: 'usr-paula',
+      nome: 'Paula',
+      perfil: 'ADMIN',
+      ativo: true,
+      acessos: MODULOS_ACESSO.map((modulo) => modulo.id),
+    },
+  ];
+
+  readonly categorias: CategoriaSalao[] = [
+    { id: 'cat-coloracao', nome: 'Coloração', tipo: 'estoque' },
+    { id: 'cat-tratamento', nome: 'Tratamento', tipo: 'estoque' },
+    { id: 'cat-finalizacao', nome: 'Finalização', tipo: 'estoque' },
+    { id: 'cat-aluguel', nome: 'Aluguel', tipo: 'despesa' },
+    { id: 'cat-energia', nome: 'Energia', tipo: 'despesa' },
+    { id: 'cat-imposto', nome: 'Imposto', tipo: 'despesa' },
+  ];
 
   readonly profissionais: Profissional[] = [
     { id: 'pro-paula', nome: 'Paula', telefone: '(11) 98811-2040', ativo: true },
@@ -667,13 +761,26 @@ export class SalaoEstadoService {
     }
 
     const total = arredondar(subtotal - desconto);
-    const pagamentos = (pedido.pagamentos ?? []).map((pagamento) => ({
+    const pagamentos: PagamentoRegistrado[] = (pedido.pagamentos ?? []).map((pagamento) => ({
       forma: pagamento.forma,
       valor: arredondar(Number(pagamento.valor)),
+      parcelas: pagamento.parcelas,
     }));
 
     if (!pagamentos.length || pagamentos.some((pagamento) => !this.formasPagamento.includes(pagamento.forma))) {
-      return { ok: false, mensagem: 'Selecione a forma de pagamento.' };
+      return { ok: false, mensagem: 'Selecione uma forma de pagamento ativa.' };
+    }
+    for (const pagamento of pagamentos) {
+      if (pagamento.forma !== 'Cartão de crédito') {
+        pagamento.parcelas = undefined;
+        continue;
+      }
+      const parcelas = pagamento.parcelas ?? 1;
+      const maximo = this.maxParcelasCredito();
+      if (!Number.isInteger(parcelas) || parcelas < 1 || parcelas > maximo) {
+        return { ok: false, mensagem: `O crédito aceita de 1 a ${maximo} parcelas.` };
+      }
+      pagamento.parcelas = parcelas;
     }
     if (pagamentos.some((pagamento) => !Number.isFinite(pagamento.valor) || pagamento.valor < 0)) {
       return { ok: false, mensagem: 'Informe valores válidos para o pagamento.' };
@@ -743,6 +850,18 @@ export class SalaoEstadoService {
 
   agregar(movimentos: Movimentacao[]): TotaisFinanceiros {
     const vendas = movimentos.filter((item) => item.tipo === 'venda');
+    const totalVendas = somar(vendas.map((item) => item.valor));
+    const taxas = somar(
+      movimentos.flatMap((movimento) => {
+        if (movimento.tipo !== 'venda' && movimento.tipo !== 'estorno') {
+          return [];
+        }
+        const sinal = movimento.tipo === 'estorno' ? -1 : 1;
+        return movimento.pagamentos.map(
+          (pagamento) => (sinal * pagamento.valor * this.taxaDe(pagamento.forma)) / 100,
+        );
+      }),
+    );
     const porForma = new Map<FormaPagamento, number>();
 
     for (const movimento of movimentos) {
@@ -753,7 +872,7 @@ export class SalaoEstadoService {
     }
 
     return {
-      vendas: somar(vendas.map((item) => item.valor)),
+      vendas: totalVendas,
       servicos: somar(
         vendas.flatMap((venda) =>
           venda.itens
@@ -779,7 +898,9 @@ export class SalaoEstadoService {
           .map((item) => item.valor),
       ),
       descontos: somar(vendas.map((item) => item.desconto)),
-      porForma: this.formasPagamento
+      taxas,
+      liquido: arredondar(totalVendas - taxas),
+      porForma: this.formasConsulta
         .map((forma) => ({ forma, total: arredondar(porForma.get(forma) ?? 0) }))
         .filter((item) => item.total !== 0),
     };
@@ -1195,6 +1316,303 @@ export class SalaoEstadoService {
     return { ok: true, mensagem: 'Bloqueio removido.', id };
   }
 
+  listarUsuarios(): UsuarioSalao[] {
+    return [...this.usuarios]
+      .sort((a, b) => Number(b.perfil === 'ADMIN') - Number(a.perfil === 'ADMIN') || a.nome.localeCompare(b.nome, 'pt-BR'))
+      .map((usuario) => ({ ...usuario, acessos: [...usuario.acessos] }));
+  }
+
+  cadastrarOperador(dados: UsuarioOperadorCadastro): ResultadoOperacao {
+    const nome = dados.nome.trim();
+    if (nome.length < 2) {
+      return { ok: false, mensagem: 'Informe o nome da funcionária.' };
+    }
+    if (this.usuarios.some((usuario) => usuario.nome.toLowerCase() === nome.toLowerCase())) {
+      return { ok: false, mensagem: 'Já existe uma funcionária com esse nome.' };
+    }
+    const acessos = this.normalizarAcessos(dados.acessos);
+    if (!acessos) {
+      return { ok: false, mensagem: 'Há uma tela de acesso inválida.' };
+    }
+    if (acessos.length === 0) {
+      return { ok: false, mensagem: 'Marque ao menos uma tela.' };
+    }
+    const criado: UsuarioSalao = {
+      id: this.novoId('usr'),
+      nome,
+      perfil: 'OPERADOR',
+      ativo: true,
+      acessos,
+    };
+    this.usuarios.push(criado);
+    return { ok: true, mensagem: 'Funcionária cadastrada.', id: criado.id };
+  }
+
+  definirUsuarioAtivo(id: string, ativo: boolean): ResultadoOperacao {
+    const usuario = this.usuarios.find((item) => item.id === id);
+    if (!usuario) {
+      return { ok: false, mensagem: 'Usuária não encontrada.' };
+    }
+    if (usuario.id === this.usuarioAtualId) {
+      return { ok: false, mensagem: 'A conta em uso não pode ser desativada.' };
+    }
+    if (usuario.perfil === 'ADMIN') {
+      return { ok: false, mensagem: 'A administradora permanece ativa.' };
+    }
+    if (usuario.ativo === ativo) {
+      return {
+        ok: false,
+        mensagem: ativo ? 'Esta funcionária já está ativa.' : 'Esta funcionária já está inativa.',
+      };
+    }
+    usuario.ativo = ativo;
+    return {
+      ok: true,
+      mensagem: ativo ? 'Funcionária reativada.' : 'Funcionária desativada.',
+      id: usuario.id,
+    };
+  }
+
+  definirAcessos(id: string, acessosInformados: ModuloAcesso[]): ResultadoOperacao {
+    const usuario = this.usuarios.find((item) => item.id === id);
+    if (!usuario) {
+      return { ok: false, mensagem: 'Usuária não encontrada.' };
+    }
+    if (usuario.perfil === 'ADMIN') {
+      return { ok: false, mensagem: 'A administradora acessa todas as telas.' };
+    }
+    const acessos = this.normalizarAcessos(acessosInformados);
+    if (!acessos) {
+      return { ok: false, mensagem: 'Há uma tela de acesso inválida.' };
+    }
+    if (acessos.length === 0) {
+      return { ok: false, mensagem: 'Marque ao menos uma tela.' };
+    }
+    usuario.acessos = acessos;
+    return { ok: true, mensagem: 'Acesso atualizado.', id: usuario.id };
+  }
+
+  listarCategorias(tipo: TipoCategoria): CategoriaSalao[] {
+    return this.categorias
+      .filter((categoria) => categoria.tipo === tipo)
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+      .map((categoria) => ({ ...categoria }));
+  }
+
+  salvarCategoria(dados: CategoriaCadastro): ResultadoOperacao {
+    const nome = dados.nome.trim();
+    if (nome.length < 2) {
+      return { ok: false, mensagem: 'Informe o nome da categoria.' };
+    }
+    const repetida = this.categorias.some(
+      (categoria) =>
+        categoria.tipo === dados.tipo &&
+        categoria.id !== dados.id &&
+        categoria.nome.toLowerCase() === nome.toLowerCase(),
+    );
+    if (repetida) {
+      return { ok: false, mensagem: 'Já existe uma categoria com esse nome.' };
+    }
+
+    if (dados.id) {
+      const atual = this.categorias.find((categoria) => categoria.id === dados.id && categoria.tipo === dados.tipo);
+      if (!atual) {
+        return { ok: false, mensagem: 'Categoria não encontrada.' };
+      }
+      if (atual.tipo === 'estoque' && atual.nome !== nome) {
+        for (const produto of this.produtos) {
+          if (produto.categoria.toLowerCase() === atual.nome.toLowerCase()) {
+            produto.categoria = nome;
+          }
+        }
+      }
+      atual.nome = nome;
+      return { ok: true, mensagem: 'Categoria atualizada.', id: atual.id };
+    }
+
+    const criada: CategoriaSalao = { id: this.novoId('cat'), nome, tipo: dados.tipo };
+    this.categorias.push(criada);
+    return { ok: true, mensagem: 'Categoria registrada.', id: criada.id };
+  }
+
+  removerCategoria(id: string): ResultadoOperacao {
+    const categoria = this.categorias.find((item) => item.id === id);
+    if (!categoria) {
+      return { ok: false, mensagem: 'Categoria não encontrada.' };
+    }
+    if (categoria.tipo === 'estoque' && this.produtosNaCategoria(categoria.nome) > 0) {
+      return { ok: false, mensagem: 'Esta categoria ainda tem produtos no estoque.' };
+    }
+    const indice = this.categorias.findIndex((item) => item.id === id);
+    this.categorias.splice(indice, 1);
+    return { ok: true, mensagem: 'Categoria removida.', id };
+  }
+
+  listarFormas(): FormaConfigurada[] {
+    return this.formas.map((forma) => ({ ...forma }));
+  }
+
+  maxParcelasCredito(): number {
+    return this.formas.find((forma) => forma.forma === 'Cartão de crédito')?.maxParcelas ?? 1;
+  }
+
+  taxaDe(forma: FormaPagamento): number {
+    return this.formas.find((item) => item.forma === forma)?.taxaPercentual ?? 0;
+  }
+
+  salvarFormas(informadas: FormaConfigurada[]): ResultadoOperacao {
+    if (!this.formasCompletas(informadas)) {
+      return { ok: false, mensagem: 'Informe todas as formas de pagamento.' };
+    }
+    if (!informadas.some((forma) => forma.ativa)) {
+      return { ok: false, mensagem: 'Deixe ao menos uma forma ativa.' };
+    }
+    const credito = informadas.find((forma) => forma.forma === 'Cartão de crédito');
+    const maximo = Math.floor(Number(credito?.maxParcelas));
+    if (!Number.isInteger(maximo) || maximo < 1 || maximo > 24) {
+      return { ok: false, mensagem: 'O crédito aceita de 1 a 24 parcelas.' };
+    }
+
+    for (const atual of this.formas) {
+      const informada = informadas.find((forma) => forma.forma === atual.forma);
+      if (!informada) {
+        continue;
+      }
+      atual.ativa = informada.ativa;
+      if (atual.forma === 'Cartão de crédito') {
+        atual.maxParcelas = maximo;
+      }
+    }
+    return { ok: true, mensagem: 'Formas de pagamento salvas.' };
+  }
+
+  salvarTaxas(informadas: FormaConfigurada[]): ResultadoOperacao {
+    if (!this.formasCompletas(informadas)) {
+      return { ok: false, mensagem: 'Informe a taxa de cada forma de pagamento.' };
+    }
+    const taxas = new Map<FormaPagamento, number>();
+    for (const informada of informadas) {
+      const taxa = arredondar(Number(informada.taxaPercentual));
+      if (!Number.isFinite(taxa) || taxa < 0 || taxa > 100) {
+        return { ok: false, mensagem: `Informe a taxa de ${informada.forma} entre 0 e 100%.` };
+      }
+      taxas.set(informada.forma, taxa);
+    }
+    for (const atual of this.formas) {
+      atual.taxaPercentual = taxas.get(atual.forma) ?? atual.taxaPercentual;
+    }
+    return { ok: true, mensagem: 'Taxas salvas.' };
+  }
+
+  exportarDados(): string {
+    return JSON.stringify(
+      {
+        versao: 1,
+        exportadoEm: new Date().toISOString(),
+        sequencia: this.sequencia,
+        horarios: this.horarios.map((item) => ({ ...item })),
+        bloqueios: this.bloqueios.map((item) => ({ ...item })),
+        profissionais: this.profissionais.map((item) => ({ ...item })),
+        clientes: this.clientes.map((item) => ({ ...item })),
+        servicos: this.servicos.map((item) => ({ ...item })),
+        produtos: this.produtos.map((item) => ({ ...item })),
+        agendamentos: this.agendamentos.map((item) => ({ ...item })),
+        caixas: this.caixas.map((item) => ({ ...item })),
+        movimentacoes: this.movimentacoes.map((item) => ({
+          ...item,
+          itens: item.itens.map((linha) => ({ ...linha })),
+          pagamentos: item.pagamentos.map((pagamento) => ({ ...pagamento })),
+        })),
+        usuarios: this.usuarios.map((item) => ({ ...item, acessos: [...item.acessos] })),
+        categorias: this.categorias.map((item) => ({ ...item })),
+        formas: this.listarFormas(),
+      },
+      null,
+      2,
+    );
+  }
+
+  restaurarDados(texto: string): ResultadoOperacao {
+    let bruto: unknown;
+    try {
+      bruto = JSON.parse(texto);
+    } catch {
+      return { ok: false, mensagem: 'O arquivo não é um backup válido.' };
+    }
+    if (!bruto || typeof bruto !== 'object') {
+      return { ok: false, mensagem: 'O arquivo não é um backup válido.' };
+    }
+    const dados = bruto as Record<string, unknown>;
+    if (dados['versao'] !== 1) {
+      return { ok: false, mensagem: 'Este backup é de uma versão diferente.' };
+    }
+
+    const horarios = this.comoLista<HorarioFuncionamento>(dados['horarios']);
+    const bloqueios = this.comoLista<BloqueioAgenda>(dados['bloqueios']);
+    const profissionais = this.comoLista<Profissional>(dados['profissionais']);
+    const clientes = this.comoLista<Cliente>(dados['clientes']);
+    const servicos = this.comoLista<Servico>(dados['servicos']);
+    const produtos = this.comoLista<ProdutoEstoque>(dados['produtos']);
+    const agendamentos = this.comoLista<AgendamentoDia>(dados['agendamentos']);
+    const caixas = this.comoLista<CaixaRegistro>(dados['caixas']);
+    const movimentacoes = this.comoLista<Movimentacao>(dados['movimentacoes']);
+    const usuarios = this.comoLista<UsuarioSalao>(dados['usuarios']);
+    const categorias = this.comoLista<CategoriaSalao>(dados['categorias']);
+    const formas = this.comoLista<FormaConfigurada>(dados['formas']);
+
+    if (!horarios || horarios.length !== DIAS_SEMANA.length) {
+      return { ok: false, mensagem: 'O backup não tem os horários da semana.' };
+    }
+    if (
+      !bloqueios ||
+      !profissionais ||
+      !clientes ||
+      !servicos ||
+      !produtos ||
+      !agendamentos ||
+      !caixas ||
+      !movimentacoes ||
+      !categorias
+    ) {
+      return { ok: false, mensagem: 'O backup está incompleto.' };
+    }
+    if (!usuarios?.some((usuario) => usuario.id === this.usuarioAtualId && usuario.perfil === 'ADMIN')) {
+      return { ok: false, mensagem: 'O backup precisa incluir a conta em uso.' };
+    }
+    if (!formas || !this.formasCompletas(formas)) {
+      return { ok: false, mensagem: 'O backup não tem as formas de pagamento.' };
+    }
+
+    this.substituir(this.horarios, horarios);
+    this.substituir(this.bloqueios, bloqueios);
+    this.substituir(this.profissionais, profissionais);
+    this.substituir(this.clientes, clientes);
+    this.substituir(this.servicos, servicos);
+    this.substituir(this.produtos, produtos);
+    this.substituir(this.agendamentos, agendamentos);
+    this.substituir(this.caixas, caixas);
+    this.substituir(this.movimentacoes, movimentacoes);
+    this.substituir(this.usuarios, usuarios.map((usuario) => ({ ...usuario, acessos: [...usuario.acessos] })));
+    this.substituir(this.categorias, categorias);
+    for (const atual of this.formas) {
+      const restaurada = formas.find((forma) => forma.forma === atual.forma);
+      if (!restaurada) {
+        continue;
+      }
+      atual.ativa = restaurada.ativa;
+      atual.taxaPercentual = restaurada.taxaPercentual;
+      atual.maxParcelas = restaurada.forma === 'Cartão de crédito' ? restaurada.maxParcelas : 1;
+    }
+    if (typeof dados['sequencia'] === 'number' && dados['sequencia'] > this.sequencia) {
+      this.sequencia = dados['sequencia'];
+    }
+    return { ok: true, mensagem: 'Backup restaurado.' };
+  }
+
+  produtosNaCategoria(nome: string): number {
+    return this.produtos.filter((produto) => produto.categoria.toLowerCase() === nome.toLowerCase()).length;
+  }
+
   alterarSenha(dados: TrocaSenha): ResultadoOperacao {
     if (!dados.atual || dados.atual !== this.senha) {
       return { ok: false, mensagem: 'A senha atual não confere.' };
@@ -1276,6 +1694,35 @@ export class SalaoEstadoService {
       return;
     }
     produto.status = 'normal';
+  }
+
+  private formasCompletas(formas: FormaConfigurada[]): boolean {
+    if (formas.length !== FORMAS_PAGAMENTO.length) {
+      return false;
+    }
+    return FORMAS_PAGAMENTO.every((nome) => formas.some((forma) => forma.forma === nome));
+  }
+
+  private comoLista<T>(valor: unknown): T[] | null {
+    return Array.isArray(valor) ? (valor as T[]) : null;
+  }
+
+  private substituir<T>(destino: T[], origem: T[]): void {
+    destino.splice(0, destino.length, ...origem);
+  }
+
+  private normalizarAcessos(acessos: ModuloAcesso[]): ModuloAcesso[] | null {
+    const validos = new Set(MODULOS_ACESSO.map((modulo) => modulo.id));
+    const unicos: ModuloAcesso[] = [];
+    for (const acesso of acessos) {
+      if (!validos.has(acesso)) {
+        return null;
+      }
+      if (!unicos.includes(acesso)) {
+        unicos.push(acesso);
+      }
+    }
+    return unicos;
   }
 
   private novoId(prefixo: string): string {

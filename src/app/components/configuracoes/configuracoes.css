@@ -47,6 +47,8 @@ main > header h1 {
 
 .agendamento-btn,
 .notification-btn,
+.bloco,
+.voltar,
 .btn-aba,
 .btn-acao,
 .btn-status,
@@ -122,12 +124,15 @@ main > header h1 {
 
 .agendamento-btn:focus-visible,
 .notification-btn:focus-visible,
+.bloco:focus-visible,
+.voltar:focus-visible,
 .btn-aba:focus-visible,
 .btn-acao:focus-visible,
 .btn-status:focus-visible,
 .cancel:focus-visible,
 .save:focus-visible,
 .field input:focus-visible,
+.tabela input:focus-visible,
 .check input:focus-visible {
     outline: 2px solid var(--ink);
     outline-offset: 2px;
@@ -175,6 +180,61 @@ main > header h1 {
     font-size: 1.125rem;
 }
 
+.grade-config {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 11.25rem);
+    gap: 0.75rem;
+    justify-content: start;
+}
+
+.bloco {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 11.25rem;
+    aspect-ratio: 1;
+    padding: 1rem;
+    text-align: left;
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    color: var(--ink);
+    cursor: pointer;
+}
+
+.bloco:hover {
+    border-color: var(--ink);
+    background: color-mix(in srgb, #1c3112 4%, white);
+}
+
+.bloco-nome {
+    font-size: 1.0625rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+.bloco-texto {
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: var(--muted);
+}
+
+.voltar {
+    align-self: flex-start;
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--muted);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.voltar:hover {
+    color: var(--ink);
+}
+
 .toolbar {
     display: flex;
     align-items: center;
@@ -200,6 +260,32 @@ main > header h1 {
 .btn-aba.ativo {
     color: var(--ink);
     border-bottom-color: var(--ink);
+}
+
+.perfil-fixo {
+    margin: 0 0 0.85rem;
+    font-size: 0.8125rem;
+    color: var(--muted);
+}
+
+.acessos {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.45rem 0.75rem;
+    margin: 0 0 0.85rem;
+    padding: 0;
+    border: none;
+}
+
+.acessos legend {
+    grid-column: 1 / -1;
+    margin-bottom: 0.15rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.acessos .check {
+    margin-bottom: 0;
 }
 
 .container-tabela,
@@ -258,6 +344,23 @@ main > header h1 {
     border: 1px solid var(--line);
     border-radius: 8px;
     padding: 0.4rem 0.55rem;
+}
+
+.tabela input[type='number'] {
+    width: 5.5rem;
+    font-family: inherit;
+    font-size: 0.875rem;
+    color: var(--ink);
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.4rem 0.55rem;
+}
+
+.sufixo {
+    margin-left: 0.35rem;
+    font-size: 0.8125rem;
+    color: var(--muted);
 }
 
 .tabela input[type='time']:disabled {
@@ -405,6 +508,14 @@ main > header h1 {
     min-width: 9.5rem;
 }
 
+.backup-acoes {
+    margin-bottom: 1rem;
+}
+
+.arquivo input {
+    font-weight: 400;
+}
+
 .overlay {
     position: fixed;
     inset: 0;
@@ -466,7 +577,16 @@ main > header h1 {
 
 @media (max-width: 860px) {
     .resumo,
-    .datas {
+    .datas,
+    .acessos {
         grid-template-columns: 1fr;
+    }
+
+    .grade-config {
+        grid-template-columns: repeat(auto-fill, minmax(8.25rem, 1fr));
+    }
+
+    .bloco {
+        width: 100%;
     }
 }
