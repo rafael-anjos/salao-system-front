@@ -1,51 +1,51 @@
-.container {
-    display: flex;
-    flex-direction: column;
-    box-sizing: border-box;
+.container{
     min-height: 100vh;
     width: 100%;
+    background-color: #f0f0f0;
 }
 
-.container header {
+header{
     display: flex;
     justify-content: space-between;
+    padding: 10px;
+    box-shadow: 1px 1px 7px 1px #b3b3b3;
+    background-color: white;
     align-items: center;
-    box-sizing: border-box;
     width: 100%;
     height: 10vh;
-    box-shadow: 1px 1px 7px 1px #b3b3b3;
 }
 
-.titulo p{
+header p{
     font-family: 'Montserrat';
-    font-size: 30px;
-    font-weight: 400;
-    padding-left: 20px;
+    color: #1C3112;
+    font-size: 24px;
+    font-weight: 500;
 }
 
-.header-btns{
+main{
+    display: flex;
+    flex-direction: column;
+    height: 90vh;
+    width: 100%;
+}
+
+.cards{
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-right: 20px;
-    box-sizing: border-box;
-    width: 7.8cm;
+    height: 20vh;
+    width: 100%;
+    padding: 10px 10px 0px 10px;
+    gap: 10px;
 }
 
-.header-btns input{
-    font-family: 'Montserrat';
-    height: 0.8cm;
-    width: 5.5cm;
-    border: 1px solid #b3b3b3;
+.cards div{
     background-color: white;
-    border-radius: 7px;
-    outline: none;
-    padding-left: 10px;
-    transition: 0.1s ease-out;
-}
-
-.header-btns input:focus{
-    border: 1px solid #1C3112;
+    box-shadow: 1px 1px 7px 1px #b3b3b3;
+    display: flex;
+    border-radius: 10px;
+    width: 25%;
+    height: 100%;
 }
 
 .notification-btn {
@@ -58,7 +58,7 @@
     height: 35px;
     width: 35px;
     border-radius: 100%;
-    transition: 0.1s ease-out;
+    transition: background-color 180ms ease-out, border-color 180ms ease-out;
 }
 
 .notification-btn img {
@@ -67,7 +67,7 @@
 }
 
 .notification-btn .img-hover,
-.notification-btn .img-active{
+.notification-btn .img-active {
     display: none;
 }
 
@@ -80,17 +80,17 @@
 }
 
 .notification-btn:active .img-padrao,
-.notification-btn:active .img-hover{
+.notification-btn:active .img-hover {
     display: none;
 }
 
-.notification-btn:active .img-active{
+.notification-btn:active .img-active {
     display: inline-block;
 }
 
 .notification-btn:hover {
     background-color: #1C3112;
-    border: none;
+    border-color: white;
 }
 
 .notification-btn:active {
