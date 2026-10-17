@@ -1,18 +1,13 @@
 import { CurrencyPipe } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { SalaoEstadoService, dataIso } from '../../core/salao-estado.service';
-
-export interface Notificacao {
-  horario: string;
-  texto: string;
-}
-
-export interface AlertaEstoque {
-  produto: string;
-  quantidade: number;
-  minimo: number;
-}
+import {
+  dataIso,
+  ProdutoEstoque,
+  rotuloStatusAgendamento,
+  SalaoEstadoService,
+  StatusAgendamento,
+} from '../../core/salao-estado.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -27,39 +22,55 @@ export class Dashboard {
   dataExtenso = this.formatarData(this.hoje);
 
   get agendaDoDia() {
-    const hoje = dataIso();
+    const hoje = dataIso(this.hoje);
     return this.estado.agendamentos
       .filter((item) => item.data === hoje)
-      .sort((a, b) => a.hora.localeCompare(b.hora));
+      .sort((a, b) => a.hora.localeCompare(b.hora) || a.cliente.localeCompare(b.cliente, 'pt-BR'));
   }
 
   get caixaAberto(): boolean {
     return this.estado.caixaAberto;
   }
 
-  notificacoes: Notificacao[] = [
-    { horario: '16:12', texto: 'Beatriz Nunes confirmou o horário das 16:30.' },
-    { horario: '12:40', texto: 'Pagamento de R$ 280 recebido de Maria Silva.' },
-    { horario: '08:02', texto: 'Caixa aberto por Paula.' },
-    { horario: '07:50', texto: 'Toner 9.1 abaixo do mínimo do estoque.' },
-  ];
+  get estoqueBaixo(): ProdutoEstoque[] {
+    const peso = (status: ProdutoEstoque['status']) => (status === 'critico' ? 0 : 1);
+    return this.estado.produtos
+      .filter((produto) => produto.status === 'critico' || produto.status === 'baixo')
+      .sort((a, b) => peso(a.status) - peso(b.status) || a.nome.localeCompare(b.nome, 'pt-BR'));
+  }
 
-  estoqueBaixo: AlertaEstoque[] = [
-    { produto: 'Toner 9.1', quantidade: 2, minimo: 6 },
-    { produto: 'Luvas descartáveis', quantidade: 8, minimo: 20 },
-    { produto: 'Removedor de esmalte', quantidade: 1, minimo: 4 },
-  ];
+  get notificacoes(): string[] {
+    const notas: string[] = [];
+    const emAberto = this.agendaDoDia.filter(
+      (item) => item.status === 'Confirmado' || item.status === 'Aguardando' || item.status === 'Em andamento',
+    ).length;
+    if (emAberto === 1) {
+      notas.push('1 horário ainda em aberto hoje.');
+    } else if (emAberto > 1) {
+      notas.push(`${emAberto} horários ainda em aberto hoje.`);
+    }
+    notas.push(this.caixaAberto ? 'Caixa aberto.' : 'Caixa fechado.');
+    for (const produto of this.estoqueBaixo) {
+      notas.push(`${produto.nome} abaixo do mínimo: ${produto.estoqueAtual} de ${produto.estoqueMinimo}.`);
+    }
+    return notas;
+  }
 
   get totalAgendamentos(): number {
     return this.agendaDoDia.length;
   }
 
   get receitaHoje(): number {
-    return this.agendaDoDia.reduce((soma, item) => soma + item.preco, 0);
+    const hoje = dataIso(this.hoje);
+    return this.estado.totaisPeriodo(hoje, hoje).vendas;
   }
 
   get alertasEstoque(): number {
     return this.estoqueBaixo.length;
+  }
+
+  rotuloStatus(status: StatusAgendamento): string {
+    return rotuloStatusAgendamento(status);
   }
 
   private montarSaudacao(): string {

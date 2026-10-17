@@ -47,14 +47,14 @@
                     <p class="vazio">Nenhum horário marcado para hoje.</p>
                 } @else {
                     <ul class="lista-agenda">
-                        @for (item of agendaDoDia; track item.hora + item.cliente) {
+                        @for (item of agendaDoDia; track item.id) {
                             <li>
                                 <time>{{ item.hora }}</time>
                                 <div class="detalhe">
                                     <p class="cliente">{{ item.cliente }}</p>
                                     <p class="servico">{{ item.servico }}</p>
                                 </div>
-                                <span class="selo" [attr.data-status]="item.status">{{ item.status }}</span>
+                                <span class="selo" [attr.data-status]="item.status">{{ rotuloStatus(item.status) }}</span>
                                 <span class="preco">{{ item.preco | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
                             </li>
                         }
@@ -71,10 +71,9 @@
                         <p class="vazio">Nenhuma notificação recente.</p>
                     } @else {
                         <ul class="lista-simples">
-                            @for (nota of notificacoes; track nota.horario + nota.texto) {
+                            @for (nota of notificacoes; track nota) {
                                 <li>
-                                    <time>{{ nota.horario }}</time>
-                                    <p>{{ nota.texto }}</p>
+                                    <p>{{ nota }}</p>
                                 </li>
                             }
                         </ul>
@@ -90,13 +89,13 @@
                         <p class="vazio">Nenhum produto abaixo do mínimo.</p>
                     } @else {
                         <ul class="lista-estoque">
-                            @for (item of estoqueBaixo; track item.produto) {
+                            @for (item of estoqueBaixo; track item.id) {
                                 <li>
                                     <div>
-                                        <p class="produto">{{ item.produto }}</p>
-                                        <p class="meta">{{ item.quantidade }} em estoque · mínimo {{ item.minimo }}</p>
+                                        <p class="produto">{{ item.nome }}</p>
+                                        <p class="meta">{{ item.estoqueAtual }} em estoque · mínimo {{ item.estoqueMinimo }}</p>
                                     </div>
-                                    <span class="faltando">{{ item.minimo - item.quantidade }} a repor</span>
+                                    <span class="faltando">{{ item.estoqueMinimo - item.estoqueAtual }} a repor</span>
                                 </li>
                             }
                         </ul>

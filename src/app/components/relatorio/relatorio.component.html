@@ -1,46 +1,298 @@
-<div class="container-relatorio">
-
-    <div class="header-pagina">
-        <div class="titulo-secao">
-            <h1>Relatórios</h1>
-            <p>Análise de desempenho e financeiro</p>
-        </div>
-
-        <div class="busca-notificacao">
-            <input type="text" placeholder="Buscar produto...">
-            <button class="btn-sininho">🔔</button>
-        </div>
+<div class="container">
+  <header>
+    <div class="box-titulo">
+      <h1>Relatórios</h1>
+      <p class="data">{{ estado.salao }} · {{ textoPeriodo }}</p>
     </div>
+    <div class="header-acoes">
+      <div class="sub-filtros" role="group" aria-label="Período">
+        <button class="btn-sub" type="button" [class.ativo]="periodo === 'hoje'" (click)="mudarPeriodo('hoje')">Hoje</button>
+        <button class="btn-sub" type="button" [class.ativo]="periodo === 'semana'" (click)="mudarPeriodo('semana')">Esta semana</button>
+        <button class="btn-sub" type="button" [class.ativo]="periodo === 'mes'" (click)="mudarPeriodo('mes')">Este mês</button>
+        <button class="btn-sub" type="button" [class.ativo]="periodo === 'personalizado'" (click)="mudarPeriodo('personalizado')">Personalizado</button>
+      </div>
+      <button class="btn-imprimir" type="button" (click)="imprimir()" [disabled]="!periodoValido">Exportar PDF / Imprimir</button>
+      <button class="notification-btn" type="button" aria-label="Notificações">
+        <img class="img-padrao" src="notification-green.svg" alt="">
+        <img class="img-hover" src="notification.svg" alt="">
+        <img class="img-active" src="notification-green.svg" alt="">
+      </button>
+    </div>
+  </header>
 
-        <div class="barra-acoes">
-            <div class="abas">
+  <main>
+    @if (periodo === 'personalizado') {
+      <div class="datas">
+        <label class="field">
+          De
+          <input type="date" name="inicio" [(ngModel)]="inicioPersonalizado" [max]="fimPersonalizado">
+        </label>
+        <label class="field">
+          Até
+          <input type="date" name="fim" [(ngModel)]="fimPersonalizado" [min]="inicioPersonalizado">
+        </label>
+      </div>
+    }
 
-                <button class="btn-aba" [class.ativo]="abaAtiva === 'Hoje'">
-                    (click)="mudarAba('Hoje')">Hoje</button>
-                <button class="btn-aba" [class.ativo]="abaAtiva === 'Esta semana'">
-                    (click)="mudarAba('Esta semana')">Esta semana</button>
-                <button class="btn-aba" [class.ativo]="abaAtiva === 'Este mês'">
-                    (click)="mudarAba('Este mês')">Este mês</button>
+    @if (!periodoValido) {
+      <p class="aviso" role="alert">A data inicial precisa ser anterior ou igual à final.</p>
+    } @else {
+      <section class="indicadores" aria-label="Resumo do período">
+        <article class="indicador">
+          <p class="valor">{{ totalAgendamentos }}</p>
+          <h2>Total de agendamentos</h2>
+          <p class="apoio">
+            @if (periodoIncluiHoje) {
+              {{ agendamentosHoje }} {{ agendamentosHoje === 1 ? 'agendamento hoje' : 'agendamentos hoje' }}
+            } @else {
+              {{ textoPeriodo }}
+            }
+          </p>
+        </article>
+        <article class="indicador">
+          <p class="valor entrada">{{ receita | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</p>
+          <h2>Receita total</h2>
+          <p class="apoio" [attr.data-sentido]="variacaoReceita.sentido">{{ textoVariacao(variacaoReceita) }}</p>
+        </article>
+        <article class="indicador">
+          <p class="valor conta">{{ totalDescontos | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</p>
+          <h2>Total de descontos</h2>
+          <p class="apoio">{{ textoDescontos() }}</p>
+        </article>
+        <article class="indicador">
+          <p class="valor entrada">{{ atendimentosPagos }}</p>
+          <h2>Atendimentos pagos</h2>
+          <p class="apoio">{{ textoPagos() }}</p>
+        </article>
+      </section>
 
+      <section class="leitura" aria-label="Agenda e receita diária">
+        <article class="painel resultado">
+          <header class="painel-cabecalho">
+            <h2>Resultado da agenda</h2>
+          </header>
+          <dl class="tres">
+            <div>
+              <dt>Concluídos</dt>
+              <dd>{{ concluidos }}</dd>
             </div>
-        </div>
+            <div>
+              <dt>Cancelados</dt>
+              <dd class="saida">{{ cancelados }}</dd>
+            </div>
+            <div>
+              <dt>Faltas</dt>
+              <dd class="conta">{{ faltas }}</dd>
+            </div>
+          </dl>
+          <p class="taxa">
+            @if (taxaCancelamento === null) {
+              Sem agendamentos no período
+            } @else {
+              Taxa de cancelamento {{ taxaCancelamento | number:'1.1-1' }}%
+            }
+          </p>
+          <p class="apoio">
+            @if (emAberto === 1) {
+              1 ainda em aberto
+            } @else {
+              {{ emAberto }} ainda em aberto
+            }
+          </p>
 
-        <div *ngIf="abaAtiva === 'produtos'">
+          <div class="corte">
+            <h3>Serviços e revenda</h3>
+            <dl class="par">
+              <div>
+                <dt>Serviços</dt>
+                <dd>
+                  {{ origemReceita.servicos.total | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}
+                  <span>{{ origemReceita.servicos.percentual | number:'1.1-1' }}%</span>
+                </dd>
+              </div>
+              <div>
+                <dt>Produtos de revenda</dt>
+                <dd>
+                  {{ origemReceita.revenda.total | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}
+                  <span>{{ origemReceita.revenda.percentual | number:'1.1-1' }}%</span>
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </article>
 
-            
+        <article class="painel grafico-painel" aria-labelledby="titulo-receita-dia">
+          <header class="painel-cabecalho">
+            <div>
+              <h2 id="titulo-receita-dia">Receita por dia</h2>
+              <p>Vendas do caixa em cada dia do período.</p>
+            </div>
+          </header>
+          @if (maiorDia === 0) {
+            <p class="vazio">Nenhuma venda neste período.</p>
+          } @else {
+            <div class="grafico">
+              <div class="escala" aria-hidden="true">
+                <span>{{ formatarEixo(maiorDia) }}</span>
+                <span>{{ formatarEixo(maiorDia / 2) }}</span>
+                <span>{{ formatarEixo(0) }}</span>
+              </div>
+              <ol class="barras">
+                @for (dia of receitaPorDia; track dia.data) {
+                  <li>
+                    <span class="trilho">
+                      <span
+                        class="barra"
+                        [class.pico]="dia.total === maiorDia && dia.total > 0"
+                        [style.height.%]="dia.altura"
+                        role="img"
+                        [attr.aria-label]="rotuloBarra(dia)"
+                      ></span>
+                    </span>
+                    <span class="dia">{{ dia.rotulo }}</span>
+                  </li>
+                }
+              </ol>
+            </div>
+          }
+        </article>
+      </section>
 
+      <section class="grade" aria-label="Serviços e profissionais">
+        <article class="painel" aria-labelledby="titulo-servicos">
+          <header class="painel-cabecalho">
+            <div>
+              <h2 id="titulo-servicos">Serviços mais realizados</h2>
+              <p>Valor já com o desconto da venda.</p>
+            </div>
+          </header>
+          @if (servicos.length === 0) {
+            <p class="vazio">Nenhum serviço vendido neste período.</p>
+          } @else {
+            <div class="tabela-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Serviço</th>
+                    <th>Quantidade</th>
+                    <th>Total gerado</th>
+                    <th>% do total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (linha of servicos; track linha.nome) {
+                    <tr>
+                      <td>{{ linha.nome }}</td>
+                      <td class="numero">{{ linha.quantidade }}</td>
+                      <td class="numero">{{ linha.total | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</td>
+                      <td class="numero">{{ linha.percentual | number:'1.1-1' }}%</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </article>
 
+        <article class="painel" aria-labelledby="titulo-profissionais">
+          <header class="painel-cabecalho">
+            <h2 id="titulo-profissionais">Agendamentos por profissional</h2>
+          </header>
+          @if (profissionais.length === 0) {
+            <p class="vazio">Nenhum agendamento neste período.</p>
+          } @else {
+            <div class="tabela-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Profissional</th>
+                    <th>Atendimentos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (linha of profissionais; track linha.nome) {
+                    <tr>
+                      <td>{{ linha.nome }}</td>
+                      <td class="numero">{{ linha.atendimentos }}</td>
+                    </tr>
+                  }
+                  <tr class="total">
+                    <td>Total</td>
+                    <td class="numero">{{ totalProfissionais }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          }
+        </article>
+      </section>
 
+      <section class="grade" aria-label="Pagamento e estoque">
+        <article class="painel" aria-labelledby="titulo-formas">
+          <header class="painel-cabecalho">
+            <h2 id="titulo-formas">Receita por forma de pagamento</h2>
+          </header>
+          @if (formas.length === 0) {
+            <p class="vazio">Nenhum recebimento neste período.</p>
+          } @else {
+            <div class="tabela-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Forma</th>
+                    <th>Quantidade</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (linha of formas; track linha.nome) {
+                    <tr>
+                      <td>{{ linha.nome }}</td>
+                      <td class="numero">{{ linha.quantidade }}</td>
+                      <td class="numero">{{ linha.total | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </article>
 
-        </div>
-
-
-
-
-
-        
-
-
-
-
+        <article class="painel" aria-labelledby="titulo-estoque">
+          <header class="painel-cabecalho">
+            <h2 id="titulo-estoque">Produtos com estoque baixo</h2>
+            <a routerLink="/estoque">Ver todos</a>
+          </header>
+          @if (estoqueBaixo.length === 0) {
+            <p class="vazio">Nenhum produto abaixo do mínimo.</p>
+          } @else {
+            <div class="tabela-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Produto</th>
+                    <th>Estoque</th>
+                    <th>Mínimo</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (produto of estoqueBaixo; track produto.id) {
+                    <tr>
+                      <td>{{ produto.nome }}</td>
+                      <td class="numero">{{ produto.estoqueAtual }}</td>
+                      <td class="numero">{{ produto.estoqueMinimo }}</td>
+                      <td>
+                        <span class="tag" [attr.data-status]="produto.status">{{ rotuloEstoque(produto.status) }}</span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </article>
+      </section>
+    }
+  </main>
 </div>

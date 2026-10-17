@@ -1,6 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { Component, HostListener, inject, OnDestroy, OnInit } from '@angular/core';
-import { AgendamentoDia, dataIso, SalaoEstadoService, StatusAgendamento } from '../../core/salao-estado.service';
+import { AgendamentoDia, dataIso, rotuloStatusAgendamento, SalaoEstadoService, StatusAgendamento } from '../../core/salao-estado.service';
 import { Calendario } from './calendario/calendario';
 import { NovoAgendamento } from './novo-agendamento/novo-agendamento';
 
@@ -303,7 +303,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
   }
 
   rotuloStatus(status: StatusAgendamento): string {
-    return status === 'Aguardando' ? 'Pendente' : status;
+    return rotuloStatusAgendamento(status);
   }
 
   bloqueado(item: AgendamentoDia): boolean {

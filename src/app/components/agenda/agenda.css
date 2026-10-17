@@ -361,6 +361,13 @@ header h1 {
     color: var(--agenda-muted);
 }
 
+.compromisso[data-status='Cancelado'],
+.compromisso[data-status='Falta'] {
+    border-left-color: #9b1c2c;
+    background: color-mix(in srgb, #9b1c2c 10%, white);
+    color: var(--agenda-muted);
+}
+
 .menu-agendamento {
     position: fixed;
     z-index: 40;

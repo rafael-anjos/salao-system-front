@@ -3,3 +3,15 @@
     padding: 0px;
     margin: 0px;
 }
+
+@media print {
+    app-navbar {
+        display: none !important;
+    }
+
+    .layout,
+    .conteudo {
+        display: block;
+        overflow: visible !important;
+    }
+}

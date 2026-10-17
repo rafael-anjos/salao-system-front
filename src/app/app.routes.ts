@@ -7,6 +7,7 @@ import { Caixa } from './components/caixa/caixa';
 import { Profissionais } from './components/profissionais/profissionais';
 import { Servicos } from './components/servicos/servicos';
 import { Configuracoes } from './components/configuracoes/configuracoes';
+import { Relatorio } from './components/relatorio/relatorio.component';
 
 export const routes: Routes = [
     { path: '', component: Dashboard },
@@ -14,6 +15,7 @@ export const routes: Routes = [
     { path: 'caixa', component: Caixa },
     { path: 'financeiro', component: Financeiro },
     { path: 'estoque', component: EstoqueComponent },
+    { path: 'relatorio', component: Relatorio },
     { path: 'servicos', component: Servicos },
     { path: 'profissionais', component: Profissionais },
     { path: 'configuracoes', component: Configuracoes },

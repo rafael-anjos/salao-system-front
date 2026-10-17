@@ -1,7 +1,7 @@
 <div class="container">
   <header>
     <div class="box-titulo">
-      <h1>Financeiro / Caixa</h1>
+      <h1>Caixa</h1>
       <p class="data">{{ estado.salao }} · {{ dataExtenso }}</p>
     </div>
     <div class="header-acoes">
@@ -18,7 +18,7 @@
   </header>
 
   <main>
-    <div class="abas" role="tablist" aria-label="Financeiro">
+    <div class="abas" role="tablist" aria-label="Caixa">
       <button class="btn-aba" type="button" role="tab" [class.ativo]="aba === 'caixa'" [attr.aria-selected]="aba === 'caixa'" (click)="mudarAba('caixa')">Caixa</button>
       <button class="btn-aba" type="button" role="tab" [class.ativo]="aba === 'historico'" [attr.aria-selected]="aba === 'historico'" (click)="mudarAba('historico')">Histórico</button>
       <button class="btn-aba" type="button" role="tab" [class.ativo]="aba === 'relatorios'" [attr.aria-selected]="aba === 'relatorios'" (click)="mudarAba('relatorios')">Relatórios</button>
@@ -529,8 +529,8 @@
       <section class="painel" aria-labelledby="titulo-pendentes">
         <header class="painel-cabecalho">
           <div>
-            <h2 id="titulo-pendentes">Pendentes de hoje</h2>
-            <p>Atendimentos do dia que ainda não foram finalizados.</p>
+            <h2 id="titulo-pendentes">Atendimentos em aberto</h2>
+            <p>Horários até hoje que ainda não viraram venda.</p>
           </div>
         </header>
 
@@ -549,7 +549,7 @@
                   <p class="nome-item">{{ item.cliente }}</p>
                   <p class="sub">{{ item.profissional }} · {{ item.servico }}</p>
                 </div>
-                <span class="tag" [attr.data-status]="item.status">{{ item.status }}</span>
+                <span class="tag" [attr.data-status]="item.status">{{ rotuloStatus(item.status) }}</span>
                 <strong>{{ item.preco | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
                 <button class="secundario" type="button" (click)="abrirAtendimento(item)" [disabled]="!caixaAberto">Finalizar atendimento</button>
               </li>
