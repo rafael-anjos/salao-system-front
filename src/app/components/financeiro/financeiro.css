@@ -206,6 +206,10 @@ main {
     color: var(--muted);
 }
 
+.metricas + .nota {
+    margin-top: 10px;
+}
+
 .aviso.ok {
     color: var(--ink);
 }
@@ -229,10 +233,16 @@ main {
 }
 
 .metricas div {
-    padding: 0.95rem 1rem 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 7.25rem;
+    padding: 1.2rem 1rem 1.25rem;
     border: 1px solid var(--line);
     border-radius: 12px;
     background: white;
+    text-align: center;
 }
 
 .metricas dt {
@@ -244,7 +254,7 @@ main {
 }
 
 .metricas dd {
-    margin-top: 0.45rem;
+    margin: 0.45rem 0 0;
     font-size: clamp(1.25rem, 2vw, 1.7rem);
     font-weight: 600;
     letter-spacing: -0.03em;

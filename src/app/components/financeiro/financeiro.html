@@ -292,15 +292,10 @@
                 <td class="numero lucro">{{ totais.lucro | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</td>
                 <td class="numero">{{ totaisAnteriores.lucro | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</td>
               </tr>
-              <tr>
-                <td>Ticket médio</td>
-                <td class="numero">{{ totais.ticket | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</td>
-                <td class="numero">{{ totaisAnteriores.ticket | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</td>
-              </tr>
             </tbody>
           </table>
         </div>
-        <p class="nota">O ticket médio divide as vendas do período pela quantidade de vendas. A comparação usa a mesma quantidade de dias.</p>
+        <p class="nota">A comparação usa a mesma quantidade de dias.</p>
       </section>
     }
   </main>

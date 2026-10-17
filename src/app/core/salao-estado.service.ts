@@ -1921,6 +1921,461 @@ export class SalaoEstadoService {
     produto.status = 'normal';
   }
 
+  listarHorarios(): HorarioFuncionamento[] {
+    return this.horarios.map((horario) => ({ ...horario }));
+  }
+
+  salvarHorarios(horarios: HorarioFuncionamento[]): ResultadoOperacao {
+    const dias = new Set(horarios.map((horario) => horario.dia));
+    if (dias.size !== DIAS_SEMANA.length || DIAS_SEMANA.some((dia) => !dias.has(dia.dia))) {
+      return { ok: false, mensagem: 'Informe o horário de todos os dias da semana.' };
+    }
+
+    const normalizados: HorarioFuncionamento[] = [];
+    for (const horario of horarios) {
+      const abertura = this.normalizarHora(horario.abertura);
+      const fechamento = this.normalizarHora(horario.fechamento);
+      if (horario.ativo && (!abertura || !fechamento || this.minutos(abertura) >= this.minutos(fechamento))) {
+        return { ok: false, mensagem: `${nomeDia(horario.dia)}: o fechamento precisa ser depois da abertura.` };
+      }
+      normalizados.push({
+        dia: horario.dia,
+        abertura: abertura || horario.abertura,
+        fechamento: fechamento || horario.fechamento,
+        ativo: Boolean(horario.ativo),
+      });
+    }
+
+    this.substituir(this.horarios, normalizados);
+    return { ok: true, mensagem: 'Horários salvos.' };
+  }
+
+  listarBloqueios(): BloqueioAgenda[] {
+    return [...this.bloqueios].sort((a, b) => a.dataInicio.localeCompare(b.dataInicio) || a.id.localeCompare(b.id));
+  }
+
+  salvarBloqueio(dados: BloqueioCadastro): ResultadoOperacao {
+    const motivo = dados.motivo.trim();
+    if (!motivo) {
+      return { ok: false, mensagem: 'Informe o motivo do bloqueio.' };
+    }
+    if (!dataIsoValida(dados.dataInicio) || !dataIsoValida(dados.dataFim)) {
+      return { ok: false, mensagem: 'Informe um período válido.' };
+    }
+    if (dados.dataFim < dados.dataInicio) {
+      return { ok: false, mensagem: 'A data final não pode ser anterior à inicial.' };
+    }
+
+    let horaInicio = '';
+    let horaFim = '';
+    if (!dados.diaInteiro) {
+      horaInicio = this.normalizarHora(dados.horaInicio);
+      horaFim = this.normalizarHora(dados.horaFim);
+      if (!horaInicio || !horaFim || this.minutos(horaInicio) >= this.minutos(horaFim)) {
+        return { ok: false, mensagem: 'Informe um intervalo de horas válido.' };
+      }
+    }
+
+    const registro: BloqueioAgenda = {
+      id: dados.id ?? this.novoId('blq'),
+      dataInicio: dados.dataInicio,
+      dataFim: dados.dataFim,
+      horaInicio,
+      horaFim,
+      diaInteiro: dados.diaInteiro,
+      motivo,
+    };
+
+    if (dados.id) {
+      const indice = this.bloqueios.findIndex((item) => item.id === dados.id);
+      if (indice < 0) {
+        return { ok: false, mensagem: 'Bloqueio não encontrado.' };
+      }
+      this.bloqueios[indice] = registro;
+      return { ok: true, mensagem: 'Bloqueio atualizado.', id: registro.id };
+    }
+
+    this.bloqueios.push(registro);
+    return { ok: true, mensagem: 'Bloqueio salvo.', id: registro.id };
+  }
+
+  removerBloqueio(id: string): ResultadoOperacao {
+    const indice = this.bloqueios.findIndex((item) => item.id === id);
+    if (indice < 0) {
+      return { ok: false, mensagem: 'Bloqueio não encontrado.' };
+    }
+    this.bloqueios.splice(indice, 1);
+    return { ok: true, mensagem: 'Bloqueio removido.' };
+  }
+
+  listarUsuarios(): UsuarioSalao[] {
+    return this.usuarios.map((usuario) => ({ ...usuario, acessos: [...usuario.acessos] }));
+  }
+
+  cadastrarOperador(dados: UsuarioOperadorCadastro): ResultadoOperacao {
+    const nome = dados.nome.trim();
+    if (nome.length < 2) {
+      return { ok: false, mensagem: 'Informe o nome da funcionária.' };
+    }
+    if (this.usuarios.some((usuario) => usuario.nome.trim().toLowerCase() === nome.toLowerCase())) {
+      return { ok: false, mensagem: 'Já existe uma conta com esse nome.' };
+    }
+    const acessos = this.normalizarAcessos(dados.acessos);
+    if (!acessos?.length) {
+      return { ok: false, mensagem: 'Escolha ao menos uma tela.' };
+    }
+    const usuario: UsuarioSalao = {
+      id: this.novoId('usr'),
+      nome,
+      perfil: 'OPERADOR',
+      ativo: true,
+      acessos,
+    };
+    this.usuarios.push(usuario);
+    return { ok: true, mensagem: 'Funcionária cadastrada.', id: usuario.id };
+  }
+
+  definirAcessos(id: string, acessosInformados: ModuloAcesso[]): ResultadoOperacao {
+    const usuario = this.usuarios.find((item) => item.id === id);
+    if (!usuario) {
+      return { ok: false, mensagem: 'Usuário não encontrado.' };
+    }
+    if (usuario.perfil === 'ADMIN') {
+      return { ok: false, mensagem: 'A administradora já tem acesso a todas as telas.' };
+    }
+    const acessos = this.normalizarAcessos(acessosInformados);
+    if (!acessos?.length) {
+      return { ok: false, mensagem: 'Escolha ao menos uma tela.' };
+    }
+    usuario.acessos = acessos;
+    return { ok: true, mensagem: 'Acessos atualizados.' };
+  }
+
+  definirUsuarioAtivo(id: string, ativo: boolean): ResultadoOperacao {
+    const usuario = this.usuarios.find((item) => item.id === id);
+    if (!usuario) {
+      return { ok: false, mensagem: 'Usuário não encontrado.' };
+    }
+    if (usuario.perfil === 'ADMIN') {
+      return { ok: false, mensagem: 'A conta da administradora não pode ser desativada.' };
+    }
+    usuario.ativo = ativo;
+    return { ok: true, mensagem: ativo ? 'Funcionária reativada.' : 'Funcionária desativada.' };
+  }
+
+  listarCategorias(tipo: TipoCategoria): CategoriaSalao[] {
+    return this.categorias.filter((categoria) => categoria.tipo === tipo).map((categoria) => ({ ...categoria }));
+  }
+
+  produtosNaCategoria(nome: string): number {
+    const alvo = nome.trim().toLowerCase();
+    return this.produtos.filter((produto) => produto.categoria.trim().toLowerCase() === alvo).length;
+  }
+
+  salvarCategoria(dados: CategoriaCadastro): ResultadoOperacao {
+    const nome = dados.nome.trim();
+    if (nome.length < 2) {
+      return { ok: false, mensagem: 'Informe o nome da categoria.' };
+    }
+    const duplicada = this.categorias.some(
+      (categoria) =>
+        categoria.tipo === dados.tipo &&
+        categoria.nome.trim().toLowerCase() === nome.toLowerCase() &&
+        categoria.id !== dados.id,
+    );
+    if (duplicada) {
+      return { ok: false, mensagem: 'Já existe uma categoria com esse nome.' };
+    }
+
+    if (dados.id) {
+      const atual = this.categorias.find((categoria) => categoria.id === dados.id);
+      if (!atual || atual.tipo !== dados.tipo) {
+        return { ok: false, mensagem: 'Categoria não encontrada.' };
+      }
+      if (atual.tipo === 'estoque') {
+        for (const produto of this.produtos) {
+          if (produto.categoria.trim().toLowerCase() === atual.nome.trim().toLowerCase()) {
+            produto.categoria = nome;
+          }
+        }
+      }
+      atual.nome = nome;
+      return { ok: true, mensagem: 'Categoria atualizada.' };
+    }
+
+    const criada: CategoriaSalao = { id: this.novoId('cat'), nome, tipo: dados.tipo };
+    this.categorias.push(criada);
+    return { ok: true, mensagem: 'Categoria salva.', id: criada.id };
+  }
+
+  removerCategoria(id: string): ResultadoOperacao {
+    const indice = this.categorias.findIndex((categoria) => categoria.id === id);
+    if (indice < 0) {
+      return { ok: false, mensagem: 'Categoria não encontrada.' };
+    }
+    const categoria = this.categorias[indice];
+    if (categoria.tipo === 'estoque' && this.produtosNaCategoria(categoria.nome) > 0) {
+      return { ok: false, mensagem: 'Esta categoria ainda tem produtos no estoque.' };
+    }
+    this.categorias.splice(indice, 1);
+    return { ok: true, mensagem: 'Categoria removida.' };
+  }
+
+  listarFormas(): FormaConfigurada[] {
+    return this.formas.map((forma) => ({ ...forma }));
+  }
+
+  salvarFormas(formas: FormaConfigurada[]): ResultadoOperacao {
+    const validacao = this.validarFormas(formas, 'formas');
+    if (!validacao.ok) {
+      return validacao;
+    }
+    this.aplicarFormas(validacao.formas, 'formas');
+    return { ok: true, mensagem: 'Formas de pagamento salvas.' };
+  }
+
+  salvarTaxas(formas: FormaConfigurada[]): ResultadoOperacao {
+    const validacao = this.validarFormas(formas, 'taxas');
+    if (!validacao.ok) {
+      return validacao;
+    }
+    this.aplicarFormas(validacao.formas, 'taxas');
+    return { ok: true, mensagem: 'Taxas salvas.' };
+  }
+
+  maxParcelasCredito(): number {
+    const credito = this.formas.find((forma) => forma.forma === 'Cartão de crédito');
+    const maximo = Math.floor(Number(credito?.maxParcelas ?? 1));
+    if (!Number.isFinite(maximo) || maximo < 1) {
+      return 1;
+    }
+    return Math.min(24, maximo);
+  }
+
+  taxaDe(forma: FormaPagamento): number {
+    const configurada = this.formas.find((item) => item.forma === forma);
+    const taxa = Number(configurada?.taxaPercentual ?? 0);
+    if (!Number.isFinite(taxa) || taxa < 0) {
+      return 0;
+    }
+    return taxa;
+  }
+
+  alterarSenha(dados: TrocaSenha): ResultadoOperacao {
+    if (dados.atual !== this.senha) {
+      return { ok: false, mensagem: 'A senha atual não confere.' };
+    }
+    const nova = dados.nova.trim();
+    if (nova.length < 6) {
+      return { ok: false, mensagem: 'A nova senha precisa ter ao menos 6 caracteres.' };
+    }
+    if (nova !== dados.confirmacao.trim()) {
+      return { ok: false, mensagem: 'A confirmação não confere com a nova senha.' };
+    }
+    if (nova === this.senha) {
+      return { ok: false, mensagem: 'Escolha uma senha diferente da atual.' };
+    }
+    this.senha = nova;
+    return { ok: true, mensagem: 'Senha alterada.' };
+  }
+
+  exportarDados(): string {
+    return JSON.stringify(
+      {
+        versao: 1,
+        horarios: this.horarios,
+        bloqueios: this.bloqueios,
+        usuarios: this.usuarios,
+        categorias: this.categorias,
+        formas: this.formas,
+        profissionais: this.profissionais,
+        clientes: this.clientes,
+        servicos: this.servicos,
+        produtos: this.produtos,
+        agendamentos: this.agendamentos,
+        caixas: this.caixas,
+        movimentacoes: this.movimentacoes,
+        contas: this.contas,
+        lancamentosConta: this.lancamentosConta,
+        sangrias: this.sangrias,
+        sequencia: this.sequencia,
+      },
+      null,
+      2,
+    );
+  }
+
+  restaurarDados(texto: string): ResultadoOperacao {
+    let bruto: unknown;
+    try {
+      bruto = JSON.parse(texto);
+    } catch {
+      return { ok: false, mensagem: 'O arquivo não é um backup válido.' };
+    }
+    if (!bruto || typeof bruto !== 'object') {
+      return { ok: false, mensagem: 'O arquivo não é um backup válido.' };
+    }
+
+    const dados = bruto as Record<string, unknown>;
+    const horarios = this.comoLista<HorarioFuncionamento>(dados['horarios']);
+    const bloqueios = this.comoLista<BloqueioAgenda>(dados['bloqueios']);
+    const usuarios = this.comoLista<UsuarioSalao>(dados['usuarios']);
+    const categorias = this.comoLista<CategoriaSalao>(dados['categorias']);
+    const formas = this.comoLista<FormaConfigurada>(dados['formas']);
+    const profissionais = this.comoLista<Profissional>(dados['profissionais']);
+    const clientes = this.comoLista<Cliente>(dados['clientes']);
+    const servicos = this.comoLista<Servico>(dados['servicos']);
+    const produtos = this.comoLista<ProdutoEstoque>(dados['produtos']);
+    const agendamentos = this.comoLista<AgendamentoDia>(dados['agendamentos']);
+    const caixas = this.comoLista<CaixaRegistro>(dados['caixas']);
+    const movimentacoes = this.comoLista<Movimentacao>(dados['movimentacoes']);
+    const contas = this.comoLista<ContaContrato>(dados['contas']);
+    const lancamentos = this.comoLista<ContaLancamento>(dados['lancamentosConta']);
+    const sangrias = this.comoLista<Sangria>(dados['sangrias']);
+
+    if (
+      !horarios ||
+      !bloqueios ||
+      !usuarios ||
+      !categorias ||
+      !formas ||
+      !profissionais ||
+      !clientes ||
+      !servicos ||
+      !produtos ||
+      !agendamentos ||
+      !caixas ||
+      !movimentacoes ||
+      !contas ||
+      !lancamentos ||
+      !sangrias ||
+      !this.formasCompletas(formas)
+    ) {
+      return { ok: false, mensagem: 'O backup está incompleto.' };
+    }
+
+    this.substituir(
+      this.horarios,
+      horarios.map((horario) => ({ ...horario })),
+    );
+    this.substituir(
+      this.bloqueios,
+      bloqueios.map((bloqueio) => ({ ...bloqueio })),
+    );
+    this.substituir(
+      this.usuarios,
+      usuarios.map((usuario) => ({ ...usuario, acessos: [...usuario.acessos] })),
+    );
+    this.substituir(
+      this.categorias,
+      categorias.map((categoria) => ({ ...categoria })),
+    );
+    this.substituir(
+      this.formas,
+      formas.map((forma) => ({ ...forma })),
+    );
+    this.substituir(
+      this.profissionais,
+      profissionais.map((profissional) => ({ ...profissional })),
+    );
+    this.substituir(
+      this.clientes,
+      clientes.map((cliente) => ({ ...cliente })),
+    );
+    this.substituir(
+      this.servicos,
+      servicos.map((servico) => ({ ...servico })),
+    );
+    this.substituir(
+      this.produtos,
+      produtos.map((produto) => ({ ...produto })),
+    );
+    this.substituir(
+      this.agendamentos,
+      agendamentos.map((agendamento) => ({ ...agendamento })),
+    );
+    this.substituir(
+      this.caixas,
+      caixas.map((caixa) => ({ ...caixa })),
+    );
+    this.substituir(
+      this.movimentacoes,
+      movimentacoes.map((movimento) => ({
+        ...movimento,
+        itens: movimento.itens.map((item) => ({ ...item })),
+        pagamentos: movimento.pagamentos.map((pagamento) => ({ ...pagamento })),
+      })),
+    );
+    this.substituir(
+      this.contas,
+      contas.map((conta) => ({ ...conta })),
+    );
+    this.substituir(
+      this.lancamentosConta,
+      lancamentos.map((lancamento) => ({ ...lancamento })),
+    );
+    this.substituir(
+      this.sangrias,
+      sangrias.map((sangria) => ({ ...sangria })),
+    );
+    if (typeof dados['sequencia'] === 'number' && Number.isFinite(dados['sequencia'])) {
+      this.sequencia = dados['sequencia'];
+    }
+    return { ok: true, mensagem: 'Backup restaurado.' };
+  }
+
+  private validarFormas(
+    formas: FormaConfigurada[],
+    foco: 'formas' | 'taxas',
+  ): { ok: true; formas: FormaConfigurada[] } | { ok: false; mensagem: string } {
+    if (!this.formasCompletas(formas)) {
+      return { ok: false, mensagem: 'Informe todas as formas de pagamento.' };
+    }
+
+    const normalizadas = formas.map((forma) => ({ ...forma }));
+    if (foco === 'formas') {
+      if (!normalizadas.some((forma) => forma.ativa)) {
+        return { ok: false, mensagem: 'Deixe ao menos uma forma ativa.' };
+      }
+      for (const forma of normalizadas) {
+        if (forma.forma !== 'Cartão de crédito') {
+          forma.maxParcelas = 1;
+          continue;
+        }
+        const maximo = Math.floor(Number(forma.maxParcelas));
+        if (!Number.isInteger(maximo) || maximo < 1 || maximo > 24) {
+          return { ok: false, mensagem: 'O crédito aceita de 1 a 24 parcelas.' };
+        }
+        forma.maxParcelas = maximo;
+      }
+      return { ok: true, formas: normalizadas };
+    }
+
+    for (const forma of normalizadas) {
+      const taxa = Number(forma.taxaPercentual);
+      if (!Number.isFinite(taxa) || taxa < 0 || taxa > 100) {
+        return { ok: false, mensagem: `Informe uma taxa entre 0 e 100 para ${forma.forma}.` };
+      }
+      forma.taxaPercentual = arredondar(taxa);
+    }
+    return { ok: true, formas: normalizadas };
+  }
+
+  private aplicarFormas(formas: FormaConfigurada[], foco: 'formas' | 'taxas'): void {
+    for (const atual of this.formas) {
+      const nova = formas.find((forma) => forma.forma === atual.forma);
+      if (!nova) {
+        continue;
+      }
+      if (foco === 'formas') {
+        atual.ativa = nova.ativa;
+        atual.maxParcelas = nova.maxParcelas;
+        continue;
+      }
+      atual.taxaPercentual = nova.taxaPercentual;
+    }
+  }
+
   private formasCompletas(formas: FormaConfigurada[]): boolean {
     if (formas.length !== FORMAS_PAGAMENTO.length) {
       return false;
