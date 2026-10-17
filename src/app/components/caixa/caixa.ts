@@ -43,6 +43,7 @@ interface RascunhoAtendimento {
   produtos: LinhaVenda[];
   desconto: number | null;
   forma: FormaPagamento;
+  parcelas: number;
   dividir: boolean;
   forma2: FormaPagamento;
   valor2: number | null;
@@ -74,6 +75,7 @@ export class Caixa {
   linhas: LinhaVenda[] = [];
   desconto: number | null = 0;
   forma: FormaPagamento = 'Pix';
+  parcelas = 1;
   dividir = false;
   forma2: FormaPagamento = 'Dinheiro';
   valor2: number | null = null;
@@ -410,7 +412,7 @@ export class Caixa {
     }
     const itens = this.paraPedido(this.linhas);
     const desconto = Number(this.desconto ?? 0);
-    const pagamentos = this.montarPagamentos(this.totalVenda, this.forma, this.dividir, this.forma2, this.valor2);
+    const pagamentos = this.montarPagamentos(this.totalVenda, this.forma, this.parcelas, this.dividir, this.forma2, this.valor2);
     if (!pagamentos) {
       return;
     }
@@ -532,6 +534,7 @@ export class Caixa {
       produtos: [],
       desconto: 0,
       forma: 'Pix',
+      parcelas: 1,
       dividir: false,
       forma2: 'Dinheiro',
       valor2: null,
@@ -555,6 +558,7 @@ export class Caixa {
     const pagamentos = this.montarPagamentos(
       this.totalAtendimento,
       this.rascunho.forma,
+      this.rascunho.parcelas,
       this.rascunho.dividir,
       this.rascunho.forma2,
       this.rascunho.valor2,
@@ -606,7 +610,16 @@ export class Caixa {
   }
 
   textoPagamento(movimento: Movimentacao): string {
-    return movimento.pagamentos.map((pagamento) => pagamento.forma).join(' · ');
+    return movimento.pagamentos
+      .map((pagamento) =>
+        pagamento.parcelas && pagamento.parcelas > 1 ? `${pagamento.forma} ${pagamento.parcelas}x` : pagamento.forma,
+      )
+      .join(' · ');
+  }
+
+  get parcelasCredito(): number[] {
+    const maximo = this.estado.maxParcelasCredito();
+    return Array.from({ length: maximo }, (_, indice) => indice + 1);
   }
 
   hora(iso: string | undefined): string {
@@ -638,15 +651,16 @@ export class Caixa {
   private montarPagamentos(
     total: number,
     forma: FormaPagamento,
+    parcelas: number,
     dividir: boolean,
     forma2: FormaPagamento,
     valor2: number | null,
   ): PagamentoRegistrado[] | null {
     if (!dividir) {
       if (total === 0) {
-        return [{ forma, valor: 0 }];
+        return [this.comParcelas(forma, 0, parcelas)];
       }
-      return [{ forma, valor: total }];
+      return [this.comParcelas(forma, total, parcelas)];
     }
     const segunda = arredondar(Number(valor2));
     if (!Number.isFinite(segunda) || segunda <= 0 || segunda >= total) {
@@ -658,9 +672,18 @@ export class Caixa {
       return null;
     }
     return [
-      { forma, valor: arredondar(total - segunda) },
-      { forma: forma2, valor: segunda },
+      this.comParcelas(forma, arredondar(total - segunda), parcelas),
+      this.comParcelas(forma2, segunda, parcelas),
     ];
+  }
+
+  private comParcelas(forma: FormaPagamento, valor: number, parcelas: number): PagamentoRegistrado {
+    if (forma !== 'Cartão de crédito') {
+      return { forma, valor };
+    }
+    const maximo = this.estado.maxParcelasCredito();
+    const escolhida = Math.min(maximo, Math.max(1, Math.floor(Number(parcelas) || 1)));
+    return { forma, valor, parcelas: escolhida };
   }
 
   private paraPedido(linhas: LinhaVenda[]): ItemPedido[] {

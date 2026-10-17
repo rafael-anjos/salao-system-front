@@ -49,6 +49,104 @@ export interface ServicoCadastro {
   duracaoMinutos: number;
 }
 
+export interface HorarioFuncionamento {
+  dia: number;
+  abertura: string;
+  fechamento: string;
+  ativo: boolean;
+}
+
+export interface BloqueioAgenda {
+  id: string;
+  dataInicio: string;
+  dataFim: string;
+  horaInicio: string;
+  horaFim: string;
+  diaInteiro: boolean;
+  motivo: string;
+}
+
+export interface BloqueioCadastro {
+  id?: string;
+  dataInicio: string;
+  dataFim: string;
+  horaInicio: string;
+  horaFim: string;
+  diaInteiro: boolean;
+  motivo: string;
+}
+
+export interface TrocaSenha {
+  atual: string;
+  nova: string;
+  confirmacao: string;
+}
+
+export type PerfilUsuario = 'ADMIN' | 'OPERADOR';
+export type ModuloAcesso =
+  | 'inicio'
+  | 'agenda'
+  | 'caixa'
+  | 'financeiro'
+  | 'estoque'
+  | 'relatorios'
+  | 'servicos'
+  | 'profissionais'
+  | 'configuracoes';
+
+export const MODULOS_ACESSO: { id: ModuloAcesso; nome: string }[] = [
+  { id: 'inicio', nome: 'Início' },
+  { id: 'agenda', nome: 'Agenda' },
+  { id: 'caixa', nome: 'Caixa' },
+  { id: 'financeiro', nome: 'Financeiro' },
+  { id: 'estoque', nome: 'Estoque' },
+  { id: 'relatorios', nome: 'Relatórios' },
+  { id: 'servicos', nome: 'Serviços' },
+  { id: 'profissionais', nome: 'Profissionais' },
+  { id: 'configuracoes', nome: 'Configurações' },
+];
+
+export type TipoCategoria = 'estoque' | 'despesa';
+
+export interface UsuarioSalao {
+  id: string;
+  nome: string;
+  perfil: PerfilUsuario;
+  ativo: boolean;
+  acessos: ModuloAcesso[];
+}
+
+export interface UsuarioOperadorCadastro {
+  nome: string;
+  acessos: ModuloAcesso[];
+}
+
+export interface CategoriaSalao {
+  id: string;
+  nome: string;
+  tipo: TipoCategoria;
+}
+
+export interface CategoriaCadastro {
+  id?: string;
+  nome: string;
+  tipo: TipoCategoria;
+}
+
+export const DIAS_SEMANA: { dia: number; nome: string }[] = [
+  { dia: 1, nome: 'Segunda' },
+  { dia: 2, nome: 'Terça' },
+  { dia: 3, nome: 'Quarta' },
+  { dia: 4, nome: 'Quinta' },
+  { dia: 5, nome: 'Sexta' },
+  { dia: 6, nome: 'Sábado' },
+  { dia: 0, nome: 'Domingo' },
+];
+
+export function nomeDia(dia: number): string {
+  return DIAS_SEMANA.find((item) => item.dia === dia)?.nome ?? 'Dia';
+}
+
 export interface ProdutoEstoque {
   id: string;
   nome: string;
@@ -97,6 +195,14 @@ export interface ItemMovimento {
 export interface PagamentoRegistrado {
   forma: FormaPagamento;
   valor: number;
+  parcelas?: number;
+}
+
+export interface FormaConfigurada {
+  forma: FormaPagamento;
+  ativa: boolean;
+  taxaPercentual: number;
+  maxParcelas: number;
 }
 
 export interface Movimentacao {
@@ -151,6 +257,8 @@ export interface TotaisFinanceiros {
   entradas: number;
   saidas: number;
   descontos: number;
+  taxas: number;
+  liquido: number;
   porForma: { forma: FormaPagamento; total: number }[];
 }
 
@@ -290,11 +398,90 @@ function somar(valores: number[]): number {
   return arredondar(valores.reduce((total, valor) => total + valor, 0));
 }
 
+function dataIsoValida(valor: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(valor)) {
+    return false;
+  }
+  const [ano, mes, dia] = valor.split('-').map(Number);
+  const data = new Date(ano, mes - 1, dia);
+  return data.getFullYear() === ano && data.getMonth() === mes - 1 && data.getDate() === dia;
+}
+
 @Injectable({ providedIn: 'root' })
 export class SalaoEstadoService {
   readonly salao = 'Eula Moraes Studio';
+  readonly usuarioAtualId = 'usr-paula';
   readonly usuarioAtual = 'Paula';
-  readonly formasPagamento = FORMAS_PAGAMENTO;
+  readonly formas: FormaConfigurada[] = [
+    { forma: 'Dinheiro', ativa: true, taxaPercentual: 0, maxParcelas: 1 },
+    { forma: 'Pix', ativa: true, taxaPercentual: 0, maxParcelas: 1 },
+    { forma: 'Cartão de débito', ativa: true, taxaPercentual: 0, maxParcelas: 1 },
+    { forma: 'Cartão de crédito', ativa: true, taxaPercentual: 0, maxParcelas: 6 },
+  ];
+
+  get formasPagamento(): FormaPagamento[] {
+    return this.formas.filter((forma) => forma.ativa).map((forma) => forma.forma);
+  }
+
+  get formasConsulta(): FormaPagamento[] {
+    return this.formas.map((forma) => forma.forma);
+  }
+
+  readonly horarios: HorarioFuncionamento[] = [
+    { dia: 1, abertura: '09:00', fechamento: '19:00', ativo: true },
+    { dia: 2, abertura: '09:00', fechamento: '19:00', ativo: true },
+    { dia: 3, abertura: '09:00', fechamento: '19:00', ativo: true },
+    { dia: 4, abertura: '09:00', fechamento: '19:00', ativo: true },
+    { dia: 5, abertura: '09:00', fechamento: '19:00', ativo: true },
+    { dia: 6, abertura: '08:00', fechamento: '16:00', ativo: true },
+    { dia: 0, abertura: '09:00', fechamento: '13:00', ativo: false },
+  ];
+
+  /**
+   * Bloqueios da sessão.
+   * Contrato previsto: GET /api/disponibilidade/bloqueados e POST/DELETE /api/disponibilidade/bloqueio.
+   */
+  readonly bloqueios: BloqueioAgenda[] = [
+    {
+      id: 'blq-finados',
+      dataInicio: '2026-11-02',
+      dataFim: '2026-11-02',
+      horaInicio: '',
+      horaFim: '',
+      diaInteiro: true,
+      motivo: 'Feriado — Finados',
+    },
+    {
+      id: 'blq-folga',
+      dataInicio: '2026-10-20',
+      dataFim: '2026-10-20',
+      horaInicio: '14:00',
+      horaFim: '19:00',
+      diaInteiro: false,
+      motivo: 'Folga da equipe',
+    },
+  ];
+
+  private senha = '123456';
+
+  readonly usuarios: UsuarioSalao[] = [
+    {
+      id: 'usr-paula',
+      nome: 'Paula',
+      perfil: 'ADMIN',
+      ativo: true,
+      acessos: MODULOS_ACESSO.map((modulo) => modulo.id),
+    },
+  ];
+
+  readonly categorias: CategoriaSalao[] = [
+    { id: 'cat-coloracao', nome: 'Coloração', tipo: 'estoque' },
+    { id: 'cat-tratamento', nome: 'Tratamento', tipo: 'estoque' },
+    { id: 'cat-finalizacao', nome: 'Finalização', tipo: 'estoque' },
+    { id: 'cat-aluguel', nome: 'Aluguel', tipo: 'despesa' },
+    { id: 'cat-energia', nome: 'Energia', tipo: 'despesa' },
+    { id: 'cat-imposto', nome: 'Imposto', tipo: 'despesa' },
+  ];
 
   readonly profissionais: Profissional[] = [
     { id: 'pro-paula', nome: 'Paula', telefone: '(11) 98811-2040', ativo: true },
@@ -681,13 +868,26 @@ export class SalaoEstadoService {
     }
 
     const total = arredondar(subtotal - desconto);
-    const pagamentos = (pedido.pagamentos ?? []).map((pagamento) => ({
+    const pagamentos: PagamentoRegistrado[] = (pedido.pagamentos ?? []).map((pagamento) => ({
       forma: pagamento.forma,
       valor: arredondar(Number(pagamento.valor)),
+      parcelas: pagamento.parcelas,
     }));
 
     if (!pagamentos.length || pagamentos.some((pagamento) => !this.formasPagamento.includes(pagamento.forma))) {
-      return { ok: false, mensagem: 'Selecione a forma de pagamento.' };
+      return { ok: false, mensagem: 'Selecione uma forma de pagamento ativa.' };
+    }
+    for (const pagamento of pagamentos) {
+      if (pagamento.forma !== 'Cartão de crédito') {
+        pagamento.parcelas = undefined;
+        continue;
+      }
+      const parcelas = pagamento.parcelas ?? 1;
+      const maximo = this.maxParcelasCredito();
+      if (!Number.isInteger(parcelas) || parcelas < 1 || parcelas > maximo) {
+        return { ok: false, mensagem: `O crédito aceita de 1 a ${maximo} parcelas.` };
+      }
+      pagamento.parcelas = parcelas;
     }
     if (pagamentos.some((pagamento) => !Number.isFinite(pagamento.valor) || pagamento.valor < 0)) {
       return { ok: false, mensagem: 'Informe valores válidos para o pagamento.' };
@@ -757,6 +957,18 @@ export class SalaoEstadoService {
 
   agregar(movimentos: Movimentacao[]): TotaisFinanceiros {
     const vendas = movimentos.filter((item) => item.tipo === 'venda');
+    const totalVendas = somar(vendas.map((item) => item.valor));
+    const taxas = somar(
+      movimentos.flatMap((movimento) => {
+        if (movimento.tipo !== 'venda' && movimento.tipo !== 'estorno') {
+          return [];
+        }
+        const sinal = movimento.tipo === 'estorno' ? -1 : 1;
+        return movimento.pagamentos.map(
+          (pagamento) => (sinal * pagamento.valor * this.taxaDe(pagamento.forma)) / 100,
+        );
+      }),
+    );
     const porForma = new Map<FormaPagamento, number>();
 
     for (const movimento of movimentos) {
@@ -767,7 +979,7 @@ export class SalaoEstadoService {
     }
 
     return {
-      vendas: somar(vendas.map((item) => item.valor)),
+      vendas: totalVendas,
       servicos: somar(
         vendas.flatMap((venda) =>
           venda.itens
@@ -793,7 +1005,9 @@ export class SalaoEstadoService {
           .map((item) => item.valor),
       ),
       descontos: somar(vendas.map((item) => item.desconto)),
-      porForma: this.formasPagamento
+      taxas,
+      liquido: arredondar(totalVendas - taxas),
+      porForma: this.formasConsulta
         .map((forma) => ({ forma, total: arredondar(porForma.get(forma) ?? 0) }))
         .filter((item) => item.total !== 0),
     };
@@ -1705,6 +1919,35 @@ export class SalaoEstadoService {
       return;
     }
     produto.status = 'normal';
+  }
+
+  private formasCompletas(formas: FormaConfigurada[]): boolean {
+    if (formas.length !== FORMAS_PAGAMENTO.length) {
+      return false;
+    }
+    return FORMAS_PAGAMENTO.every((nome) => formas.some((forma) => forma.forma === nome));
+  }
+
+  private comoLista<T>(valor: unknown): T[] | null {
+    return Array.isArray(valor) ? (valor as T[]) : null;
+  }
+
+  private substituir<T>(destino: T[], origem: T[]): void {
+    destino.splice(0, destino.length, ...origem);
+  }
+
+  private normalizarAcessos(acessos: ModuloAcesso[]): ModuloAcesso[] | null {
+    const validos = new Set(MODULOS_ACESSO.map((modulo) => modulo.id));
+    const unicos: ModuloAcesso[] = [];
+    for (const acesso of acessos) {
+      if (!validos.has(acesso)) {
+        return null;
+      }
+      if (!unicos.includes(acesso)) {
+        unicos.push(acesso);
+      }
+    }
+    return unicos;
   }
 
   private novoId(prefixo: string): string {

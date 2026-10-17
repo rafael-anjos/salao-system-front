@@ -33,11 +33,20 @@ export class EstoqueComponent {
     return this.estado.produtos;
   }
 
-  categorias: CategoriaEstoque[] = [
-    { nome: 'Coloração', cadastrados: 3, criticos: 3, baixo: 0, normal: 0 },
-    { nome: 'Tratamento', cadastrados: 1, criticos: 0, baixo: 1, normal: 0 },
-    { nome: 'Finalização', cadastrados: 1, criticos: 0, baixo: 0, normal: 1 },
-  ];
+  get categorias(): CategoriaEstoque[] {
+    return this.estado.listarCategorias('estoque').map((categoria) => {
+      const produtos = this.produtos.filter(
+        (produto) => produto.categoria.toLowerCase() === categoria.nome.toLowerCase(),
+      );
+      return {
+        nome: categoria.nome,
+        cadastrados: produtos.length,
+        criticos: produtos.filter((produto) => produto.status === 'critico').length,
+        baixo: produtos.filter((produto) => produto.status === 'baixo').length,
+        normal: produtos.filter((produto) => produto.status === 'normal').length,
+      };
+    });
+  }
 
   get produtosFiltrados(): ProdutoEstoque[] {
     const busca = this.termoBusca.trim().toLowerCase();

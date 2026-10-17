@@ -93,9 +93,9 @@
             name="buscaProduto">
           <select [(ngModel)]="categoriaSelecionada" name="categoria">
             <option value="">Todas as categorias</option>
-            <option value="coloração">Coloração</option>
-            <option value="tratamento">Tratamento</option>
-            <option value="finalização">Finalização</option>
+            @for (categoria of categorias; track categoria.nome) {
+              <option [value]="categoria.nome.toLowerCase()">{{ categoria.nome }}</option>
+            }
           </select>
         </div>
 
@@ -226,9 +226,9 @@
                 Categoria
                 <select name="categoria">
                   <option value="">Selecione</option>
-                  <option value="coloracao">Coloração</option>
-                  <option value="tratamento">Tratamento</option>
-                  <option value="finalizacao">Finalização</option>
+                  @for (categoria of categorias; track categoria.nome) {
+                    <option [value]="categoria.nome">{{ categoria.nome }}</option>
+                  }
                 </select>
               </label>
             </div>
