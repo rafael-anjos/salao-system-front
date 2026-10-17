@@ -1,0 +1,248 @@
+<div class="container">
+  <main>
+    <header>
+      <h1>Configurações</h1>
+      <div class="header-btn">
+        <button class="notification-btn" type="button" aria-label="Notificações">
+          <img class="img-padrao" src="notification-green.svg" alt="">
+          <img class="img-hover" src="notification.svg" alt="">
+          <img class="img-active" src="notification-green.svg" alt="">
+        </button>
+        @if (aba === 'horarios') {
+          <button class="agendamento-btn" type="button" (click)="salvarHorarios()">Salvar horários</button>
+        }
+        @if (aba === 'bloqueios') {
+          <button class="agendamento-btn" type="button" (click)="abrirBloqueio()">Novo bloqueio</button>
+        }
+      </div>
+    </header>
+
+    <div class="conteudo">
+      <div class="resumo">
+        <article class="card-resumo">
+          <span class="card-label">Dias abertos</span>
+          <strong>{{ diasAbertos }}</strong>
+        </article>
+        <article class="card-resumo">
+          <span class="card-label">Bloqueios</span>
+          <strong>{{ bloqueios.length }}</strong>
+        </article>
+        <article class="card-resumo">
+          <span class="card-label">Conta</span>
+          <strong class="conta">{{ usuario }}</strong>
+        </article>
+      </div>
+
+      <div class="toolbar">
+        <div class="abas" role="tablist">
+          <button class="btn-aba" type="button" role="tab" [class.ativo]="aba === 'horarios'" (click)="mudarAba('horarios')">
+            Horários
+          </button>
+          <button class="btn-aba" type="button" role="tab" [class.ativo]="aba === 'bloqueios'" (click)="mudarAba('bloqueios')">
+            Bloqueios
+          </button>
+          <button class="btn-aba" type="button" role="tab" [class.ativo]="aba === 'senha'" (click)="mudarAba('senha')">
+            Senha
+          </button>
+        </div>
+      </div>
+
+      @if (aviso && !painel) {
+        <p class="ok" role="status">{{ aviso }}</p>
+      }
+
+      @if (aba === 'horarios') {
+        @if (erro) {
+          <p class="erro" role="alert">{{ erro }}</p>
+        }
+        <div class="container-tabela">
+          <table class="tabela">
+            <thead>
+              <tr>
+                <th>Dia</th>
+                <th>Abertura</th>
+                <th>Fechamento</th>
+                <th>Situação</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (horario of horarios; track horario.dia) {
+                <tr>
+                  <td class="nome">{{ nomeDia(horario.dia) }}</td>
+                  <td>
+                    <input
+                      type="time"
+                      [name]="'abertura-' + horario.dia"
+                      [(ngModel)]="horario.abertura"
+                      [disabled]="!horario.ativo"
+                      [attr.aria-label]="'Abertura de ' + nomeDia(horario.dia)">
+                  </td>
+                  <td>
+                    <input
+                      type="time"
+                      [name]="'fechamento-' + horario.dia"
+                      [(ngModel)]="horario.fechamento"
+                      [disabled]="!horario.ativo"
+                      [attr.aria-label]="'Fechamento de ' + nomeDia(horario.dia)">
+                  </td>
+                  <td>
+                    <button
+                      class="btn-status"
+                      type="button"
+                      [class.fechado]="!horario.ativo"
+                      [attr.aria-pressed]="horario.ativo"
+                      (click)="alternarDia(horario)">
+                      {{ horario.ativo ? 'Aberto' : 'Fechado' }}
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+          <div class="rodape-tabela">
+            <span>Abertura e fechamento de cada dia. Dias fechados ficam fora da agenda.</span>
+          </div>
+        </div>
+      }
+
+      @if (aba === 'bloqueios') {
+        <div class="container-tabela">
+          <table class="tabela">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Horário</th>
+                <th>Motivo</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (bloqueio of bloqueios; track bloqueio.id) {
+                <tr>
+                  <td class="nome">{{ periodo(bloqueio) }}</td>
+                  <td>{{ horarioBloqueio(bloqueio) }}</td>
+                  <td>{{ bloqueio.motivo }}</td>
+                  <td>
+                    <div class="acoes">
+                      <button class="btn-acao" type="button" (click)="abrirEdicao(bloqueio)">Editar</button>
+                      <button class="btn-acao" type="button" (click)="abrirRemocao(bloqueio)">Remover</button>
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td class="vazio" colspan="4">Nenhum feriado ou folga bloqueado.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+          <div class="rodape-tabela">
+            <span>Mostrando {{ bloqueios.length }} bloqueios</span>
+          </div>
+        </div>
+      }
+
+      @if (aba === 'senha') {
+        <section class="painel-senha">
+          <h2>Alterar senha</h2>
+          <p>A nova senha vale para a conta de {{ usuario }} nesta sessão.</p>
+          <form (ngSubmit)="alterarSenha()">
+            <label class="field">
+              Senha atual
+              <input type="password" name="senhaAtual" [(ngModel)]="senhaAtual" autocomplete="current-password" required>
+            </label>
+            <label class="field">
+              Nova senha
+              <input type="password" name="senhaNova" [(ngModel)]="senhaNova" autocomplete="new-password" required>
+            </label>
+            <label class="field">
+              Confirmar nova senha
+              <input type="password" name="senhaConfirmacao" [(ngModel)]="senhaConfirmacao" autocomplete="new-password" required>
+            </label>
+            @if (erro) {
+              <p class="erro" role="alert">{{ erro }}</p>
+            }
+            <div class="foot-btn senha-acoes">
+              <button class="save" type="submit">Alterar senha</button>
+            </div>
+          </form>
+        </section>
+      }
+    </div>
+  </main>
+
+  @if (painel) {
+    <div class="overlay" (click)="fecharPainel()">
+      <div
+        class="sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="config-titulo"
+        (click)="$event.stopPropagation()">
+        <header class="titulo">
+          <h2 id="config-titulo">{{ tituloPainel }}</h2>
+          @if (painel === 'bloqueio') {
+            <p>Feriados e folgas, com o motivo. O bloqueio pode ser o dia inteiro ou só um horário.</p>
+          } @else {
+            <p>{{ alvo?.motivo }} sai da lista de datas bloqueadas.</p>
+          }
+        </header>
+
+        @if (painel === 'bloqueio') {
+          <form (ngSubmit)="salvarBloqueio()">
+            <div class="datas">
+              <label class="field">
+                Data inicial
+                <input type="date" name="dataInicio" [(ngModel)]="dataInicio" required>
+              </label>
+              <label class="field">
+                Data final
+                <input type="date" name="dataFim" [(ngModel)]="dataFim" [min]="dataInicio">
+              </label>
+            </div>
+
+            <label class="check">
+              <input type="checkbox" name="diaInteiro" [(ngModel)]="diaInteiro">
+              Dia inteiro
+            </label>
+
+            @if (!diaInteiro) {
+              <div class="datas">
+                <label class="field">
+                  Início
+                  <input type="time" name="horaInicio" [(ngModel)]="horaInicio" required>
+                </label>
+                <label class="field">
+                  Fim
+                  <input type="time" name="horaFim" [(ngModel)]="horaFim" required>
+                </label>
+              </div>
+            }
+
+            <label class="field">
+              Motivo
+              <input type="text" name="motivo" [(ngModel)]="motivo" placeholder="Feriado, folga ou outro motivo" required>
+            </label>
+
+            @if (erro) {
+              <p class="erro" role="alert">{{ erro }}</p>
+            }
+
+            <div class="foot-btn">
+              <button class="cancel" type="button" (click)="fecharPainel()">Cancelar</button>
+              <button class="save" type="submit">Salvar</button>
+            </div>
+          </form>
+        } @else {
+          @if (erro) {
+            <p class="erro" role="alert">{{ erro }}</p>
+          }
+          <div class="foot-btn">
+            <button class="cancel" type="button" (click)="fecharPainel()">Cancelar</button>
+            <button class="save" type="button" (click)="confirmarRemocao()">Remover</button>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

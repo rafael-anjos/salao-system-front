@@ -49,6 +49,53 @@ export interface ServicoCadastro {
   duracaoMinutos: number;
 }
 
+export interface HorarioFuncionamento {
+  dia: number;
+  abertura: string;
+  fechamento: string;
+  ativo: boolean;
+}
+
+export interface BloqueioAgenda {
+  id: string;
+  dataInicio: string;
+  dataFim: string;
+  horaInicio: string;
+  horaFim: string;
+  diaInteiro: boolean;
+  motivo: string;
+}
+
+export interface BloqueioCadastro {
+  id?: string;
+  dataInicio: string;
+  dataFim: string;
+  horaInicio: string;
+  horaFim: string;
+  diaInteiro: boolean;
+  motivo: string;
+}
+
+export interface TrocaSenha {
+  atual: string;
+  nova: string;
+  confirmacao: string;
+}
+
+export const DIAS_SEMANA: { dia: number; nome: string }[] = [
+  { dia: 1, nome: 'Segunda' },
+  { dia: 2, nome: 'Terça' },
+  { dia: 3, nome: 'Quarta' },
+  { dia: 4, nome: 'Quinta' },
+  { dia: 5, nome: 'Sexta' },
+  { dia: 6, nome: 'Sábado' },
+  { dia: 0, nome: 'Domingo' },
+];
+
+export function nomeDia(dia: number): string {
+  return DIAS_SEMANA.find((item) => item.dia === dia)?.nome ?? 'Dia';
+}
+
 export interface ProdutoEstoque {
   id: string;
   nome: string;
@@ -190,11 +237,57 @@ function somar(valores: number[]): number {
   return arredondar(valores.reduce((total, valor) => total + valor, 0));
 }
 
+function dataIsoValida(valor: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(valor)) {
+    return false;
+  }
+  const [ano, mes, dia] = valor.split('-').map(Number);
+  const data = new Date(ano, mes - 1, dia);
+  return data.getFullYear() === ano && data.getMonth() === mes - 1 && data.getDate() === dia;
+}
+
 @Injectable({ providedIn: 'root' })
 export class SalaoEstadoService {
   readonly salao = 'Eula Moraes Studio';
   readonly usuarioAtual = 'Paula';
   readonly formasPagamento = FORMAS_PAGAMENTO;
+
+  readonly horarios: HorarioFuncionamento[] = [
+    { dia: 1, abertura: '09:00', fechamento: '19:00', ativo: true },
+    { dia: 2, abertura: '09:00', fechamento: '19:00', ativo: true },
+    { dia: 3, abertura: '09:00', fechamento: '19:00', ativo: true },
+    { dia: 4, abertura: '09:00', fechamento: '19:00', ativo: true },
+    { dia: 5, abertura: '09:00', fechamento: '19:00', ativo: true },
+    { dia: 6, abertura: '08:00', fechamento: '16:00', ativo: true },
+    { dia: 0, abertura: '09:00', fechamento: '13:00', ativo: false },
+  ];
+
+  /**
+   * Bloqueios da sessão.
+   * Contrato previsto: GET /api/disponibilidade/bloqueados e POST/DELETE /api/disponibilidade/bloqueio.
+   */
+  readonly bloqueios: BloqueioAgenda[] = [
+    {
+      id: 'blq-finados',
+      dataInicio: '2026-11-02',
+      dataFim: '2026-11-02',
+      horaInicio: '',
+      horaFim: '',
+      diaInteiro: true,
+      motivo: 'Feriado — Finados',
+    },
+    {
+      id: 'blq-folga',
+      dataInicio: '2026-10-20',
+      dataFim: '2026-10-20',
+      horaInicio: '14:00',
+      horaFim: '19:00',
+      diaInteiro: false,
+      motivo: 'Folga da equipe',
+    },
+  ];
+
+  private senha = '123456';
 
   readonly profissionais: Profissional[] = [
     { id: 'pro-paula', nome: 'Paula', telefone: '(11) 98811-2040', ativo: true },
@@ -988,6 +1081,135 @@ export class SalaoEstadoService {
       mensagem: ativo ? 'Serviço reativado.' : 'Serviço desativado.',
       id: servico.id,
     };
+  }
+
+  listarHorarios(): HorarioFuncionamento[] {
+    return this.horarios.map((horario) => ({ ...horario }));
+  }
+
+  salvarHorarios(horarios: HorarioFuncionamento[]): ResultadoOperacao {
+    if (horarios.length !== DIAS_SEMANA.length) {
+      return { ok: false, mensagem: 'Informe o horário de todos os dias da semana.' };
+    }
+
+    const vistos = new Set<number>();
+    for (const horario of horarios) {
+      if (!DIAS_SEMANA.some((dia) => dia.dia === horario.dia) || vistos.has(horario.dia)) {
+        return { ok: false, mensagem: 'Dia da semana inválido.' };
+      }
+      vistos.add(horario.dia);
+      if (!horario.ativo) {
+        continue;
+      }
+      const abertura = this.normalizarHora(horario.abertura);
+      const fechamento = this.normalizarHora(horario.fechamento);
+      if (!abertura || !fechamento) {
+        return { ok: false, mensagem: `Informe abertura e fechamento de ${nomeDia(horario.dia)}.` };
+      }
+      if (this.minutos(abertura) >= this.minutos(fechamento)) {
+        return { ok: false, mensagem: `O fechamento de ${nomeDia(horario.dia)} precisa ser depois da abertura.` };
+      }
+    }
+
+    for (const horario of horarios) {
+      const atual = this.horarios.find((item) => item.dia === horario.dia);
+      if (!atual) {
+        return { ok: false, mensagem: 'Dia da semana inválido.' };
+      }
+      atual.ativo = horario.ativo;
+      const abertura = this.normalizarHora(horario.abertura);
+      const fechamento = this.normalizarHora(horario.fechamento);
+      if (abertura) {
+        atual.abertura = abertura;
+      }
+      if (fechamento) {
+        atual.fechamento = fechamento;
+      }
+    }
+
+    return { ok: true, mensagem: 'Horários salvos.' };
+  }
+
+  listarBloqueios(): BloqueioAgenda[] {
+    return [...this.bloqueios].sort((a, b) => a.dataInicio.localeCompare(b.dataInicio) || a.horaInicio.localeCompare(b.horaInicio));
+  }
+
+  salvarBloqueio(dados: BloqueioCadastro): ResultadoOperacao {
+    const motivo = dados.motivo.trim();
+    if (motivo.length < 3) {
+      return { ok: false, mensagem: 'Informe o motivo do bloqueio.' };
+    }
+    if (!dataIsoValida(dados.dataInicio) || !dataIsoValida(dados.dataFim)) {
+      return { ok: false, mensagem: 'Informe a data do bloqueio.' };
+    }
+    if (dados.dataFim < dados.dataInicio) {
+      return { ok: false, mensagem: 'A data final precisa ser igual ou posterior à inicial.' };
+    }
+
+    let horaInicio = '';
+    let horaFim = '';
+    if (!dados.diaInteiro) {
+      horaInicio = this.normalizarHora(dados.horaInicio);
+      horaFim = this.normalizarHora(dados.horaFim);
+      if (!horaInicio || !horaFim) {
+        return { ok: false, mensagem: 'Informe o horário do bloqueio ou marque o dia inteiro.' };
+      }
+      if (this.minutos(horaInicio) >= this.minutos(horaFim)) {
+        return { ok: false, mensagem: 'O horário final precisa ser depois do inicial.' };
+      }
+    }
+
+    if (dados.id) {
+      const atual = this.bloqueios.find((item) => item.id === dados.id);
+      if (!atual) {
+        return { ok: false, mensagem: 'Bloqueio não encontrado.' };
+      }
+      atual.dataInicio = dados.dataInicio;
+      atual.dataFim = dados.dataFim;
+      atual.horaInicio = horaInicio;
+      atual.horaFim = horaFim;
+      atual.diaInteiro = dados.diaInteiro;
+      atual.motivo = motivo;
+      return { ok: true, mensagem: 'Bloqueio atualizado.', id: atual.id };
+    }
+
+    const criado: BloqueioAgenda = {
+      id: this.novoId('blq'),
+      dataInicio: dados.dataInicio,
+      dataFim: dados.dataFim,
+      horaInicio,
+      horaFim,
+      diaInteiro: dados.diaInteiro,
+      motivo,
+    };
+    this.bloqueios.push(criado);
+    return { ok: true, mensagem: 'Bloqueio registrado.', id: criado.id };
+  }
+
+  removerBloqueio(id: string): ResultadoOperacao {
+    const indice = this.bloqueios.findIndex((item) => item.id === id);
+    if (indice < 0) {
+      return { ok: false, mensagem: 'Bloqueio não encontrado.' };
+    }
+    this.bloqueios.splice(indice, 1);
+    return { ok: true, mensagem: 'Bloqueio removido.', id };
+  }
+
+  alterarSenha(dados: TrocaSenha): ResultadoOperacao {
+    if (!dados.atual || dados.atual !== this.senha) {
+      return { ok: false, mensagem: 'A senha atual não confere.' };
+    }
+    if (dados.nova.length < 6) {
+      return { ok: false, mensagem: 'A nova senha precisa ter pelo menos 6 caracteres.' };
+    }
+    if (dados.nova !== dados.confirmacao) {
+      return { ok: false, mensagem: 'A confirmação não confere com a nova senha.' };
+    }
+    if (dados.nova === dados.atual) {
+      return { ok: false, mensagem: 'A nova senha precisa ser diferente da atual.' };
+    }
+    this.senha = dados.nova;
+    return { ok: true, mensagem: 'Senha alterada.' };
   }
 
   private obterOuCriarCliente(nome: string): Cliente {
