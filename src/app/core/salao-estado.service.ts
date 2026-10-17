@@ -154,8 +154,24 @@ export interface ProdutoEstoque {
   estoqueAtual: number;
   estoqueMinimo: number;
   preco: number;
+  precoCusto?: number;
   status: StatusEstoque;
   uso: UsoProduto;
+  unidade?: string;
+  codigoBarras?: string;
+}
+
+export interface ProdutoCadastro {
+  id?: string;
+  nome: string;
+  categoria: string;
+  uso: UsoProduto;
+  unidade: string;
+  codigoBarras: string;
+  precoCusto: number;
+  preco: number;
+  estoqueMinimo: number;
+  estoqueAtual: number;
 }
 
 export interface AgendamentoDia {
@@ -1909,6 +1925,14 @@ export class SalaoEstadoService {
     return `(${ddd}) ${numero.slice(0, 4)}-${numero.slice(4)}`;
   }
 
+  private inteiroNaoNegativo(valor: number): number | null {
+    const numero = Number(valor);
+    if (!Number.isFinite(numero) || numero < 0 || !Number.isInteger(numero)) {
+      return null;
+    }
+    return numero;
+  }
+
   private atualizarStatus(produto: ProdutoEstoque): void {
     if (produto.estoqueAtual <= produto.estoqueMinimo / 4) {
       produto.status = 'critico';
@@ -2061,6 +2085,131 @@ export class SalaoEstadoService {
     }
     usuario.ativo = ativo;
     return { ok: true, mensagem: ativo ? 'Funcionária reativada.' : 'Funcionária desativada.' };
+  }
+
+  salvarProduto(dados: ProdutoCadastro): ResultadoOperacao {
+    const nome = dados.nome.trim();
+    const codigoBarras = dados.codigoBarras.trim();
+    const unidade = dados.unidade.trim();
+    const preco = arredondar(Number(dados.preco));
+    const precoCusto = arredondar(Number(dados.precoCusto));
+    const estoqueAtual = this.inteiroNaoNegativo(dados.estoqueAtual);
+    const estoqueMinimo = this.inteiroNaoNegativo(dados.estoqueMinimo);
+
+    if (nome.length < 2) {
+      return { ok: false, mensagem: 'Informe o nome do produto.' };
+    }
+    if (dados.uso !== 'salao' && dados.uso !== 'venda') {
+      return { ok: false, mensagem: 'Selecione o tipo de uso.' };
+    }
+
+    const categoria = this.categorias.find(
+      (item) => item.tipo === 'estoque' && item.nome.trim().toLowerCase() === dados.categoria.trim().toLowerCase(),
+    );
+    if (!categoria) {
+      return { ok: false, mensagem: 'Selecione uma categoria de estoque.' };
+    }
+    if (unidade && unidade !== 'ml' && unidade !== 'g') {
+      return { ok: false, mensagem: 'A unidade precisa ser ml ou g.' };
+    }
+    if (!Number.isFinite(precoCusto) || precoCusto < 0) {
+      return { ok: false, mensagem: 'Informe um preço de custo válido.' };
+    }
+    if (!Number.isFinite(preco) || preco < 0) {
+      return { ok: false, mensagem: 'Informe um preço de venda válido.' };
+    }
+    if (estoqueMinimo === null) {
+      return { ok: false, mensagem: 'Informe um estoque mínimo inteiro.' };
+    }
+    if (estoqueAtual === null) {
+      return { ok: false, mensagem: 'Informe um estoque atual inteiro.' };
+    }
+
+    const nomeIgual = nome.toLowerCase();
+    const duplicado = this.produtos.some(
+      (produto) => produto.id !== dados.id && produto.nome.trim().toLowerCase() === nomeIgual,
+    );
+    if (duplicado) {
+      return { ok: false, mensagem: 'Já existe um produto com esse nome.' };
+    }
+    if (codigoBarras) {
+      const codigoDuplicado = this.produtos.some(
+        (produto) => produto.id !== dados.id && produto.codigoBarras?.trim() === codigoBarras,
+      );
+      if (codigoDuplicado) {
+        return { ok: false, mensagem: 'Já existe um produto com esse código de barras.' };
+      }
+    }
+
+    if (dados.id) {
+      const atual = this.produtos.find((produto) => produto.id === dados.id);
+      if (!atual) {
+        return { ok: false, mensagem: 'Produto não encontrado.' };
+      }
+      atual.nome = nome;
+      atual.categoria = categoria.nome;
+      atual.uso = dados.uso;
+      atual.unidade = unidade;
+      atual.codigoBarras = codigoBarras;
+      atual.precoCusto = precoCusto;
+      atual.preco = preco;
+      atual.estoqueMinimo = estoqueMinimo;
+      atual.estoqueAtual = estoqueAtual;
+      this.atualizarStatus(atual);
+      return { ok: true, mensagem: 'Produto atualizado.', id: atual.id };
+    }
+
+    const criado: ProdutoEstoque = {
+      id: this.novoId('prd'),
+      nome,
+      categoria: categoria.nome,
+      uso: dados.uso,
+      unidade,
+      codigoBarras,
+      precoCusto,
+      preco,
+      estoqueMinimo,
+      estoqueAtual,
+      status: 'normal',
+    };
+    this.atualizarStatus(criado);
+    this.produtos.push(criado);
+    return { ok: true, mensagem: 'Produto cadastrado.', id: criado.id };
+  }
+
+  movimentarProduto(id: string, tipo: 'entrada' | 'saida', quantidadeInformada: number): ResultadoOperacao {
+    const produto = this.produtos.find((item) => item.id === id);
+    if (!produto) {
+      return { ok: false, mensagem: 'Produto não encontrado.' };
+    }
+
+    const quantidade = this.inteiroNaoNegativo(quantidadeInformada);
+    if (quantidade === null || quantidade < 1) {
+      return { ok: false, mensagem: 'Informe uma quantidade inteira maior que zero.' };
+    }
+    if (tipo === 'saida' && quantidade > produto.estoqueAtual) {
+      return {
+        ok: false,
+        mensagem: `Só há ${produto.estoqueAtual} un. de ${produto.nome} em estoque.`,
+      };
+    }
+
+    produto.estoqueAtual += tipo === 'entrada' ? quantidade : -quantidade;
+    this.atualizarStatus(produto);
+    return {
+      ok: true,
+      mensagem: tipo === 'entrada' ? 'Entrada registrada.' : 'Saída registrada.',
+      id: produto.id,
+    };
+  }
+
+  removerProduto(id: string): ResultadoOperacao {
+    const indice = this.produtos.findIndex((produto) => produto.id === id);
+    if (indice < 0) {
+      return { ok: false, mensagem: 'Produto não encontrado.' };
+    }
+    this.produtos.splice(indice, 1);
+    return { ok: true, mensagem: 'Produto excluído.' };
   }
 
   listarCategorias(tipo: TipoCategoria): CategoriaSalao[] {

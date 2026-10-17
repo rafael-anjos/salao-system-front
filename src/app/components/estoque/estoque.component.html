@@ -81,7 +81,9 @@
         @if (totalAbaixoDoMinimo > 0) {
           <div class="alerta">
             <p>{{ totalAbaixoDoMinimo }} {{ totalAbaixoDoMinimo === 1 ? 'produto está' : 'produtos estão' }} abaixo do mínimo.</p>
-            <button class="btn-link" type="button">Ver críticos</button>
+            <button class="btn-link" type="button" (click)="alternarCriticos()">
+              {{ somenteAbaixo ? 'Ver todos' : 'Ver críticos' }}
+            </button>
           </div>
         }
 
@@ -113,9 +115,12 @@
               </tr>
             </thead>
             <tbody>
-              @for (produto of produtosFiltrados; track produto.nome) {
+              @for (produto of produtosFiltrados; track produto.id) {
                 <tr>
-                  <td class="nome">{{ produto.nome }}</td>
+                  <td class="nome">
+                    {{ produto.nome }}
+                    <span class="detalhe">{{ rotuloUso(produto.uso) }}</span>
+                  </td>
                   <td>{{ produto.categoria }}</td>
                   <td [class]="'qtd ' + produto.status">{{ produto.estoqueAtual }}</td>
                   <td>{{ produto.estoqueMinimo }}</td>
@@ -127,9 +132,10 @@
                   </td>
                   <td>
                     <div class="acoes">
-                      <button class="btn-acao" type="button">Entrada</button>
-                      <button class="btn-acao" type="button">Saída</button>
-                      <button class="btn-acao" type="button">Editar</button>
+                      <button class="btn-acao" type="button" (click)="abrirMovimento(produto, 'entrada')">Entrada</button>
+                      <button class="btn-acao" type="button" (click)="abrirMovimento(produto, 'saida')">Saída</button>
+                      <button class="btn-acao" type="button" (click)="abrirEdicao(produto)">Editar</button>
+                      <button class="btn-acao perigo" type="button" (click)="abrirExclusao(produto)">Excluir</button>
                     </div>
                   </td>
                 </tr>
@@ -161,7 +167,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (categoria of categorias; track categoria.nome) {
+              @for (categoria of categorias; track categoria.id) {
                 <tr>
                   <td class="nome">{{ categoria.nome }}</td>
                   <td>{{ categoria.cadastrados }}</td>
@@ -170,10 +176,15 @@
                   <td class="qtd normal">{{ categoria.normal }}</td>
                   <td>
                     <div class="acoes">
-                      <button class="btn-acao" type="button">Ver</button>
-                      <button class="btn-acao" type="button">Editar</button>
+                      <button class="btn-acao" type="button" (click)="verCategoria(categoria)">Ver</button>
+                      <button class="btn-acao" type="button" (click)="abrirEdicaoCategoria(categoria)">Editar</button>
+                      <button class="btn-acao perigo" type="button" (click)="abrirExclusaoCategoria(categoria)">Excluir</button>
                     </div>
                   </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td class="vazio" colspan="6">Nenhuma categoria cadastrada.</td>
                 </tr>
               }
             </tbody>
@@ -187,47 +198,53 @@
     </div>
   </main>
 
-  @if (mostrarCadastro) {
-    <div class="overlay" (click)="fecharCadastro()">
+  @if (painel) {
+    <div class="overlay" (click)="fecharPainel()">
       <div
         class="sheet"
         role="dialog"
         aria-modal="true"
-        [attr.aria-labelledby]="'cadastro-titulo'"
+        aria-labelledby="cadastro-titulo"
         (click)="$event.stopPropagation()">
         <header class="titulo">
-          <h2 id="cadastro-titulo">{{ rotuloCadastro }}</h2>
+          <h2 id="cadastro-titulo">{{ tituloPainel }}</h2>
           <p>
-            @if (abaAtiva === 'produtos') {
-              Cadastre as informações essenciais do produto.
+            @if (painel === 'produto') {
+              Nome, uso, categoria, preços e quantidades do produto.
+            } @else if (painel === 'categoria') {
+              O nome organiza os produtos e acompanha os itens já cadastrados.
+            } @else if (painel === 'movimento') {
+              {{ produtoAlvo?.nome }} tem {{ produtoAlvo?.estoqueAtual }} un. em estoque.
+            } @else if (painel === 'excluir-produto') {
+              {{ produtoAlvo?.nome }} sai da lista e deixa de aparecer nas vendas.
             } @else {
-              Crie uma categoria para organizar o estoque.
+              {{ categoriaAlvo?.nome }} só pode ser excluída se não tiver produtos.
             }
           </p>
         </header>
 
-        @if (abaAtiva === 'produtos') {
-          <form>
+        @if (painel === 'produto') {
+          <form (ngSubmit)="salvarProduto()">
             <label class="field">
               Nome
-              <input type="text" name="nome" placeholder="Nome do produto">
+              <input type="text" name="nome" [(ngModel)]="nome" placeholder="Nome do produto" required>
             </label>
 
             <div class="row">
               <label class="field">
                 Tipo de uso
-                <select name="uso">
+                <select name="uso" [(ngModel)]="uso" required>
                   <option value="">Selecione</option>
-                  <option value="interno">Uso no salão</option>
-                  <option value="revenda">Venda</option>
+                  <option value="salao">Uso no salão</option>
+                  <option value="venda">Venda</option>
                 </select>
               </label>
               <label class="field">
                 Categoria
-                <select name="categoria">
+                <select name="categoria" [(ngModel)]="categoria" required>
                   <option value="">Selecione</option>
-                  @for (categoria of categorias; track categoria.nome) {
-                    <option [value]="categoria.nome">{{ categoria.nome }}</option>
+                  @for (item of categorias; track item.id) {
+                    <option [value]="item.nome">{{ item.nome }}</option>
                   }
                 </select>
               </label>
@@ -236,7 +253,7 @@
             <div class="row">
               <label class="field">
                 Unidade
-                <select name="unidade">
+                <select name="unidade" [(ngModel)]="unidade">
                   <option value="">Opcional</option>
                   <option value="ml">ml</option>
                   <option value="g">g</option>
@@ -244,45 +261,89 @@
               </label>
               <label class="field">
                 Código de barras
-                <input type="text" name="codigo" placeholder="Opcional">
+                <input type="text" name="codigo" [(ngModel)]="codigoBarras" placeholder="Opcional">
               </label>
             </div>
 
             <div class="row">
               <label class="field">
                 Preço de custo
-                <input type="number" name="custo" placeholder="0,00">
+                <input type="number" name="custo" min="0" step="0.01" [(ngModel)]="precoCusto" placeholder="0,00" required>
               </label>
               <label class="field">
                 Preço de venda
-                <input type="number" name="venda" placeholder="0,00">
+                <input type="number" name="venda" min="0" step="0.01" [(ngModel)]="preco" placeholder="0,00" required>
               </label>
             </div>
 
             <div class="row">
               <label class="field">
                 Estoque mínimo
-                <input type="number" name="minimo" placeholder="5">
+                <input type="number" name="minimo" min="0" step="1" [(ngModel)]="estoqueMinimo" placeholder="5" required>
               </label>
               <label class="field">
                 Estoque atual
-                <input type="number" name="atual" placeholder="10">
+                <input type="number" name="atual" min="0" step="1" [(ngModel)]="estoqueAtual" placeholder="10" required>
               </label>
+            </div>
+
+            @if (erro) {
+              <p class="erro" role="alert">{{ erro }}</p>
+            }
+
+            <div class="foot-btn">
+              <button class="cancel" type="button" (click)="fecharPainel()">Cancelar</button>
+              <button class="save" type="submit">Salvar</button>
+            </div>
+          </form>
+        } @else if (painel === 'categoria') {
+          <form (ngSubmit)="salvarCategoria()">
+            <label class="field">
+              Nome da categoria
+              <input type="text" name="categoriaNome" [(ngModel)]="nomeCategoria" placeholder="Ex: Coloração" required>
+            </label>
+
+            @if (erro) {
+              <p class="erro" role="alert">{{ erro }}</p>
+            }
+
+            <div class="foot-btn">
+              <button class="cancel" type="button" (click)="fecharPainel()">Cancelar</button>
+              <button class="save" type="submit">Salvar</button>
+            </div>
+          </form>
+        } @else if (painel === 'movimento') {
+          <form (ngSubmit)="confirmarMovimento()">
+            <label class="field">
+              Quantidade
+              <input type="number" name="quantidade" min="1" step="1" [(ngModel)]="quantidade" placeholder="1" required>
+            </label>
+
+            @if (erro) {
+              <p class="erro" role="alert">{{ erro }}</p>
+            }
+
+            <div class="foot-btn">
+              <button class="cancel" type="button" (click)="fecharPainel()">Cancelar</button>
+              <button class="save" type="submit">
+                {{ movimentoTipo === 'entrada' ? 'Registrar entrada' : 'Registrar saída' }}
+              </button>
             </div>
           </form>
         } @else {
-          <form>
-            <label class="field">
-              Nome da categoria
-              <input type="text" name="categoriaNome" placeholder="Ex: Coloração">
-            </label>
-          </form>
+          @if (erro) {
+            <p class="erro" role="alert">{{ erro }}</p>
+          }
+          <div class="foot-btn">
+            <button class="cancel" type="button" (click)="fecharPainel()">Cancelar</button>
+            <button
+              class="save perigo"
+              type="button"
+              (click)="painel === 'excluir-produto' ? confirmarExclusao() : confirmarExclusaoCategoria()">
+              Excluir
+            </button>
+          </div>
         }
-
-        <div class="foot-btn">
-          <button class="cancel" type="button" (click)="fecharCadastro()">Cancelar</button>
-          <button class="save" type="button" (click)="fecharCadastro()">Salvar</button>
-        </div>
       </div>
     </div>
   }

@@ -341,6 +341,14 @@ main > header h1 {
     letter-spacing: -0.01em;
 }
 
+.detalhe {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--estoque-muted);
+}
+
 .qtd.critico {
     color: var(--estoque-critico);
     font-weight: 600;
@@ -388,6 +396,26 @@ main > header h1 {
 
 .btn-acao:hover {
     color: var(--estoque-ink);
+}
+
+.btn-acao.perigo:hover {
+    color: var(--estoque-critico);
+}
+
+.erro {
+    margin-bottom: 0.75rem;
+    font-size: 0.8125rem;
+    color: var(--estoque-critico);
+}
+
+.save.perigo {
+    background-color: var(--estoque-critico);
+    border-color: var(--estoque-critico);
+}
+
+.save.perigo:hover {
+    color: var(--estoque-critico);
+    background-color: white;
 }
 
 .vazio {
