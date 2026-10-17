@@ -749,7 +749,8 @@ export class Caixa {
 
   private descontoValido(desconto: number | null, subtotal: number): number {
     const valor = Number(desconto ?? 0);
-    if (!Number.isFinite(valor) || valor < 0 || valor > subtotal) {
+    const teto = this.estado.tetoDesconto(subtotal);
+    if (!Number.isFinite(valor) || valor < 0 || valor > subtotal || valor > teto) {
       return 0;
     }
     return arredondar(valor);
@@ -769,7 +770,15 @@ export class Caixa {
     if (valor > subtotal) {
       return 'O desconto não pode ultrapassar o subtotal.';
     }
+    const teto = this.estado.tetoDesconto(subtotal);
+    if (valor > teto) {
+      return `O desconto máximo desta venda é ${this.formatarReais(teto)}.`;
+    }
     return '';
+  }
+
+  private formatarReais(valor: number): string {
+    return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   }
 
   private publicar(tipo: 'ok' | 'erro', texto: string): void {

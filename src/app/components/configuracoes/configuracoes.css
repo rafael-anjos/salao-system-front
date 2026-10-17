@@ -440,6 +440,12 @@ main > header h1 {
     letter-spacing: -0.02em;
 }
 
+.exemplo {
+    margin: 0 0 1rem;
+    font-size: 0.8125rem;
+    color: var(--muted);
+}
+
 .painel-senha > p,
 .titulo p {
     margin-top: 0.3rem;

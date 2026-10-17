@@ -221,6 +221,12 @@ export interface FormaConfigurada {
   maxParcelas: number;
 }
 
+export interface DadosSalao {
+  nome: string;
+  telefone: string;
+  endereco: string;
+}
+
 export interface Movimentacao {
   id: string;
   caixaId: string;
@@ -476,7 +482,13 @@ function dataIsoValida(valor: string): boolean {
 
 @Injectable({ providedIn: 'root' })
 export class SalaoEstadoService {
-  readonly salao = 'Eula Moraes Studio';
+  dadosSalao: DadosSalao = {
+    nome: 'Eula Moraes Studio',
+    telefone: '',
+    endereco: '',
+  };
+  /** Porcentagem máxima do subtotal que o caixa pode descontar. 100 permite até o total. */
+  descontoMaximoPercentual = 100;
   readonly usuarioAtualId = 'usr-paula';
   readonly usuarioAtual = 'Paula';
   readonly formas: FormaConfigurada[] = [
@@ -485,6 +497,10 @@ export class SalaoEstadoService {
     { forma: 'Cartão de débito', ativa: true, taxaPercentual: 0, maxParcelas: 1 },
     { forma: 'Cartão de crédito', ativa: true, taxaPercentual: 0, maxParcelas: 6 },
   ];
+
+  get salao(): string {
+    return this.dadosSalao.nome;
+  }
 
   get formasPagamento(): FormaPagamento[] {
     return this.formas.filter((forma) => forma.ativa).map((forma) => forma.forma);
@@ -500,34 +516,15 @@ export class SalaoEstadoService {
     { dia: 3, abertura: '09:00', fechamento: '19:00', ativo: true },
     { dia: 4, abertura: '09:00', fechamento: '19:00', ativo: true },
     { dia: 5, abertura: '09:00', fechamento: '19:00', ativo: true },
-    { dia: 6, abertura: '08:00', fechamento: '16:00', ativo: true },
-    { dia: 0, abertura: '09:00', fechamento: '13:00', ativo: false },
+    { dia: 6, abertura: '09:00', fechamento: '19:00', ativo: true },
+    { dia: 0, abertura: '09:00', fechamento: '19:00', ativo: true },
   ];
 
   /**
    * Bloqueios da sessão.
    * Contrato previsto: GET /api/disponibilidade/bloqueados e POST/DELETE /api/disponibilidade/bloqueio.
    */
-  readonly bloqueios: BloqueioAgenda[] = [
-    {
-      id: 'blq-finados',
-      dataInicio: '2026-11-02',
-      dataFim: '2026-11-02',
-      horaInicio: '',
-      horaFim: '',
-      diaInteiro: true,
-      motivo: 'Feriado — Finados',
-    },
-    {
-      id: 'blq-folga',
-      dataInicio: '2026-10-20',
-      dataFim: '2026-10-20',
-      horaInicio: '14:00',
-      horaFim: '19:00',
-      diaInteiro: false,
-      motivo: 'Folga da equipe',
-    },
-  ];
+  readonly bloqueios: BloqueioAgenda[] = [];
 
   private senha = '123456';
 
@@ -933,6 +930,10 @@ export class SalaoEstadoService {
     if (desconto > subtotal) {
       return { ok: false, mensagem: 'O desconto não pode ultrapassar o subtotal.' };
     }
+    const teto = this.tetoDesconto(subtotal);
+    if (desconto > teto) {
+      return { ok: false, mensagem: 'O desconto passa do máximo configurado para esta venda.' };
+    }
 
     const total = arredondar(subtotal - desconto);
     const pagamentos: PagamentoRegistrado[] = (pedido.pagamentos ?? []).map((pagamento) => ({
@@ -1140,6 +1141,11 @@ export class SalaoEstadoService {
     const profissional = this.profissionais.find((item) => item.id === dados.profissionalId);
     if (!profissional || (!profissional.ativo && profissional.id !== atual?.profissionalId)) {
       return { ok: false, mensagem: 'Selecione uma profissional ativa.' };
+    }
+
+    const fechado = this.motivoFechado(dados.data, hora, servico.duracaoMinutos);
+    if (fechado) {
+      return { ok: false, mensagem: fechado };
     }
 
     const inicio = this.minutos(hora);
@@ -2066,6 +2072,90 @@ export class SalaoEstadoService {
     return this.horarios.map((horario) => ({ ...horario }));
   }
 
+  listarDadosSalao(): DadosSalao {
+    return { ...this.dadosSalao };
+  }
+
+  salvarDadosSalao(dados: DadosSalao): ResultadoOperacao {
+    const nome = dados.nome.trim();
+    const endereco = dados.endereco.trim();
+    const digitos = dados.telefone.replace(/\D/g, '');
+    if (nome.length < 2) {
+      return { ok: false, mensagem: 'Informe o nome do salão.' };
+    }
+    if (digitos.length < 10 || digitos.length > 11) {
+      return { ok: false, mensagem: 'Informe um telefone válido.' };
+    }
+    if (endereco.length < 5) {
+      return { ok: false, mensagem: 'Informe o endereço do salão.' };
+    }
+    this.dadosSalao = {
+      nome,
+      telefone: this.formatarTelefone(dados.telefone),
+      endereco,
+    };
+    return { ok: true, mensagem: 'Dados do salão salvos.' };
+  }
+
+  salvarDescontoMaximo(percentual: number): ResultadoOperacao {
+    const valor = Number(percentual);
+    if (!Number.isFinite(valor) || valor < 0 || valor > 100) {
+      return { ok: false, mensagem: 'Informe um desconto máximo entre 0 e 100%.' };
+    }
+    this.descontoMaximoPercentual = arredondar(valor);
+    return { ok: true, mensagem: 'Desconto máximo salvo.' };
+  }
+
+  tetoDesconto(subtotal: number): number {
+    const base = Number.isFinite(subtotal) ? Math.max(0, subtotal) : 0;
+    const percentual = Number(this.descontoMaximoPercentual);
+    const limitado = Number.isFinite(percentual) ? Math.min(100, Math.max(0, percentual)) : 100;
+    return arredondar((base * limitado) / 100);
+  }
+
+  minutoFechado(iso: string, hora: string): boolean {
+    return this.motivoFechado(iso, hora, 1) !== null;
+  }
+
+  /**
+   * O intervalo [hora, hora + duração) precisa caber no expediente e fora dos bloqueios.
+   * Retorna a frase para a tela, ou null quando o horário está aberto.
+   */
+  motivoFechado(iso: string, hora: string, duracaoMinutos: number): string | null {
+    const inicio = this.normalizarHora(hora);
+    if (!inicio || !dataIsoValida(iso)) {
+      return 'Informe um horário válido.';
+    }
+    const horario = this.horarioNaData(iso);
+    if (!horario?.ativo) {
+      return 'O salão está fechado nesse dia.';
+    }
+    const de = this.minutos(inicio);
+    const ate = de + Math.max(1, duracaoMinutos);
+    if (de < this.minutos(horario.abertura) || ate > this.minutos(horario.fechamento)) {
+      return 'O salão está fechado nesse horário.';
+    }
+    for (const bloqueio of this.bloqueios) {
+      if (iso < bloqueio.dataInicio || iso > bloqueio.dataFim) {
+        continue;
+      }
+      if (bloqueio.diaInteiro) {
+        return `Horário bloqueado: ${bloqueio.motivo}.`;
+      }
+      const blocoDe = this.minutos(bloqueio.horaInicio);
+      const blocoAte = this.minutos(bloqueio.horaFim);
+      if (de < blocoAte && blocoDe < ate) {
+        return `Horário bloqueado: ${bloqueio.motivo}.`;
+      }
+    }
+    return null;
+  }
+
+  private horarioNaData(iso: string): HorarioFuncionamento | undefined {
+    const [ano, mes, dia] = iso.split('-').map(Number);
+    return this.horarios.find((item) => item.dia === new Date(ano, mes - 1, dia).getDay());
+  }
+
   salvarHorarios(horarios: HorarioFuncionamento[]): ResultadoOperacao {
     const dias = new Set(horarios.map((horario) => horario.dia));
     if (dias.size !== DIAS_SEMANA.length || DIAS_SEMANA.some((dia) => !dias.has(dia.dia))) {
@@ -2449,6 +2539,8 @@ export class SalaoEstadoService {
     return JSON.stringify(
       {
         versao: 1,
+        dadosSalao: this.dadosSalao,
+        descontoMaximoPercentual: this.descontoMaximoPercentual,
         horarios: this.horarios,
         bloqueios: this.bloqueios,
         usuarios: this.usuarios,
@@ -2586,6 +2678,21 @@ export class SalaoEstadoService {
     );
     if (typeof dados['sequencia'] === 'number' && Number.isFinite(dados['sequencia'])) {
       this.sequencia = dados['sequencia'];
+    }
+    const salao = dados['dadosSalao'];
+    if (salao && typeof salao === 'object') {
+      const registro = salao as DadosSalao;
+      if (typeof registro.nome === 'string' && registro.nome.trim()) {
+        this.dadosSalao = {
+          nome: registro.nome.trim(),
+          telefone: typeof registro.telefone === 'string' ? registro.telefone : '',
+          endereco: typeof registro.endereco === 'string' ? registro.endereco : '',
+        };
+      }
+    }
+    if (typeof dados['descontoMaximoPercentual'] === 'number' && Number.isFinite(dados['descontoMaximoPercentual'])) {
+      const percentual = dados['descontoMaximoPercentual'];
+      this.descontoMaximoPercentual = Math.min(100, Math.max(0, arredondar(percentual)));
     }
     return { ok: true, mensagem: 'Backup restaurado.' };
   }

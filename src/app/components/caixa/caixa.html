@@ -188,6 +188,7 @@
             <label class="field">
               Desconto (R$)
               <input type="number" name="desconto" min="0" step="0.01" [(ngModel)]="desconto" [disabled]="!caixaAberto">
+              <span class="limite-desconto">Até {{ estado.tetoDesconto(subtotal) | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
             </label>
             <label class="field">
               Forma de pagamento
@@ -702,6 +703,7 @@
           <label class="field">
             Desconto (R$)
             <input type="number" name="descontoAtendimento" min="0" step="0.01" [(ngModel)]="atendimento.desconto">
+            <span class="limite-desconto">Até {{ estado.tetoDesconto(subtotalAtendimento) | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</span>
           </label>
           <label class="field">
             Forma de pagamento

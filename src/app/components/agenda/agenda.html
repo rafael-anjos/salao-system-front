@@ -21,7 +21,12 @@
                 @if (aviso) {
                     <p class="aviso-agenda erro" role="alert">{{ aviso }}</p>
                 }
-                <div class="semana" role="grid" aria-label="Grade da semana" (scroll)="menu = null">
+                <div
+                    class="semana"
+                    role="grid"
+                    aria-label="Grade da semana"
+                    [style.grid-template-rows]="'auto repeat(' + horas.length + ', 4.5rem)'"
+                    (scroll)="menu = null">
                     <div class="cell gutter head"></div>
                     @for (dia of diasAgenda; track dia.getTime()) {
                         <div
@@ -47,10 +52,21 @@
                                 <div
                                     class="hora-alvo"
                                     role="gridcell"
-                                    [attr.aria-label]="diasSemana[dia.getDay()] + ', ' + (dia | date: 'dd') + ' às ' + hora"
+                                    [class.fechado]="horaInteiraFechada(dia, hora)"
+                                    [attr.aria-disabled]="horaInteiraFechada(dia, hora)"
+                                    [attr.aria-label]="horaInteiraFechada(dia, hora) ? 'Fechado' : diasSemana[dia.getDay()] + ', ' + (dia | date: 'dd') + ' às ' + hora"
                                     [style.top.%]="(indice * 100) / horas.length"
                                     [style.height.%]="100 / horas.length"
                                     (click)="clicarHora($event, dia, hora)">
+                                </div>
+                            }
+                            @for (faixa of faixasFechadas(dia); track faixa.top) {
+                                <div
+                                    class="faixa-fechada"
+                                    [style.top.%]="faixa.top"
+                                    [style.height.%]="faixa.height"
+                                    (click)="clicarFechado($event)">
+                                    Fechado
                                 </div>
                             }
                             @if (previsao(dia); as previa) {

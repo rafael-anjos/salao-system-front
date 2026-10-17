@@ -23,7 +23,11 @@ interface DestinoMovimento {
   hora: string;
 }
 
-const INICIO_GRADE = 8 * 60;
+interface FaixaFechada {
+  top: number;
+  height: number;
+}
+
 const PASSO_MINUTOS = 15;
 
 @Component({
@@ -39,20 +43,6 @@ export class AgendaComponent implements OnInit, OnDestroy {
 
   dataAtual: Date = new Date();
   diasSemana: string[] = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-  horas: string[] = [
-    '08:00',
-    '09:00',
-    '10:00',
-    '11:00',
-    '12:00',
-    '13:00',
-    '14:00',
-    '15:00',
-    '16:00',
-    '17:00',
-    '18:00',
-    '19:00',
-  ];
   diasAgenda: Date[] = [];
   mostrarFormulario = false;
   editando: AgendamentoDia | null = null;
@@ -62,6 +52,16 @@ export class AgendaComponent implements OnInit, OnDestroy {
   destino: DestinoMovimento | null = null;
   menu: MenuAgendamento | null = null;
   aviso = '';
+
+  get horas(): string[] {
+    const faixa = this.faixaDaGrade();
+    const lista: string[] = [];
+    for (let minuto = faixa.inicio; minuto < faixa.fim; minuto += 60) {
+      const hora = Math.floor(minuto / 60);
+      lista.push(`${String(hora).padStart(2, '0')}:00`);
+    }
+    return lista;
+  }
 
   abrirFormulario() {
     this.cancelarMovimento();
@@ -101,11 +101,31 @@ export class AgendaComponent implements OnInit, OnDestroy {
     }
     const coluna = (event.currentTarget as HTMLElement).closest('.dia-eventos') as HTMLElement;
     const hora = this.horaPeloPonteiro(coluna, event.clientY);
+    if (this.horaInteiraFechada(dia, horaBase)) {
+      if (this.movendo) {
+        this.aviso = 'O salão está fechado nesse horário.';
+      }
+      return;
+    }
     if (this.movendo) {
       this.confirmarMovimento(dataIso(dia), hora);
       return;
     }
-    this.abrirNoHorario(dia, horaBase);
+    let horaMarcacao = horaBase;
+    if (this.estado.minutoFechado(dataIso(dia), horaBase)) {
+      if (this.estado.minutoFechado(dataIso(dia), hora)) {
+        return;
+      }
+      horaMarcacao = hora;
+    }
+    this.abrirNoHorario(dia, horaMarcacao);
+  }
+
+  clicarFechado(event: MouseEvent) {
+    event.stopPropagation();
+    if (this.movendo) {
+      this.aviso = 'O salão está fechado nesse horário.';
+    }
   }
 
   clicarCompromisso(event: MouseEvent, item: AgendamentoDia) {
@@ -152,6 +172,9 @@ export class AgendaComponent implements OnInit, OnDestroy {
     }
     const hora = this.horaPeloPonteiro(event.currentTarget as HTMLElement, event.clientY);
     const data = dataIso(dia);
+    if (this.estado.minutoFechado(data, hora)) {
+      return;
+    }
     if (this.destino?.data === data && this.destino.hora === hora) {
       return;
     }
@@ -221,6 +244,39 @@ export class AgendaComponent implements OnInit, OnDestroy {
     );
   }
 
+  horaInteiraFechada(dia: Date, hora: string): boolean {
+    const base = Number(hora.slice(0, 2));
+    return [0, 15, 30, 45].every((minuto) =>
+      this.estado.minutoFechado(dataIso(dia), `${String(base).padStart(2, '0')}:${String(minuto).padStart(2, '0')}`),
+    );
+  }
+
+  faixasFechadas(dia: Date): FaixaFechada[] {
+    const marcas = this.horas.map((hora) => this.horaInteiraFechada(dia, hora));
+    const faixas: FaixaFechada[] = [];
+    let inicio = -1;
+    const fechar = (fim: number) => {
+      if (inicio < 0) {
+        return;
+      }
+      faixas.push({
+        top: (inicio * 100) / this.horas.length,
+        height: ((fim - inicio) * 100) / this.horas.length,
+      });
+      inicio = -1;
+    };
+    marcas.forEach((fechada, indice) => {
+      if (fechada && inicio < 0) {
+        inicio = indice;
+      }
+      if (!fechada) {
+        fechar(indice);
+      }
+    });
+    fechar(marcas.length);
+    return faixas;
+  }
+
   blocosDoDia(dia: Date): BlocoAgenda[] {
     const span = this.horas.length * 60;
     const blocos = this.estado.agendamentos
@@ -228,7 +284,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
       .map((item) => {
         const inicio = this.minutos(item.hora);
         const duracao = this.duracaoDe(item);
-        const top = Math.max(0, ((inicio - INICIO_GRADE) / span) * 100);
+        const top = Math.max(0, ((inicio - this.inicioGrade) / span) * 100);
         const height = Math.max(0, Math.min(100 - top, (duracao / span) * 100));
         return {
           item,
@@ -291,7 +347,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
     const span = this.horas.length * 60;
     const inicio = this.minutos(this.destino.hora);
     const duracao = this.duracaoDe(this.movendo);
-    const top = ((inicio - INICIO_GRADE) / span) * 100;
+    const top = ((inicio - this.inicioGrade) / span) * 100;
     return {
       top: Math.max(0, top),
       height: Math.max(0, Math.min(100 - Math.max(0, top), (duracao / span) * 100)),
@@ -372,12 +428,32 @@ export class AgendaComponent implements OnInit, OnDestroy {
   private horaPeloPonteiro(coluna: HTMLElement, clientY: number): string {
     const rect = coluna.getBoundingClientRect();
     const ratio = rect.height ? (clientY - rect.top) / rect.height : 0;
-    const limite = INICIO_GRADE + (this.horas.length - 1) * 60 + 45;
-    const bruto = INICIO_GRADE + Math.min(1, Math.max(0, ratio)) * this.horas.length * 60;
-    const minutos = Math.min(limite, Math.max(INICIO_GRADE, Math.round(bruto / PASSO_MINUTOS) * PASSO_MINUTOS));
+    const limite = this.inicioGrade + (this.horas.length - 1) * 60 + 45;
+    const bruto = this.inicioGrade + Math.min(1, Math.max(0, ratio)) * this.horas.length * 60;
+    const minutos = Math.min(limite, Math.max(this.inicioGrade, Math.round(bruto / PASSO_MINUTOS) * PASSO_MINUTOS));
     const hora = Math.floor(minutos / 60);
     const minuto = minutos % 60;
     return `${String(hora).padStart(2, '0')}:${String(minuto).padStart(2, '0')}`;
+  }
+
+  private get inicioGrade(): number {
+    return this.faixaDaGrade().inicio;
+  }
+
+  private faixaDaGrade(): { inicio: number; fim: number } {
+    const ativos = this.estado.horarios.filter((horario) => horario.ativo);
+    if (!ativos.length) {
+      return { inicio: 8 * 60, fim: 19 * 60 };
+    }
+    let inicio = 24 * 60;
+    let fim = 0;
+    for (const horario of ativos) {
+      inicio = Math.min(inicio, this.minutos(horario.abertura));
+      fim = Math.max(fim, this.minutos(horario.fechamento));
+    }
+    const horaInicio = Math.floor(inicio / 60);
+    const horaFim = Math.max(horaInicio + 1, Math.ceil(fim / 60));
+    return { inicio: horaInicio * 60, fim: horaFim * 60 };
   }
 
   private minutos(hora: string): number {

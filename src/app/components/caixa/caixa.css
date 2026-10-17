@@ -406,6 +406,12 @@ main {
     width: 100%;
 }
 
+.limite-desconto {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--caixa-muted);
+}
+
 .campo-curto {
     width: 14rem;
     flex-shrink: 0;

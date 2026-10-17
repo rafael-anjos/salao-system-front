@@ -168,7 +168,7 @@ header h1 {
 .semana {
     display: grid;
     grid-template-columns: 3.25rem repeat(7, minmax(0, 1fr));
-    grid-template-rows: auto repeat(12, 4.5rem);
+    grid-template-rows: auto;
     height: 100%;
     background-color: white;
     border: 1px solid var(--agenda-line);
@@ -276,12 +276,43 @@ header h1 {
     cursor: copy;
 }
 
+.dia-eventos.recebendo .faixa-fechada,
+.dia-eventos.recebendo .hora-alvo.fechado {
+    cursor: not-allowed;
+}
+
 .hora-alvo {
     position: absolute;
     left: 0;
     right: 0;
     z-index: 0;
     cursor: pointer;
+}
+
+.hora-alvo.fechado {
+    cursor: default;
+}
+
+.faixa-fechada {
+    position: absolute;
+    left: 0;
+    right: 0;
+    z-index: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    padding: 0 0.2rem;
+    overflow: hidden;
+    background: #e4e6e1;
+    color: var(--agenda-muted);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    line-height: 1.2;
+    text-align: center;
+    cursor: default;
+    user-select: none;
 }
 
 .previsto {

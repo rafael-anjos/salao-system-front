@@ -14,7 +14,7 @@ import {
   nomeDia as rotuloDia,
 } from '../../core/salao-estado.service';
 
-type Aba = 'horarios' | 'bloqueios' | 'senha' | 'usuarios' | 'categorias' | 'formas' | 'taxas' | 'backup';
+type Aba = 'salao' | 'horarios' | 'bloqueios' | 'senha' | 'usuarios' | 'categorias' | 'formas' | 'taxas' | 'desconto' | 'backup';
 type Painel =
   | 'bloqueio'
   | 'remover'
@@ -37,6 +37,11 @@ export class Configuracoes {
 
   readonly usuario = this.estado.usuarioAtual;
   readonly opcoes: { id: Aba; nome: string; texto: string }[] = [
+    {
+      id: 'salao',
+      nome: 'Dados do salão',
+      texto: 'Nome, telefone e endereço do estúdio.',
+    },
     {
       id: 'horarios',
       nome: 'Horários',
@@ -73,6 +78,11 @@ export class Configuracoes {
       texto: 'Porcentagem descontada do lucro de cada forma.',
     },
     {
+      id: 'desconto',
+      nome: 'Desconto máximo',
+      texto: 'Teto do desconto que o caixa pode aplicar numa venda.',
+    },
+    {
       id: 'backup',
       nome: 'Backup e exportação',
       texto: 'Cópia dos cadastros e dos movimentos desta sessão.',
@@ -107,6 +117,10 @@ export class Configuracoes {
   nomeCategoria = '';
 
   formasEdicao: FormaConfigurada[] = [];
+  nomeSalao = '';
+  telefoneSalao = '';
+  enderecoSalao = '';
+  descontoMaximo = this.estado.descontoMaximoPercentual;
   textoBackup = '';
 
   erro = '';
@@ -156,6 +170,14 @@ export class Configuracoes {
     return this.estado.listarCategorias(this.tipoCategoria);
   }
 
+  get exemploDesconto(): number {
+    const percentual = Number(this.descontoMaximo);
+    if (!Number.isFinite(percentual)) {
+      return 0;
+    }
+    return Math.round(Math.min(100, Math.max(0, percentual)) * 100) / 100;
+  }
+
   nomeDia(dia: number): string {
     return rotuloDia(dia);
   }
@@ -167,6 +189,15 @@ export class Configuracoes {
     this.fecharPainel();
     if (aba === 'formas' || aba === 'taxas') {
       this.formasEdicao = this.estado.listarFormas();
+    }
+    if (aba === 'salao') {
+      const dados = this.estado.listarDadosSalao();
+      this.nomeSalao = dados.nome;
+      this.telefoneSalao = dados.telefone;
+      this.enderecoSalao = dados.endereco;
+    }
+    if (aba === 'desconto') {
+      this.descontoMaximo = this.estado.descontoMaximoPercentual;
     }
   }
 
@@ -180,6 +211,31 @@ export class Configuracoes {
   alternarDia(horario: HorarioFuncionamento): void {
     horario.ativo = !horario.ativo;
     this.aviso = '';
+  }
+
+  salvarSalao(): void {
+    const resultado = this.estado.salvarDadosSalao({
+      nome: this.nomeSalao,
+      telefone: this.telefoneSalao,
+      endereco: this.enderecoSalao,
+    });
+    this.erro = resultado.ok ? '' : resultado.mensagem;
+    this.aviso = resultado.ok ? resultado.mensagem : '';
+    if (resultado.ok) {
+      const dados = this.estado.listarDadosSalao();
+      this.nomeSalao = dados.nome;
+      this.telefoneSalao = dados.telefone;
+      this.enderecoSalao = dados.endereco;
+    }
+  }
+
+  salvarDesconto(): void {
+    const resultado = this.estado.salvarDescontoMaximo(this.descontoMaximo);
+    this.erro = resultado.ok ? '' : resultado.mensagem;
+    this.aviso = resultado.ok ? resultado.mensagem : '';
+    if (resultado.ok) {
+      this.descontoMaximo = this.estado.descontoMaximoPercentual;
+    }
   }
 
   salvarHorarios(): void {
@@ -492,6 +548,11 @@ export class Configuracoes {
     }
     this.horarios = this.estado.listarHorarios();
     this.formasEdicao = this.estado.listarFormas();
+    const dados = this.estado.listarDadosSalao();
+    this.nomeSalao = dados.nome;
+    this.telefoneSalao = dados.telefone;
+    this.enderecoSalao = dados.endereco;
+    this.descontoMaximo = this.estado.descontoMaximoPercentual;
     this.textoBackup = '';
     this.aviso = resultado.mensagem;
     this.fecharPainel();
