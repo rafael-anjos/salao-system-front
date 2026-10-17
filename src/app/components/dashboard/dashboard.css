@@ -237,7 +237,7 @@ main {
 }
 
 .lista-simples li {
-    grid-template-columns: 3.25rem minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     align-items: start;
 }
 
@@ -311,6 +311,12 @@ time {
 
 .selo[data-status='Concluído'] {
     color: var(--agenda-muted);
+}
+
+.selo[data-status='Cancelado'],
+.selo[data-status='Falta'] {
+    background: color-mix(in srgb, #9b1c2c 12%, white);
+    color: #9b1c2c;
 }
 
 ::selection {

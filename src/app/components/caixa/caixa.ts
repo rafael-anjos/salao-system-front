@@ -9,7 +9,9 @@ import {
   FormaPagamento,
   ItemPedido,
   Movimentacao,
+  ocupaAgenda,
   PagamentoRegistrado,
+  rotuloStatusAgendamento,
   SalaoEstadoService,
   TipoMovimento,
 } from '../../core/salao-estado.service';
@@ -271,10 +273,14 @@ export class Caixa {
     );
   }
 
+  rotuloStatus(status: AgendamentoDia['status']): string {
+    return rotuloStatusAgendamento(status);
+  }
+
   get pendentes(): AgendamentoDia[] {
     const termo = this.termoBusca.trim().toLowerCase();
     return this.estado.agendamentos
-      .filter((item) => item.status !== 'Concluído' && !item.vendaId && item.data <= dataIso())
+      .filter((item) => ocupaAgenda(item.status) && item.status !== 'Concluído' && !item.vendaId && item.data <= dataIso())
       .filter((item) => {
         if (!termo) {
           return true;

@@ -5,23 +5,23 @@ import {
   competenciaDe,
   ContaVisivel,
   dataIso,
+  diferencaDias,
+  inicioDaSemana,
   LinhaParticipacao,
   SalaoEstadoService,
   somarDias,
   StatusConta,
   TipoConta,
   TotaisPeriodo,
+  VariacaoPeriodo,
+  variacaoPeriodo,
   vencimentoNoMes,
 } from '../../core/salao-estado.service';
 
 type AbaFinanceiro = 'resumo' | 'contas' | 'sangrias' | 'receitas' | 'comparativo';
 type Periodo = 'hoje' | 'semana' | 'mes' | 'personalizado';
-type Sentido = 'subiu' | 'caiu' | 'estavel' | 'sem-base';
 
-interface Variacao {
-  sentido: Sentido;
-  percentual: number | null;
-}
+type Variacao = VariacaoPeriodo;
 
 @Component({
   selector: 'app-financeiro',
@@ -71,7 +71,7 @@ export class Financeiro {
       return { inicio: this.hojeIso, fim: this.hojeIso };
     }
     if (this.periodo === 'semana') {
-      return { inicio: this.inicioSemana(this.hojeIso), fim: this.hojeIso };
+      return { inicio: inicioDaSemana(this.hojeIso), fim: this.hojeIso };
     }
     if (this.periodo === 'personalizado') {
       return { inicio: this.inicioPersonalizado, fim: this.fimPersonalizado };
@@ -99,7 +99,7 @@ export class Financeiro {
       const dia = Number(this.hojeIso.slice(8, 10));
       return { inicio: vencimentoNoMes(mesAnterior, 1), fim: vencimentoNoMes(mesAnterior, dia) };
     }
-    const dias = this.diferencaDias(inicio, fim);
+    const dias = diferencaDias(inicio, fim);
     const fimAnterior = somarDias(inicio, -1);
     return { inicio: somarDias(fimAnterior, -dias), fim: fimAnterior };
   }
@@ -163,7 +163,7 @@ export class Financeiro {
   }
 
   get variacaoLucro(): Variacao {
-    return this.variacao(this.totais.lucro, this.totaisAnteriores.lucro);
+    return variacaoPeriodo(this.totais.lucro, this.totaisAnteriores.lucro);
   }
 
   get textoPeriodo(): string {
@@ -316,39 +316,9 @@ export class Financeiro {
     return new Intl.DateTimeFormat('pt-BR').format(new Date(ano, mes - 1, dia));
   }
 
-  private variacao(atual: number, anterior: number): Variacao {
-    const diferenca = Math.round((atual - anterior) * 100) / 100;
-    if (diferenca === 0) {
-      return { sentido: 'estavel', percentual: 0 };
-    }
-    if (anterior === 0) {
-      return { sentido: diferenca > 0 ? 'subiu' : 'caiu', percentual: null };
-    }
-    return {
-      sentido: diferenca > 0 ? 'subiu' : 'caiu',
-      percentual: Math.round((diferenca / Math.abs(anterior)) * 1000) / 10,
-    };
-  }
-
   private publicar(tipo: 'ok' | 'erro', texto: string): void {
     this.mensagemTipo = tipo;
     this.mensagem = texto;
-  }
-
-  private inicioSemana(iso: string): string {
-    const [ano, mes, dia] = iso.split('-').map(Number);
-    const data = new Date(ano, mes - 1, dia);
-    const semana = data.getDay();
-    const delta = semana === 0 ? -6 : 1 - semana;
-    return somarDias(iso, delta);
-  }
-
-  private diferencaDias(inicio: string, fim: string): number {
-    const [anoA, mesA, diaA] = inicio.split('-').map(Number);
-    const [anoB, mesB, diaB] = fim.split('-').map(Number);
-    const a = new Date(anoA, mesA - 1, diaA).getTime();
-    const b = new Date(anoB, mesB - 1, diaB).getTime();
-    return Math.round((b - a) / 86400000);
   }
 
   private formatarDia(iso: string): string {

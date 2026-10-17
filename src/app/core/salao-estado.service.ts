@@ -5,7 +5,7 @@ import { Injectable } from '@angular/core';
  * Não há API no projeto: Estoque e Dashboard leem estes mesmos cadastros.
  * Os dados duram enquanto a aplicação está aberta.
  */
-export type StatusAgendamento = 'Confirmado' | 'Em andamento' | 'Aguardando' | 'Concluído';
+export type StatusAgendamento = 'Confirmado' | 'Em andamento' | 'Aguardando' | 'Concluído' | 'Cancelado' | 'Falta';
 export type StatusEstoque = 'critico' | 'baixo' | 'normal';
 export type UsoProduto = 'salao' | 'venda';
 export type FormaPagamento = 'Dinheiro' | 'Pix' | 'Cartão de débito' | 'Cartão de crédito';
@@ -404,6 +404,57 @@ export function somarDias(iso: string, dias: number): string {
   const data = new Date(ano, mes - 1, dia);
   data.setDate(data.getDate() + dias);
   return dataIso(data);
+}
+
+export function inicioDaSemana(iso: string): string {
+  const [ano, mes, dia] = iso.split('-').map(Number);
+  const data = new Date(ano, mes - 1, dia);
+  const semana = data.getDay();
+  const delta = semana === 0 ? -6 : 1 - semana;
+  return somarDias(iso, delta);
+}
+
+export function diferencaDias(inicio: string, fim: string): number {
+  const [anoA, mesA, diaA] = inicio.split('-').map(Number);
+  const [anoB, mesB, diaB] = fim.split('-').map(Number);
+  const a = new Date(anoA, mesA - 1, diaA).getTime();
+  const b = new Date(anoB, mesB - 1, diaB).getTime();
+  return Math.round((b - a) / 86400000);
+}
+
+export type SentidoVariacao = 'subiu' | 'caiu' | 'estavel' | 'sem-base';
+
+export interface VariacaoPeriodo {
+  sentido: SentidoVariacao;
+  percentual: number | null;
+}
+
+export function variacaoPeriodo(atual: number, anterior: number): VariacaoPeriodo {
+  const diferenca = arredondar(atual - anterior);
+  if (diferenca === 0) {
+    return { sentido: 'estavel', percentual: 0 };
+  }
+  if (anterior === 0) {
+    return { sentido: diferenca > 0 ? 'subiu' : 'caiu', percentual: null };
+  }
+  return {
+    sentido: diferenca > 0 ? 'subiu' : 'caiu',
+    percentual: Math.round((diferenca / Math.abs(anterior)) * 1000) / 10,
+  };
+}
+
+export function rotuloStatusAgendamento(status: StatusAgendamento): string {
+  if (status === 'Aguardando') {
+    return 'Pendente';
+  }
+  if (status === 'Falta') {
+    return 'Não compareceu';
+  }
+  return status;
+}
+
+export function ocupaAgenda(status: StatusAgendamento): boolean {
+  return status !== 'Cancelado' && status !== 'Falta';
 }
 
 function compararCompetencia(a: string, b: string): number {
@@ -1094,7 +1145,7 @@ export class SalaoEstadoService {
     const inicio = this.minutos(hora);
     const duracao = servico.duracaoMinutos;
     const conflito = this.agendamentos.some((item) => {
-      if (item.id === atual?.id || item.data !== dados.data) {
+      if (item.id === atual?.id || item.data !== dados.data || !ocupaAgenda(item.status)) {
         return false;
       }
       const outroServico = this.servicos.find((cadastro) => cadastro.id === item.servicoId);
@@ -1735,6 +1786,7 @@ export class SalaoEstadoService {
       { dia: 14, caixaId: caixaAnterior.id, ano: anoAnterior, mes: numeroAnterior, servicoId: 'srv-corte-lista', forma: 'Dinheiro', profissionalId: 'pro-paula' },
     ];
 
+    let clienteCurso = 0;
     for (const plano of vendas) {
       if (plano.dia > diaHoje) {
         continue;
@@ -1744,8 +1796,14 @@ export class SalaoEstadoService {
       if (!servico || !profissional) {
         continue;
       }
-      this.movimentacoes.push({
-        id: this.novoId('V'),
+      const desconto =
+        plano.ano === anoAtual && plano.mes === numeroMes && plano.servicoId === 'srv-coloracao-lista' && plano.dia === 1
+          ? 20
+          : 0;
+      const valor = arredondar(servico.preco - desconto);
+      const vendaId = this.novoId('V');
+      const venda: Movimentacao = {
+        id: vendaId,
         caixaId: plano.caixaId,
         dataHora: new Date(plano.ano, plano.mes - 1, plano.dia, 12).toISOString(),
         tipo: 'venda',
@@ -1753,10 +1811,69 @@ export class SalaoEstadoService {
         profissional: profissional.nome,
         profissionalId: profissional.id,
         itens: [{ tipo: 'servico', id: servico.id, nome: servico.nome, quantidade: 1, precoUnitario: servico.preco }],
-        pagamentos: [{ forma: plano.forma, valor: servico.preco }],
-        valor: servico.preco,
-        desconto: 0,
+        pagamentos: [{ forma: plano.forma, valor }],
+        valor,
+        desconto,
         responsavel: this.usuarioAtual,
+      };
+      if (plano.dia < diaHoje) {
+        const cliente = this.clientes[clienteCurso % this.clientes.length];
+        clienteCurso += 1;
+        const agendamentoId = this.novoId('ag');
+        const competencia = `${plano.ano}-${String(plano.mes).padStart(2, '0')}`;
+        this.agendamentos.push({
+          id: agendamentoId,
+          data: vencimentoNoMes(competencia, plano.dia),
+          hora: '10:00',
+          cliente: cliente.nome,
+          clienteId: cliente.id,
+          servico: servico.nome,
+          servicoId: servico.id,
+          profissional: profissional.nome,
+          profissionalId: profissional.id,
+          status: 'Concluído',
+          preco: servico.preco,
+          vendaId,
+        });
+        venda.agendamentoId = agendamentoId;
+      }
+      this.movimentacoes.push(venda);
+    }
+
+    const ocorrencias: {
+      dia: number;
+      status: 'Cancelado' | 'Falta';
+      clienteId: string;
+      servicoId: string;
+      profissionalId: string;
+      hora: string;
+    }[] = [
+      { dia: 5, status: 'Cancelado', clienteId: 'cli-juliana', servicoId: 'srv-corte-lista', profissionalId: 'pro-paula', hora: '11:00' },
+      { dia: 7, status: 'Falta', clienteId: 'cli-carla', servicoId: 'srv-hidratacao', profissionalId: 'pro-ana', hora: '14:00' },
+      { dia: 12, status: 'Cancelado', clienteId: 'cli-beatriz', servicoId: 'srv-mechas', profissionalId: 'pro-valentina', hora: '11:00' },
+    ];
+    for (const ocorrencia of ocorrencias) {
+      if (ocorrencia.dia >= diaHoje) {
+        continue;
+      }
+      const servico = this.servicos.find((item) => item.id === ocorrencia.servicoId);
+      const profissional = this.profissionais.find((item) => item.id === ocorrencia.profissionalId);
+      const cliente = this.clientes.find((item) => item.id === ocorrencia.clienteId);
+      if (!servico || !profissional || !cliente) {
+        continue;
+      }
+      this.agendamentos.push({
+        id: this.novoId('ag'),
+        data: vencimentoNoMes(mesAtual, ocorrencia.dia),
+        hora: ocorrencia.hora,
+        cliente: cliente.nome,
+        clienteId: cliente.id,
+        servico: servico.nome,
+        servicoId: servico.id,
+        profissional: profissional.nome,
+        profissionalId: profissional.id,
+        status: ocorrencia.status,
+        preco: servico.preco,
       });
     }
 
