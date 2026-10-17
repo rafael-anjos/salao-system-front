@@ -1,18 +1,395 @@
 <div class="container">
-    <header>
-        <p>Financeiro</p>
-        <button class="notification-btn" type="button" aria-label="Notificações">
-            <img class="img-padrao" src="notification-green.svg" alt="">
-            <img class="img-hover" src="notification.svg" alt="">
-            <img class="img-active" src="notification-green.svg" alt="">
-        </button>
-    </header>
-    <main>
-        <div class="cards">
-            <div>Saldo Atual</div>
-            <div>Entradas</div>
-            <div>Saídas</div>
-            <div>Lucro</div>
+  <header>
+    <div class="box-titulo">
+      <h1>Financeiro</h1>
+      <p class="data">{{ estado.salao }} · {{ textoPeriodo }}</p>
+    </div>
+    <div class="header-acoes">
+      <div class="sub-filtros" role="group" aria-label="Período">
+        <button class="btn-sub" type="button" [class.ativo]="periodo === 'hoje'" (click)="mudarPeriodo('hoje')">Hoje</button>
+        <button class="btn-sub" type="button" [class.ativo]="periodo === 'semana'" (click)="mudarPeriodo('semana')">Semana</button>
+        <button class="btn-sub" type="button" [class.ativo]="periodo === 'mes'" (click)="mudarPeriodo('mes')">Mês</button>
+        <button class="btn-sub" type="button" [class.ativo]="periodo === 'personalizado'" (click)="mudarPeriodo('personalizado')">Personalizado</button>
+      </div>
+      <button class="notification-btn" type="button" aria-label="Notificações">
+        <img class="img-padrao" src="notification-green.svg" alt="">
+        <img class="img-hover" src="notification.svg" alt="">
+        <img class="img-active" src="notification-green.svg" alt="">
+      </button>
+    </div>
+  </header>
+
+  <main>
+    @if (periodo === 'personalizado') {
+      <div class="datas">
+        <label class="field">
+          De
+          <input type="date" name="inicio" [(ngModel)]="inicioPersonalizado" [max]="fimPersonalizado">
+        </label>
+        <label class="field">
+          Até
+          <input type="date" name="fim" [(ngModel)]="fimPersonalizado" [min]="inicioPersonalizado" [max]="hojeIso">
+        </label>
+      </div>
+    }
+
+    @if (!periodoValido) {
+      <p class="aviso erro" role="alert">A data inicial precisa ser anterior ou igual à final.</p>
+    }
+
+    <div class="abas" role="tablist" aria-label="Financeiro">
+      <button class="btn-aba" type="button" role="tab" [class.ativo]="aba === 'resumo'" [attr.aria-selected]="aba === 'resumo'" (click)="mudarAba('resumo')">Resumo</button>
+      <button class="btn-aba" type="button" role="tab" [class.ativo]="aba === 'contas'" [attr.aria-selected]="aba === 'contas'" (click)="mudarAba('contas')">
+        Contas a pagar
+        @if (vencidas.length) {
+          <span class="selo">{{ vencidas.length }}</span>
+        }
+      </button>
+      <button class="btn-aba" type="button" role="tab" [class.ativo]="aba === 'sangrias'" [attr.aria-selected]="aba === 'sangrias'" (click)="mudarAba('sangrias')">Sangrias</button>
+      <button class="btn-aba" type="button" role="tab" [class.ativo]="aba === 'receitas'" [attr.aria-selected]="aba === 'receitas'" (click)="mudarAba('receitas')">Receitas</button>
+      <button class="btn-aba" type="button" role="tab" [class.ativo]="aba === 'comparativo'" [attr.aria-selected]="aba === 'comparativo'" (click)="mudarAba('comparativo')">Comparativo</button>
+    </div>
+
+    @if (mensagem) {
+      <p class="aviso" [class.ok]="mensagemTipo === 'ok'" [class.erro]="mensagemTipo === 'erro'" role="status">{{ mensagem }}</p>
+    }
+
+    @if (aba === 'resumo') {
+      <section aria-labelledby="titulo-resumo">
+        <h2 id="titulo-resumo" class="sr-only">Resumo do período</h2>
+        <dl class="metricas">
+          <div>
+            <dt>Total de entradas</dt>
+            <dd class="entrada">{{ totais.entradas | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</dd>
+          </div>
+          <div>
+            <dt>Total de saídas</dt>
+            <dd class="saida">{{ totais.saidas | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</dd>
+          </div>
+          <div>
+            <dt>Lucro líquido</dt>
+            <dd class="lucro">{{ totais.lucro | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</dd>
+          </div>
+          <div>
+            <dt>Contas a pagar em {{ nomeMesContas }}</dt>
+            <dd class="conta">{{ contasPendentes | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</dd>
+          </div>
+        </dl>
+        <p class="nota">Vendas e entradas do caixa entram no período. Sangria e conta marcada como paga entram nas saídas. Conta pendente fica só no valor laranja, até ser paga.</p>
+      </section>
+    }
+
+    @if (aba === 'contas') {
+      <section class="painel" aria-labelledby="titulo-contas">
+        <header class="painel-cabecalho">
+          <div>
+            <h2 id="titulo-contas">Contas de {{ nomeMesContas }}</h2>
+            <p>Fixa se repete todo mês. Parcelada dura as parcelas combinadas. Avulsa sai da lista quando é paga.</p>
+          </div>
+          <button class="primario" type="button" (click)="abrirConta()">+ Nova conta</button>
+        </header>
+
+        @if (vencidas.length) {
+          <p class="alerta" role="alert">
+            {{ vencidas.length }} {{ vencidas.length === 1 ? 'conta vencida' : 'contas vencidas' }} · {{ totalVencido | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}
+          </p>
+        }
+
+        @if (contasMes.length === 0) {
+          <p class="vazio">Nenhuma conta em aberto neste mês.</p>
+        } @else {
+          <div class="tabela-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Conta</th>
+                  <th>Valor</th>
+                  <th>Vencimento</th>
+                  <th>Tipo</th>
+                  <th>Status</th>
+                  <th><span class="sr-only">Ações</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (conta of contasMes; track conta.lancamentoId) {
+                  <tr [class.vencida]="conta.vencida">
+                    <td>
+                      <strong>{{ conta.nome }}</strong>
+                      @if (conta.tipo === 'parcelada') {
+                        <span class="sub">Parcela {{ conta.numeroParcela }} de {{ conta.parcelas }}</span>
+                      }
+                    </td>
+                    <td class="numero">{{ conta.valor | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</td>
+                    <td>{{ formatarData(conta.vencimento) }}</td>
+                    <td><span class="tag" [attr.data-tipo]="conta.tipo">{{ rotuloTipo(conta.tipo) }}</span></td>
+                    <td>
+                      <span class="tag" [attr.data-status]="conta.status">{{ conta.status === 'pago' ? 'Pago' : 'Pendente' }}</span>
+                    </td>
+                    <td class="acoes-linha">
+                      @if (confirmandoId === conta.contratoId) {
+                        <span class="confirma">Encerrar a partir do próximo mês?</span>
+                        <button class="btn-acao" type="button" (click)="encerrar(conta)">Encerrar</button>
+                        <button class="btn-acao" type="button" (click)="confirmandoId = null">Voltar</button>
+                      } @else {
+                        @if (conta.status === 'pendente') {
+                          <button class="btn-acao forte" type="button" (click)="pagar(conta)">Marcar como pago</button>
+                        }
+                        @if (conta.podeEncerrar) {
+                          <button class="btn-acao" type="button" (click)="pedirEncerramento(conta)">Encerrar</button>
+                        }
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+    }
+
+    @if (aba === 'sangrias') {
+      <section class="painel" aria-labelledby="titulo-sangrias">
+        <header class="painel-cabecalho">
+          <div>
+            <h2 id="titulo-sangrias">Sangrias do período</h2>
+            <p>Retirada sem categoria de produto. Cada uma reduz o lucro líquido.</p>
+          </div>
+          <button class="primario" type="button" (click)="abrirSangria()">+ Registrar sangria</button>
+        </header>
+
+        @if (estado.sangriasDoPeriodo(intervalo.inicio, intervalo.fim).length === 0) {
+          <p class="vazio">Nenhuma sangria neste período.</p>
+        } @else {
+          <ul class="lista">
+            @for (sangria of estado.sangriasDoPeriodo(intervalo.inicio, intervalo.fim); track sangria.id) {
+              <li>
+                <span>
+                  <strong>{{ sangria.descricao }}</strong>
+                  <span class="sub">{{ formatarData(sangria.data) }}</span>
+                </span>
+                <strong class="saida">{{ sangria.valor | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    }
+
+    @if (aba === 'receitas') {
+      <section class="painel" aria-labelledby="titulo-servicos">
+        <header class="painel-cabecalho">
+          <div>
+            <h2 id="titulo-servicos">Receita por serviço</h2>
+            <p>Quantidade e valor no período, depois do desconto da venda.</p>
+          </div>
+        </header>
+        @if (servicos.length === 0) {
+          <p class="vazio">Nenhuma venda de serviço neste período.</p>
+        } @else {
+          <div class="tabela-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Serviço</th>
+                  <th>Quantidade</th>
+                  <th>Total gerado</th>
+                  <th>% do total</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (linha of servicos; track linha.nome) {
+                  <tr>
+                    <td>{{ linha.nome }}</td>
+                    <td class="numero">{{ linha.quantidade }}</td>
+                    <td class="numero">{{ linha.total | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</td>
+                    <td class="numero">{{ linha.percentual | number:'1.1-1' }}%</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+
+      <section class="painel" aria-labelledby="titulo-formas">
+        <header class="painel-cabecalho">
+          <h2 id="titulo-formas">Receita por forma de pagamento</h2>
+        </header>
+        <ul class="participacao">
+          @for (linha of formas; track linha.nome) {
+            <li>
+              <div class="participacao-topo">
+                <span>{{ linha.nome }}</span>
+                <strong>{{ linha.total | currency:'BRL':'symbol':'1.2-2':'pt-BR' }} · {{ linha.percentual | number:'1.1-1' }}%</strong>
+              </div>
+              <div class="trilho" aria-hidden="true">
+                <span [style.width.%]="linha.percentual"></span>
+              </div>
+            </li>
+          }
+        </ul>
+      </section>
+
+      <section class="painel" aria-labelledby="titulo-origem">
+        <header class="painel-cabecalho">
+          <h2 id="titulo-origem">Serviços e revenda</h2>
+        </header>
+        <ul class="participacao">
+          <li>
+            <div class="participacao-topo">
+              <span>Serviços</span>
+              <strong>{{ origemReceita.servicos.total | currency:'BRL':'symbol':'1.2-2':'pt-BR' }} · {{ origemReceita.servicos.percentual | number:'1.1-1' }}%</strong>
+            </div>
+            <div class="trilho" aria-hidden="true">
+              <span [style.width.%]="origemReceita.servicos.percentual"></span>
+            </div>
+          </li>
+          <li>
+            <div class="participacao-topo">
+              <span>Revenda</span>
+              <strong>{{ origemReceita.revenda.total | currency:'BRL':'symbol':'1.2-2':'pt-BR' }} · {{ origemReceita.revenda.percentual | number:'1.1-1' }}%</strong>
+            </div>
+            <div class="trilho revenda" aria-hidden="true">
+              <span [style.width.%]="origemReceita.revenda.percentual"></span>
+            </div>
+          </li>
+        </ul>
+      </section>
+    }
+
+    @if (aba === 'comparativo') {
+      <section class="painel" aria-labelledby="titulo-comparativo">
+        <header class="painel-cabecalho">
+          <div>
+            <h2 id="titulo-comparativo">Período atual e {{ rotuloComparacao }}</h2>
+            <p>{{ textoPeriodo }} contra {{ textoPeriodoAnterior }}</p>
+          </div>
+        </header>
+        <p class="delta" [attr.data-sentido]="variacaoLucro.sentido">{{ textoVariacao(variacaoLucro) }} no lucro líquido</p>
+        <div class="tabela-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Indicador</th>
+                <th>Atual</th>
+                <th>Anterior</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Entradas</td>
+                <td class="numero">{{ totais.entradas | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</td>
+                <td class="numero">{{ totaisAnteriores.entradas | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</td>
+              </tr>
+              <tr>
+                <td>Saídas</td>
+                <td class="numero">{{ totais.saidas | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</td>
+                <td class="numero">{{ totaisAnteriores.saidas | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</td>
+              </tr>
+              <tr>
+                <td>Lucro líquido</td>
+                <td class="numero lucro">{{ totais.lucro | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</td>
+                <td class="numero">{{ totaisAnteriores.lucro | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</td>
+              </tr>
+              <tr>
+                <td>Ticket médio</td>
+                <td class="numero">{{ totais.ticket | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</td>
+                <td class="numero">{{ totaisAnteriores.ticket | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-    </main>
+        <p class="nota">O ticket médio divide as vendas do período pela quantidade de vendas. A comparação usa a mesma quantidade de dias.</p>
+      </section>
+    }
+  </main>
+
+  @if (mostrarConta) {
+    <div class="overlay" (click)="mostrarConta = false">
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="titulo-nova-conta" (click)="$event.stopPropagation()">
+        <header class="titulo">
+          <h2 id="titulo-nova-conta">Nova conta</h2>
+          <p>Aluguel, energia, imposto ou um conserto. O valor entra nas saídas só quando a conta é paga.</p>
+        </header>
+        <form (ngSubmit)="salvarConta()">
+          <label class="field">
+            Nome da conta
+            <input type="text" name="nomeConta" [(ngModel)]="nomeConta" placeholder="Aluguel, Energia, Internet" required autofocus>
+          </label>
+          <label class="field">
+            Valor (R$)
+            <input type="number" name="valorConta" min="0.01" step="0.01" placeholder="0,00" [(ngModel)]="valorConta" required>
+          </label>
+          <fieldset class="opcoes">
+            <legend>Tipo</legend>
+            <label><input type="radio" name="tipoConta" value="fixa" [(ngModel)]="tipoConta"> Fixa mensal</label>
+            <label><input type="radio" name="tipoConta" value="parcelada" [(ngModel)]="tipoConta"> Parcelada</label>
+            <label><input type="radio" name="tipoConta" value="avulsa" [(ngModel)]="tipoConta"> Avulsa</label>
+          </fieldset>
+          @if (tipoConta === 'parcelada') {
+            <label class="field">
+              Parcelas
+              <input type="number" name="parcelas" min="2" max="48" step="1" [(ngModel)]="parcelasConta" required>
+            </label>
+          }
+          @if (tipoConta === 'fixa') {
+            <label class="field">
+              Dia do vencimento
+              <input type="number" name="diaConta" min="1" max="31" step="1" [(ngModel)]="diaConta" required>
+            </label>
+          } @else {
+            <label class="field">
+              Vencimento
+              <input type="date" name="dataConta" [(ngModel)]="dataConta" required>
+            </label>
+          }
+          <fieldset class="opcoes">
+            <legend>Status</legend>
+            <label><input type="radio" name="statusConta" value="pendente" [(ngModel)]="statusConta"> Pendente</label>
+            <label><input type="radio" name="statusConta" value="pago" [(ngModel)]="statusConta"> Pago</label>
+          </fieldset>
+          @if (erroConta) {
+            <p class="erro" role="alert">{{ erroConta }}</p>
+          }
+          <div class="foot-btn">
+            <button class="secundario" type="button" (click)="mostrarConta = false">Cancelar</button>
+            <button class="primario" type="submit" [disabled]="processando">Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  @if (mostrarSangria) {
+    <div class="overlay" (click)="mostrarSangria = false">
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="titulo-sangria" (click)="$event.stopPropagation()">
+        <header class="titulo">
+          <h2 id="titulo-sangria">Registrar sangria</h2>
+          <p>Retirada pessoal ou pagamento a fornecedor, fora do estoque.</p>
+        </header>
+        <form (ngSubmit)="salvarSangria()">
+          <label class="field">
+            Descrição
+            <input type="text" name="descricaoSangria" [(ngModel)]="descricaoSangria" placeholder="Retirada pessoal" required autofocus>
+          </label>
+          <label class="field">
+            Valor (R$)
+            <input type="number" name="valorSangria" min="0.01" step="0.01" placeholder="0,00" [(ngModel)]="valorSangria" required>
+          </label>
+          <label class="field">
+            Data
+            <input type="date" name="dataSangria" [(ngModel)]="dataSangria" [max]="hojeIso" required>
+          </label>
+          @if (erroSangria) {
+            <p class="erro" role="alert">{{ erroSangria }}</p>
+          }
+          <div class="foot-btn">
+            <button class="secundario" type="button" (click)="mostrarSangria = false">Cancelar</button>
+            <button class="primario" type="submit" [disabled]="processando">Registrar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
 </div>

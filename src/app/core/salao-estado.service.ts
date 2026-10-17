@@ -274,6 +274,78 @@ export interface ResultadoOperacao {
   id?: string;
 }
 
+export type TipoConta = 'fixa' | 'parcelada' | 'avulsa';
+export type StatusConta = 'pendente' | 'pago';
+
+export interface ContaContrato {
+  id: string;
+  nome: string;
+  valor: number;
+  tipo: TipoConta;
+  diaVencimento: number;
+  inicioCompetencia: string;
+  parcelas?: number;
+  canceladaApartir?: string;
+}
+
+export interface ContaLancamento {
+  id: string;
+  contratoId: string;
+  competencia: string;
+  vencimento: string;
+  valor: number;
+  status: StatusConta;
+  pagoEm?: string;
+  numeroParcela?: number;
+}
+
+export interface ContaVisivel {
+  lancamentoId: string;
+  contratoId: string;
+  nome: string;
+  valor: number;
+  vencimento: string;
+  tipo: TipoConta;
+  status: StatusConta;
+  numeroParcela?: number;
+  parcelas?: number;
+  vencida: boolean;
+  podeEncerrar: boolean;
+}
+
+export interface Sangria {
+  id: string;
+  descricao: string;
+  valor: number;
+  data: string;
+}
+
+export interface NovaConta {
+  nome: string;
+  valor: number;
+  tipo: TipoConta;
+  diaVencimento?: number;
+  vencimento?: string;
+  parcelas?: number;
+  status: StatusConta;
+}
+
+export interface LinhaParticipacao {
+  nome: string;
+  quantidade: number;
+  total: number;
+  percentual: number;
+}
+
+export interface TotaisPeriodo {
+  entradas: number;
+  saidas: number;
+  lucro: number;
+  vendas: number;
+  quantidadeVendas: number;
+  ticket: number;
+}
+
 export const FORMAS_PAGAMENTO: FormaPagamento[] = [
   'Dinheiro',
   'Pix',
@@ -292,6 +364,34 @@ const HOJE = dataIso();
 
 export function arredondar(valor: number): number {
   return Math.round((valor + Number.EPSILON) * 100) / 100;
+}
+
+export function competenciaDe(iso: string): string {
+  return iso.slice(0, 7);
+}
+
+export function deslocarMes(competencia: string, delta: number): string {
+  const [ano, mes] = competencia.split('-').map(Number);
+  const data = new Date(ano, mes - 1 + delta, 1);
+  return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
+}
+
+export function vencimentoNoMes(competencia: string, dia: number): string {
+  const [ano, mes] = competencia.split('-').map(Number);
+  const ultimo = new Date(ano, mes, 0).getDate();
+  const diaReal = Math.min(Math.max(1, dia), ultimo);
+  return `${competencia}-${String(diaReal).padStart(2, '0')}`;
+}
+
+export function somarDias(iso: string, dias: number): string {
+  const [ano, mes, dia] = iso.split('-').map(Number);
+  const data = new Date(ano, mes - 1, dia);
+  data.setDate(data.getDate() + dias);
+  return dataIso(data);
+}
+
+function compararCompetencia(a: string, b: string): number {
+  return a.localeCompare(b);
 }
 
 function somar(valores: number[]): number {
@@ -572,8 +672,15 @@ export class SalaoEstadoService {
 
   readonly caixas: CaixaRegistro[] = [];
   readonly movimentacoes: Movimentacao[] = [];
+  readonly contas: ContaContrato[] = [];
+  readonly lancamentosConta: ContaLancamento[] = [];
+  readonly sangrias: Sangria[] = [];
 
   private sequencia = 0;
+
+  constructor() {
+    this.semearDemonstracao();
+  }
 
   get caixaAberto(): boolean {
     return this.caixas.some((caixa) => caixa.status === 'aberto');
@@ -1204,430 +1311,548 @@ export class SalaoEstadoService {
     };
   }
 
-  listarHorarios(): HorarioFuncionamento[] {
-    return this.horarios.map((horario) => ({ ...horario }));
+  garantirLancamentos(competencia: string): void {
+    if (!/^\d{4}-\d{2}$/.test(competencia)) {
+      return;
+    }
+    for (const contrato of this.contas) {
+      for (const mes of this.mesesDevidos(contrato, competencia)) {
+        const existe = this.lancamentosConta.some(
+          (item) => item.contratoId === contrato.id && item.competencia === mes,
+        );
+        if (existe) {
+          continue;
+        }
+        const indice = this.indiceParcela(contrato, mes);
+        this.lancamentosConta.push({
+          id: this.novoId('cta'),
+          contratoId: contrato.id,
+          competencia: mes,
+          vencimento: vencimentoNoMes(mes, contrato.diaVencimento),
+          valor: contrato.valor,
+          status: 'pendente',
+          numeroParcela: contrato.tipo === 'parcelada' ? indice + 1 : undefined,
+        });
+      }
+    }
   }
 
-  salvarHorarios(horarios: HorarioFuncionamento[]): ResultadoOperacao {
-    if (horarios.length !== DIAS_SEMANA.length) {
-      return { ok: false, mensagem: 'Informe o horário de todos os dias da semana.' };
+  contasDoMes(competencia: string): ContaVisivel[] {
+    this.garantirLancamentos(competencia);
+    const hoje = dataIso();
+    return this.lancamentosConta
+      .filter((item) => item.competencia === competencia)
+      .map((item) => {
+        const contrato = this.contas.find((conta) => conta.id === item.contratoId);
+        return { item, contrato };
+      })
+      .filter((linha): linha is { item: ContaLancamento; contrato: ContaContrato } => {
+        if (!linha.contrato) {
+          return false;
+        }
+        if (linha.contrato.tipo === 'avulsa' && linha.item.status === 'pago') {
+          return false;
+        }
+        return true;
+      })
+      .map(({ item, contrato }) => ({
+        lancamentoId: item.id,
+        contratoId: contrato.id,
+        nome: contrato.nome,
+        valor: item.valor,
+        vencimento: item.vencimento,
+        tipo: contrato.tipo,
+        status: item.status,
+        numeroParcela: item.numeroParcela,
+        parcelas: contrato.parcelas,
+        vencida: item.status === 'pendente' && item.vencimento < hoje,
+        podeEncerrar: contrato.tipo === 'fixa' && !contrato.canceladaApartir,
+      }))
+      .sort((a, b) => a.vencimento.localeCompare(b.vencimento) || a.nome.localeCompare(b.nome, 'pt-BR'));
+  }
+
+  contasAPagar(competencia: string): number {
+    return somar(
+      this.contasDoMes(competencia)
+        .filter((conta) => conta.status === 'pendente')
+        .map((conta) => conta.valor),
+    );
+  }
+
+  criarConta(dados: NovaConta): ResultadoOperacao {
+    const nome = dados.nome.trim();
+    const valor = arredondar(Number(dados.valor));
+    if (nome.length < 2) {
+      return { ok: false, mensagem: 'Informe o nome da conta.' };
+    }
+    if (!Number.isFinite(valor) || valor <= 0) {
+      return { ok: false, mensagem: 'Informe um valor maior que zero.' };
+    }
+    if (dados.tipo !== 'fixa' && dados.tipo !== 'parcelada' && dados.tipo !== 'avulsa') {
+      return { ok: false, mensagem: 'Selecione o tipo da conta.' };
+    }
+    if (dados.status !== 'pendente' && dados.status !== 'pago') {
+      return { ok: false, mensagem: 'Selecione se a conta está pendente ou paga.' };
     }
 
-    const vistos = new Set<number>();
-    for (const horario of horarios) {
-      if (!DIAS_SEMANA.some((dia) => dia.dia === horario.dia) || vistos.has(horario.dia)) {
-        return { ok: false, mensagem: 'Dia da semana inválido.' };
+    let dia = Number(dados.diaVencimento);
+    let inicio = competenciaDe(dataIso());
+    if (dados.tipo === 'fixa') {
+      if (!Number.isInteger(dia) || dia < 1 || dia > 31) {
+        return { ok: false, mensagem: 'Informe o dia de vencimento, de 1 a 31.' };
       }
-      vistos.add(horario.dia);
-      if (!horario.ativo) {
+    } else {
+      if (!dados.vencimento || !/^\d{4}-\d{2}-\d{2}$/.test(dados.vencimento)) {
+        return { ok: false, mensagem: 'Informe a data de vencimento.' };
+      }
+      dia = Number(dados.vencimento.slice(8, 10));
+      inicio = competenciaDe(dados.vencimento);
+    }
+
+    let parcelas: number | undefined;
+    if (dados.tipo === 'parcelada') {
+      parcelas = Math.floor(Number(dados.parcelas));
+      if (!Number.isFinite(parcelas) || parcelas < 2 || parcelas > 48) {
+        return { ok: false, mensagem: 'Informe de 2 a 48 parcelas.' };
+      }
+    }
+
+    const contrato: ContaContrato = {
+      id: this.novoId('ctt'),
+      nome,
+      valor,
+      tipo: dados.tipo,
+      diaVencimento: dia,
+      inicioCompetencia: inicio,
+      parcelas,
+    };
+    this.contas.push(contrato);
+    this.garantirLancamentos(inicio);
+
+    if (dados.status === 'pago') {
+      const primeiro = this.lancamentosConta.find(
+        (item) => item.contratoId === contrato.id && item.competencia === inicio,
+      );
+      if (primeiro) {
+        primeiro.status = 'pago';
+        primeiro.pagoEm = new Date().toISOString();
+      }
+    }
+
+    const mensagem =
+      dados.tipo === 'avulsa' && dados.status === 'pago'
+        ? 'Conta avulsa paga. Ela sai da lista e entra nas saídas de hoje.'
+        : 'Conta registrada.';
+    return { ok: true, mensagem, id: contrato.id };
+  }
+
+  marcarContaPaga(lancamentoId: string): ResultadoOperacao {
+    const lancamento = this.lancamentosConta.find((item) => item.id === lancamentoId);
+    if (!lancamento) {
+      return { ok: false, mensagem: 'Conta não encontrada.' };
+    }
+    if (lancamento.status === 'pago') {
+      return { ok: false, mensagem: 'Esta conta já está paga.' };
+    }
+    const contrato = this.contas.find((item) => item.id === lancamento.contratoId);
+    lancamento.status = 'pago';
+    lancamento.pagoEm = new Date().toISOString();
+    if (contrato?.tipo === 'avulsa') {
+      return { ok: true, mensagem: 'Conta avulsa paga. Ela sai da lista e entra nas saídas.', id: lancamento.id };
+    }
+    return { ok: true, mensagem: 'Conta marcada como paga.', id: lancamento.id };
+  }
+
+  encerrarContaFixa(contratoId: string): ResultadoOperacao {
+    const contrato = this.contas.find((item) => item.id === contratoId);
+    if (!contrato || contrato.tipo !== 'fixa') {
+      return { ok: false, mensagem: 'Só uma conta fixa pode ser encerrada.' };
+    }
+    if (contrato.canceladaApartir) {
+      return { ok: false, mensagem: 'Esta conta fixa já foi encerrada.' };
+    }
+    contrato.canceladaApartir = deslocarMes(competenciaDe(dataIso()), 1);
+    return { ok: true, mensagem: 'A conta deixa de se repetir a partir do próximo mês.', id: contrato.id };
+  }
+
+  registrarSangria(dados: { descricao: string; valor: number; data: string }): ResultadoOperacao {
+    const descricao = dados.descricao.trim();
+    const valor = arredondar(Number(dados.valor));
+    if (descricao.length < 2) {
+      return { ok: false, mensagem: 'Descreva a sangria.' };
+    }
+    if (!Number.isFinite(valor) || valor <= 0) {
+      return { ok: false, mensagem: 'Informe um valor maior que zero.' };
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dados.data) || dados.data > dataIso()) {
+      return { ok: false, mensagem: 'Informe uma data até hoje.' };
+    }
+    const sangria: Sangria = {
+      id: this.novoId('san'),
+      descricao,
+      valor,
+      data: dados.data,
+    };
+    this.sangrias.push(sangria);
+    return { ok: true, mensagem: 'Sangria registrada.', id: sangria.id };
+  }
+
+  sangriasDoPeriodo(inicio: string, fim: string): Sangria[] {
+    return this.sangrias
+      .filter((item) => item.data >= inicio && item.data <= fim)
+      .sort((a, b) => b.data.localeCompare(a.data) || b.id.localeCompare(a.id));
+  }
+
+  totaisPeriodo(inicio: string, fim: string): TotaisPeriodo {
+    const movimentos = this.movimentosNoPeriodo(inicio, fim);
+    const entradas = somar(
+      movimentos.filter((item) => item.tipo === 'entrada' || item.tipo === 'venda').map((item) => item.valor),
+    );
+    const saidasCaixa = somar(
+      movimentos.filter((item) => item.tipo === 'saida' || item.tipo === 'estorno').map((item) => item.valor),
+    );
+    const sangrias = somar(this.sangriasDoPeriodo(inicio, fim).map((item) => item.valor));
+    const contasPagas = somar(
+      this.lancamentosConta
+        .filter((item) => item.status === 'pago' && item.pagoEm)
+        .filter((item) => {
+          const dia = dataIso(new Date(item.pagoEm as string));
+          return dia >= inicio && dia <= fim;
+        })
+        .map((item) => item.valor),
+    );
+    const vendas = movimentos.filter((item) => item.tipo === 'venda');
+    const totalVendas = somar(vendas.map((item) => item.valor));
+    return {
+      entradas,
+      saidas: arredondar(saidasCaixa + sangrias + contasPagas),
+      lucro: arredondar(entradas - (saidasCaixa + sangrias + contasPagas)),
+      vendas: totalVendas,
+      quantidadeVendas: vendas.length,
+      ticket: vendas.length ? arredondar(totalVendas / vendas.length) : 0,
+    };
+  }
+
+  receitaPorServico(inicio: string, fim: string): LinhaParticipacao[] {
+    return this.participacao(
+      this.movimentosNoPeriodo(inicio, fim).filter((item) => item.tipo === 'venda'),
+      (item) => item.tipo === 'servico',
+    );
+  }
+
+  receitaPorForma(inicio: string, fim: string): LinhaParticipacao[] {
+    const totais = new Map<FormaPagamento, number>();
+    for (const forma of this.formasPagamento) {
+      totais.set(forma, 0);
+    }
+    for (const movimento of this.movimentosNoPeriodo(inicio, fim)) {
+      if (movimento.tipo !== 'venda' && movimento.tipo !== 'entrada') {
         continue;
       }
-      const abertura = this.normalizarHora(horario.abertura);
-      const fechamento = this.normalizarHora(horario.fechamento);
-      if (!abertura || !fechamento) {
-        return { ok: false, mensagem: `Informe abertura e fechamento de ${nomeDia(horario.dia)}.` };
-      }
-      if (this.minutos(abertura) >= this.minutos(fechamento)) {
-        return { ok: false, mensagem: `O fechamento de ${nomeDia(horario.dia)} precisa ser depois da abertura.` };
+      for (const pagamento of movimento.pagamentos) {
+        totais.set(pagamento.forma, arredondar((totais.get(pagamento.forma) ?? 0) + pagamento.valor));
       }
     }
+    const ordem: FormaPagamento[] = ['Pix', 'Dinheiro', 'Cartão de débito', 'Cartão de crédito'];
+    const linhas = ordem.map((forma) => ({
+      nome: forma,
+      quantidade: 0,
+      total: arredondar(totais.get(forma) ?? 0),
+      percentual: 0,
+    }));
+    return this.comPercentual(linhas);
+  }
 
-    for (const horario of horarios) {
-      const atual = this.horarios.find((item) => item.dia === horario.dia);
-      if (!atual) {
-        return { ok: false, mensagem: 'Dia da semana inválido.' };
+  receitaServicoProduto(inicio: string, fim: string): { servicos: LinhaParticipacao; revenda: LinhaParticipacao } {
+    const vendas = this.movimentosNoPeriodo(inicio, fim).filter((item) => item.tipo === 'venda');
+    const servicos = this.somarItens(vendas, 'servico');
+    const revenda = this.somarItens(vendas, 'produto');
+    const total = arredondar(servicos.total + revenda.total);
+    servicos.percentual = total ? arredondar((servicos.total / total) * 100) : 0;
+    revenda.percentual = total ? arredondar(100 - servicos.percentual) : 0;
+    if (!total) {
+      revenda.percentual = 0;
+    }
+    return { servicos, revenda };
+  }
+
+  private mesesDevidos(contrato: ContaContrato, ate: string): string[] {
+    const meses: string[] = [];
+    if (contrato.tipo === 'avulsa') {
+      if (compararCompetencia(contrato.inicioCompetencia, ate) <= 0) {
+        meses.push(contrato.inicioCompetencia);
       }
-      atual.ativo = horario.ativo;
-      const abertura = this.normalizarHora(horario.abertura);
-      const fechamento = this.normalizarHora(horario.fechamento);
-      if (abertura) {
-        atual.abertura = abertura;
-      }
-      if (fechamento) {
-        atual.fechamento = fechamento;
-      }
+      return meses;
     }
-
-    return { ok: true, mensagem: 'Horários salvos.' };
-  }
-
-  listarBloqueios(): BloqueioAgenda[] {
-    return [...this.bloqueios].sort((a, b) => a.dataInicio.localeCompare(b.dataInicio) || a.horaInicio.localeCompare(b.horaInicio));
-  }
-
-  salvarBloqueio(dados: BloqueioCadastro): ResultadoOperacao {
-    const motivo = dados.motivo.trim();
-    if (motivo.length < 3) {
-      return { ok: false, mensagem: 'Informe o motivo do bloqueio.' };
-    }
-    if (!dataIsoValida(dados.dataInicio) || !dataIsoValida(dados.dataFim)) {
-      return { ok: false, mensagem: 'Informe a data do bloqueio.' };
-    }
-    if (dados.dataFim < dados.dataInicio) {
-      return { ok: false, mensagem: 'A data final precisa ser igual ou posterior à inicial.' };
-    }
-
-    let horaInicio = '';
-    let horaFim = '';
-    if (!dados.diaInteiro) {
-      horaInicio = this.normalizarHora(dados.horaInicio);
-      horaFim = this.normalizarHora(dados.horaFim);
-      if (!horaInicio || !horaFim) {
-        return { ok: false, mensagem: 'Informe o horário do bloqueio ou marque o dia inteiro.' };
-      }
-      if (this.minutos(horaInicio) >= this.minutos(horaFim)) {
-        return { ok: false, mensagem: 'O horário final precisa ser depois do inicial.' };
-      }
-    }
-
-    if (dados.id) {
-      const atual = this.bloqueios.find((item) => item.id === dados.id);
-      if (!atual) {
-        return { ok: false, mensagem: 'Bloqueio não encontrado.' };
-      }
-      atual.dataInicio = dados.dataInicio;
-      atual.dataFim = dados.dataFim;
-      atual.horaInicio = horaInicio;
-      atual.horaFim = horaFim;
-      atual.diaInteiro = dados.diaInteiro;
-      atual.motivo = motivo;
-      return { ok: true, mensagem: 'Bloqueio atualizado.', id: atual.id };
-    }
-
-    const criado: BloqueioAgenda = {
-      id: this.novoId('blq'),
-      dataInicio: dados.dataInicio,
-      dataFim: dados.dataFim,
-      horaInicio,
-      horaFim,
-      diaInteiro: dados.diaInteiro,
-      motivo,
-    };
-    this.bloqueios.push(criado);
-    return { ok: true, mensagem: 'Bloqueio registrado.', id: criado.id };
-  }
-
-  removerBloqueio(id: string): ResultadoOperacao {
-    const indice = this.bloqueios.findIndex((item) => item.id === id);
-    if (indice < 0) {
-      return { ok: false, mensagem: 'Bloqueio não encontrado.' };
-    }
-    this.bloqueios.splice(indice, 1);
-    return { ok: true, mensagem: 'Bloqueio removido.', id };
-  }
-
-  listarUsuarios(): UsuarioSalao[] {
-    return [...this.usuarios]
-      .sort((a, b) => Number(b.perfil === 'ADMIN') - Number(a.perfil === 'ADMIN') || a.nome.localeCompare(b.nome, 'pt-BR'))
-      .map((usuario) => ({ ...usuario, acessos: [...usuario.acessos] }));
-  }
-
-  cadastrarOperador(dados: UsuarioOperadorCadastro): ResultadoOperacao {
-    const nome = dados.nome.trim();
-    if (nome.length < 2) {
-      return { ok: false, mensagem: 'Informe o nome da funcionária.' };
-    }
-    if (this.usuarios.some((usuario) => usuario.nome.toLowerCase() === nome.toLowerCase())) {
-      return { ok: false, mensagem: 'Já existe uma funcionária com esse nome.' };
-    }
-    const acessos = this.normalizarAcessos(dados.acessos);
-    if (!acessos) {
-      return { ok: false, mensagem: 'Há uma tela de acesso inválida.' };
-    }
-    if (acessos.length === 0) {
-      return { ok: false, mensagem: 'Marque ao menos uma tela.' };
-    }
-    const criado: UsuarioSalao = {
-      id: this.novoId('usr'),
-      nome,
-      perfil: 'OPERADOR',
-      ativo: true,
-      acessos,
-    };
-    this.usuarios.push(criado);
-    return { ok: true, mensagem: 'Funcionária cadastrada.', id: criado.id };
-  }
-
-  definirUsuarioAtivo(id: string, ativo: boolean): ResultadoOperacao {
-    const usuario = this.usuarios.find((item) => item.id === id);
-    if (!usuario) {
-      return { ok: false, mensagem: 'Usuária não encontrada.' };
-    }
-    if (usuario.id === this.usuarioAtualId) {
-      return { ok: false, mensagem: 'A conta em uso não pode ser desativada.' };
-    }
-    if (usuario.perfil === 'ADMIN') {
-      return { ok: false, mensagem: 'A administradora permanece ativa.' };
-    }
-    if (usuario.ativo === ativo) {
-      return {
-        ok: false,
-        mensagem: ativo ? 'Esta funcionária já está ativa.' : 'Esta funcionária já está inativa.',
-      };
-    }
-    usuario.ativo = ativo;
-    return {
-      ok: true,
-      mensagem: ativo ? 'Funcionária reativada.' : 'Funcionária desativada.',
-      id: usuario.id,
-    };
-  }
-
-  definirAcessos(id: string, acessosInformados: ModuloAcesso[]): ResultadoOperacao {
-    const usuario = this.usuarios.find((item) => item.id === id);
-    if (!usuario) {
-      return { ok: false, mensagem: 'Usuária não encontrada.' };
-    }
-    if (usuario.perfil === 'ADMIN') {
-      return { ok: false, mensagem: 'A administradora acessa todas as telas.' };
-    }
-    const acessos = this.normalizarAcessos(acessosInformados);
-    if (!acessos) {
-      return { ok: false, mensagem: 'Há uma tela de acesso inválida.' };
-    }
-    if (acessos.length === 0) {
-      return { ok: false, mensagem: 'Marque ao menos uma tela.' };
-    }
-    usuario.acessos = acessos;
-    return { ok: true, mensagem: 'Acesso atualizado.', id: usuario.id };
-  }
-
-  listarCategorias(tipo: TipoCategoria): CategoriaSalao[] {
-    return this.categorias
-      .filter((categoria) => categoria.tipo === tipo)
-      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
-      .map((categoria) => ({ ...categoria }));
-  }
-
-  salvarCategoria(dados: CategoriaCadastro): ResultadoOperacao {
-    const nome = dados.nome.trim();
-    if (nome.length < 2) {
-      return { ok: false, mensagem: 'Informe o nome da categoria.' };
-    }
-    const repetida = this.categorias.some(
-      (categoria) =>
-        categoria.tipo === dados.tipo &&
-        categoria.id !== dados.id &&
-        categoria.nome.toLowerCase() === nome.toLowerCase(),
-    );
-    if (repetida) {
-      return { ok: false, mensagem: 'Já existe uma categoria com esse nome.' };
-    }
-
-    if (dados.id) {
-      const atual = this.categorias.find((categoria) => categoria.id === dados.id && categoria.tipo === dados.tipo);
-      if (!atual) {
-        return { ok: false, mensagem: 'Categoria não encontrada.' };
-      }
-      if (atual.tipo === 'estoque' && atual.nome !== nome) {
-        for (const produto of this.produtos) {
-          if (produto.categoria.toLowerCase() === atual.nome.toLowerCase()) {
-            produto.categoria = nome;
-          }
+    if (contrato.tipo === 'parcelada') {
+      const total = contrato.parcelas ?? 0;
+      for (let indice = 0; indice < total; indice += 1) {
+        const mes = deslocarMes(contrato.inicioCompetencia, indice);
+        if (compararCompetencia(mes, ate) <= 0) {
+          meses.push(mes);
         }
       }
-      atual.nome = nome;
-      return { ok: true, mensagem: 'Categoria atualizada.', id: atual.id };
+      return meses;
     }
-
-    const criada: CategoriaSalao = { id: this.novoId('cat'), nome, tipo: dados.tipo };
-    this.categorias.push(criada);
-    return { ok: true, mensagem: 'Categoria registrada.', id: criada.id };
+    let mes = contrato.inicioCompetencia;
+    while (compararCompetencia(mes, ate) <= 0 && meses.length < 36) {
+      if (!contrato.canceladaApartir || compararCompetencia(mes, contrato.canceladaApartir) < 0) {
+        meses.push(mes);
+      }
+      mes = deslocarMes(mes, 1);
+    }
+    return meses;
   }
 
-  removerCategoria(id: string): ResultadoOperacao {
-    const categoria = this.categorias.find((item) => item.id === id);
-    if (!categoria) {
-      return { ok: false, mensagem: 'Categoria não encontrada.' };
+  private indiceParcela(contrato: ContaContrato, competencia: string): number {
+    let indice = 0;
+    let mes = contrato.inicioCompetencia;
+    while (mes !== competencia && indice < 60) {
+      mes = deslocarMes(mes, 1);
+      indice += 1;
     }
-    if (categoria.tipo === 'estoque' && this.produtosNaCategoria(categoria.nome) > 0) {
-      return { ok: false, mensagem: 'Esta categoria ainda tem produtos no estoque.' };
-    }
-    const indice = this.categorias.findIndex((item) => item.id === id);
-    this.categorias.splice(indice, 1);
-    return { ok: true, mensagem: 'Categoria removida.', id };
+    return indice;
   }
 
-  listarFormas(): FormaConfigurada[] {
-    return this.formas.map((forma) => ({ ...forma }));
+  private movimentosNoPeriodo(inicio: string, fim: string): Movimentacao[] {
+    return this.movimentacoes.filter((item) => {
+      const dia = dataIso(new Date(item.dataHora));
+      return dia >= inicio && dia <= fim;
+    });
   }
 
-  maxParcelasCredito(): number {
-    return this.formas.find((forma) => forma.forma === 'Cartão de crédito')?.maxParcelas ?? 1;
+  private participacao(vendas: Movimentacao[], aceita: (item: ItemMovimento) => boolean): LinhaParticipacao[] {
+    const mapa = new Map<string, LinhaParticipacao>();
+    for (const venda of vendas) {
+      const bruto = somar(venda.itens.map((item) => item.quantidade * item.precoUnitario));
+      const fator = bruto > 0 ? venda.valor / bruto : 0;
+      for (const item of venda.itens.filter(aceita)) {
+        const atual = mapa.get(item.nome) ?? { nome: item.nome, quantidade: 0, total: 0, percentual: 0 };
+        atual.quantidade += item.quantidade;
+        atual.total = arredondar(atual.total + item.quantidade * item.precoUnitario * fator);
+        mapa.set(item.nome, atual);
+      }
+    }
+    return this.comPercentual([...mapa.values()].sort((a, b) => b.total - a.total || a.nome.localeCompare(b.nome, 'pt-BR')));
   }
 
-  taxaDe(forma: FormaPagamento): number {
-    return this.formas.find((item) => item.forma === forma)?.taxaPercentual ?? 0;
+  private somarItens(vendas: Movimentacao[], tipo: 'servico' | 'produto'): LinhaParticipacao {
+    let quantidade = 0;
+    let total = 0;
+    for (const venda of vendas) {
+      const bruto = somar(venda.itens.map((item) => item.quantidade * item.precoUnitario));
+      const fator = bruto > 0 ? venda.valor / bruto : 0;
+      for (const item of venda.itens.filter((linha) => linha.tipo === tipo)) {
+        quantidade += item.quantidade;
+        total = arredondar(total + item.quantidade * item.precoUnitario * fator);
+      }
+    }
+    return { nome: tipo === 'servico' ? 'Serviços' : 'Revenda', quantidade, total, percentual: 0 };
   }
 
-  salvarFormas(informadas: FormaConfigurada[]): ResultadoOperacao {
-    if (!this.formasCompletas(informadas)) {
-      return { ok: false, mensagem: 'Informe todas as formas de pagamento.' };
+  private comPercentual(linhas: LinhaParticipacao[]): LinhaParticipacao[] {
+    const total = somar(linhas.map((linha) => linha.total));
+    if (!total) {
+      return linhas.map((linha) => ({ ...linha, percentual: 0 }));
     }
-    if (!informadas.some((forma) => forma.ativa)) {
-      return { ok: false, mensagem: 'Deixe ao menos uma forma ativa.' };
-    }
-    const credito = informadas.find((forma) => forma.forma === 'Cartão de crédito');
-    const maximo = Math.floor(Number(credito?.maxParcelas));
-    if (!Number.isInteger(maximo) || maximo < 1 || maximo > 24) {
-      return { ok: false, mensagem: 'O crédito aceita de 1 a 24 parcelas.' };
-    }
+    const ultimoComValor = linhas.reduce((indice, linha, posicao) => (linha.total ? posicao : indice), -1);
+    let acumulado = 0;
+    return linhas.map((linha, indice) => {
+      if (!linha.total) {
+        return { ...linha, percentual: 0 };
+      }
+      const percentual =
+        indice === ultimoComValor ? arredondar(100 - acumulado) : arredondar((linha.total / total) * 100);
+      acumulado = arredondar(acumulado + percentual);
+      return { ...linha, percentual };
+    });
+  }
 
-    for (const atual of this.formas) {
-      const informada = informadas.find((forma) => forma.forma === atual.forma);
-      if (!informada) {
+  private semearDemonstracao(): void {
+    const hoje = dataIso();
+    const diaHoje = Number(hoje.slice(8, 10));
+    const mesAtual = competenciaDe(hoje);
+    const mesAnterior = deslocarMes(mesAtual, -1);
+    const [anoAtual, numeroMes] = mesAtual.split('-').map(Number);
+    const [anoAnterior, numeroAnterior] = mesAnterior.split('-').map(Number);
+
+    const caixaAnterior: CaixaRegistro = {
+      id: 'cx-demo-anterior',
+      abertoEm: new Date(anoAnterior, numeroAnterior - 1, 1, 8).toISOString(),
+      fechadoEm: new Date(anoAnterior, numeroAnterior - 1, 28, 20).toISOString(),
+      responsavelAbertura: this.usuarioAtual,
+      responsavelFechamento: this.usuarioAtual,
+      saldoInicial: 200,
+      status: 'fechado',
+      valorContado: 200,
+      diferencaDinheiro: 0,
+    };
+    const caixaAtual: CaixaRegistro = {
+      id: 'cx-demo-atual',
+      abertoEm: new Date(anoAtual, numeroMes - 1, 1, 8).toISOString(),
+      fechadoEm: new Date(anoAtual, numeroMes - 1, Math.min(diaHoje, 28), 20).toISOString(),
+      responsavelAbertura: this.usuarioAtual,
+      responsavelFechamento: this.usuarioAtual,
+      saldoInicial: 180,
+      status: 'fechado',
+      valorContado: 180,
+      diferencaDinheiro: 0,
+    };
+    this.caixas.push(caixaAnterior, caixaAtual);
+
+    const vendas: { dia: number; caixaId: string; ano: number; mes: number; servicoId: string; forma: FormaPagamento; profissionalId: string }[] = [
+      { dia: 1, caixaId: caixaAtual.id, ano: anoAtual, mes: numeroMes, servicoId: 'srv-coloracao-lista', forma: 'Pix', profissionalId: 'pro-valentina' },
+      { dia: 3, caixaId: caixaAtual.id, ano: anoAtual, mes: numeroMes, servicoId: 'srv-mechas', forma: 'Cartão de crédito', profissionalId: 'pro-valentina' },
+      { dia: 4, caixaId: caixaAtual.id, ano: anoAtual, mes: numeroMes, servicoId: 'srv-corte-lista', forma: 'Dinheiro', profissionalId: 'pro-paula' },
+      { dia: 6, caixaId: caixaAtual.id, ano: anoAtual, mes: numeroMes, servicoId: 'srv-hidratacao', forma: 'Pix', profissionalId: 'pro-ana' },
+      { dia: 8, caixaId: caixaAtual.id, ano: anoAtual, mes: numeroMes, servicoId: 'srv-escova', forma: 'Cartão de débito', profissionalId: 'pro-paula' },
+      { dia: 10, caixaId: caixaAtual.id, ano: anoAtual, mes: numeroMes, servicoId: 'srv-progressiva-lista', forma: 'Pix', profissionalId: 'pro-ana' },
+      { dia: 13, caixaId: caixaAtual.id, ano: anoAtual, mes: numeroMes, servicoId: 'srv-coloracao-lista', forma: 'Cartão de crédito', profissionalId: 'pro-valentina' },
+      { dia: 15, caixaId: caixaAtual.id, ano: anoAtual, mes: numeroMes, servicoId: 'srv-corte-lista', forma: 'Pix', profissionalId: 'pro-paula' },
+      { dia: 2, caixaId: caixaAnterior.id, ano: anoAnterior, mes: numeroAnterior, servicoId: 'srv-coloracao-lista', forma: 'Pix', profissionalId: 'pro-valentina' },
+      { dia: 3, caixaId: caixaAnterior.id, ano: anoAnterior, mes: numeroAnterior, servicoId: 'srv-corte-lista', forma: 'Dinheiro', profissionalId: 'pro-paula' },
+      { dia: 4, caixaId: caixaAnterior.id, ano: anoAnterior, mes: numeroAnterior, servicoId: 'srv-mechas', forma: 'Cartão de crédito', profissionalId: 'pro-ana' },
+      { dia: 6, caixaId: caixaAnterior.id, ano: anoAnterior, mes: numeroAnterior, servicoId: 'srv-hidratacao', forma: 'Pix', profissionalId: 'pro-paula' },
+      { dia: 8, caixaId: caixaAnterior.id, ano: anoAnterior, mes: numeroAnterior, servicoId: 'srv-escova', forma: 'Dinheiro', profissionalId: 'pro-ana' },
+      { dia: 10, caixaId: caixaAnterior.id, ano: anoAnterior, mes: numeroAnterior, servicoId: 'srv-progressiva-lista', forma: 'Cartão de débito', profissionalId: 'pro-valentina' },
+      { dia: 12, caixaId: caixaAnterior.id, ano: anoAnterior, mes: numeroAnterior, servicoId: 'srv-coloracao-lista', forma: 'Pix', profissionalId: 'pro-ana' },
+      { dia: 14, caixaId: caixaAnterior.id, ano: anoAnterior, mes: numeroAnterior, servicoId: 'srv-corte-lista', forma: 'Dinheiro', profissionalId: 'pro-paula' },
+    ];
+
+    for (const plano of vendas) {
+      if (plano.dia > diaHoje) {
         continue;
       }
-      atual.ativa = informada.ativa;
-      if (atual.forma === 'Cartão de crédito') {
-        atual.maxParcelas = maximo;
+      const servico = this.servicos.find((item) => item.id === plano.servicoId);
+      const profissional = this.profissionais.find((item) => item.id === plano.profissionalId);
+      if (!servico || !profissional) {
+        continue;
+      }
+      this.movimentacoes.push({
+        id: this.novoId('V'),
+        caixaId: plano.caixaId,
+        dataHora: new Date(plano.ano, plano.mes - 1, plano.dia, 12).toISOString(),
+        tipo: 'venda',
+        descricao: servico.nome,
+        profissional: profissional.nome,
+        profissionalId: profissional.id,
+        itens: [{ tipo: 'servico', id: servico.id, nome: servico.nome, quantidade: 1, precoUnitario: servico.preco }],
+        pagamentos: [{ forma: plano.forma, valor: servico.preco }],
+        valor: servico.preco,
+        desconto: 0,
+        responsavel: this.usuarioAtual,
+      });
+    }
+
+    if (diaHoje >= 15) {
+      const mascara = this.produtos.find((item) => item.id === 'prd-mascara');
+      if (mascara) {
+        this.movimentacoes.push({
+          id: this.novoId('V'),
+          caixaId: caixaAtual.id,
+          dataHora: new Date(anoAtual, numeroMes - 1, 15, 15).toISOString(),
+          tipo: 'venda',
+          descricao: mascara.nome,
+          profissional: 'Paula',
+          profissionalId: 'pro-paula',
+          itens: [{ tipo: 'produto', id: mascara.id, nome: mascara.nome, quantidade: 1, precoUnitario: mascara.preco }],
+          pagamentos: [{ forma: 'Dinheiro', valor: mascara.preco }],
+          valor: mascara.preco,
+          desconto: 0,
+          responsavel: this.usuarioAtual,
+        });
       }
     }
-    return { ok: true, mensagem: 'Formas de pagamento salvas.' };
-  }
-
-  salvarTaxas(informadas: FormaConfigurada[]): ResultadoOperacao {
-    if (!this.formasCompletas(informadas)) {
-      return { ok: false, mensagem: 'Informe a taxa de cada forma de pagamento.' };
-    }
-    const taxas = new Map<FormaPagamento, number>();
-    for (const informada of informadas) {
-      const taxa = arredondar(Number(informada.taxaPercentual));
-      if (!Number.isFinite(taxa) || taxa < 0 || taxa > 100) {
-        return { ok: false, mensagem: `Informe a taxa de ${informada.forma} entre 0 e 100%.` };
+    if (diaHoje >= 9) {
+      const mascara = this.produtos.find((item) => item.id === 'prd-mascara');
+      if (mascara) {
+        this.movimentacoes.push({
+          id: this.novoId('V'),
+          caixaId: caixaAnterior.id,
+          dataHora: new Date(anoAnterior, numeroAnterior - 1, 9, 15).toISOString(),
+          tipo: 'venda',
+          descricao: mascara.nome,
+          profissional: 'Ana',
+          profissionalId: 'pro-ana',
+          itens: [{ tipo: 'produto', id: mascara.id, nome: mascara.nome, quantidade: 1, precoUnitario: mascara.preco }],
+          pagamentos: [{ forma: 'Pix', valor: mascara.preco }],
+          valor: mascara.preco,
+          desconto: 0,
+          responsavel: this.usuarioAtual,
+        });
       }
-      taxas.set(informada.forma, taxa);
     }
-    for (const atual of this.formas) {
-      atual.taxaPercentual = taxas.get(atual.forma) ?? atual.taxaPercentual;
-    }
-    return { ok: true, mensagem: 'Taxas salvas.' };
-  }
 
-  exportarDados(): string {
-    return JSON.stringify(
-      {
-        versao: 1,
-        exportadoEm: new Date().toISOString(),
-        sequencia: this.sequencia,
-        horarios: this.horarios.map((item) => ({ ...item })),
-        bloqueios: this.bloqueios.map((item) => ({ ...item })),
-        profissionais: this.profissionais.map((item) => ({ ...item })),
-        clientes: this.clientes.map((item) => ({ ...item })),
-        servicos: this.servicos.map((item) => ({ ...item })),
-        produtos: this.produtos.map((item) => ({ ...item })),
-        agendamentos: this.agendamentos.map((item) => ({ ...item })),
-        caixas: this.caixas.map((item) => ({ ...item })),
-        movimentacoes: this.movimentacoes.map((item) => ({
-          ...item,
-          itens: item.itens.map((linha) => ({ ...linha })),
-          pagamentos: item.pagamentos.map((pagamento) => ({ ...pagamento })),
-        })),
-        usuarios: this.usuarios.map((item) => ({ ...item, acessos: [...item.acessos] })),
-        categorias: this.categorias.map((item) => ({ ...item })),
-        formas: this.listarFormas(),
-      },
-      null,
-      2,
+    const aluguel: ContaContrato = {
+      id: 'ctt-aluguel',
+      nome: 'Aluguel',
+      valor: 1500,
+      tipo: 'fixa',
+      diaVencimento: 5,
+      inicioCompetencia: deslocarMes(mesAtual, -2),
+    };
+    const energia: ContaContrato = {
+      id: 'ctt-energia',
+      nome: 'Energia',
+      valor: 280,
+      tipo: 'fixa',
+      diaVencimento: 20,
+      inicioCompetencia: deslocarMes(mesAtual, -2),
+    };
+    const internet: ContaContrato = {
+      id: 'ctt-internet',
+      nome: 'Internet',
+      valor: 129.9,
+      tipo: 'fixa',
+      diaVencimento: 10,
+      inicioCompetencia: deslocarMes(mesAtual, -2),
+    };
+    const equipamento: ContaContrato = {
+      id: 'ctt-equipamento',
+      nome: 'Equipamento',
+      valor: 200,
+      tipo: 'parcelada',
+      diaVencimento: 15,
+      inicioCompetencia: deslocarMes(mesAtual, -2),
+      parcelas: 6,
+    };
+    const conserto: ContaContrato = {
+      id: 'ctt-conserto',
+      nome: 'Conserto',
+      valor: 350,
+      tipo: 'avulsa',
+      diaVencimento: 12,
+      inicioCompetencia: mesAtual,
+    };
+    this.contas.push(aluguel, energia, internet, equipamento, conserto);
+    this.garantirLancamentos(mesAtual);
+
+    for (const lancamento of this.lancamentosConta) {
+      const passado = compararCompetencia(lancamento.competencia, mesAtual) < 0;
+      const internetDoMes = lancamento.contratoId === internet.id && lancamento.competencia === mesAtual && diaHoje >= 10;
+      if (passado || internetDoMes) {
+        lancamento.status = 'pago';
+        lancamento.pagoEm = new Date(
+          Number(lancamento.vencimento.slice(0, 4)),
+          Number(lancamento.vencimento.slice(5, 7)) - 1,
+          Number(lancamento.vencimento.slice(8, 10)),
+          11,
+        ).toISOString();
+      }
+    }
+
+    this.sangrias.push(
+      { id: 'san-demo-1', descricao: 'Retirada pessoal', valor: 400, data: vencimentoNoMes(mesAtual, 1) },
+      { id: 'san-demo-2', descricao: 'Pagamento fornecedor', valor: 180, data: vencimentoNoMes(mesAtual, Math.min(14, diaHoje)) },
     );
-  }
-
-  restaurarDados(texto: string): ResultadoOperacao {
-    let bruto: unknown;
-    try {
-      bruto = JSON.parse(texto);
-    } catch {
-      return { ok: false, mensagem: 'O arquivo não é um backup válido.' };
+    if (diaHoje >= 7) {
+      this.sangrias.push({
+        id: 'san-demo-3',
+        descricao: 'Retirada pessoal',
+        valor: 250,
+        data: vencimentoNoMes(mesAnterior, 7),
+      });
     }
-    if (!bruto || typeof bruto !== 'object') {
-      return { ok: false, mensagem: 'O arquivo não é um backup válido.' };
-    }
-    const dados = bruto as Record<string, unknown>;
-    if (dados['versao'] !== 1) {
-      return { ok: false, mensagem: 'Este backup é de uma versão diferente.' };
-    }
-
-    const horarios = this.comoLista<HorarioFuncionamento>(dados['horarios']);
-    const bloqueios = this.comoLista<BloqueioAgenda>(dados['bloqueios']);
-    const profissionais = this.comoLista<Profissional>(dados['profissionais']);
-    const clientes = this.comoLista<Cliente>(dados['clientes']);
-    const servicos = this.comoLista<Servico>(dados['servicos']);
-    const produtos = this.comoLista<ProdutoEstoque>(dados['produtos']);
-    const agendamentos = this.comoLista<AgendamentoDia>(dados['agendamentos']);
-    const caixas = this.comoLista<CaixaRegistro>(dados['caixas']);
-    const movimentacoes = this.comoLista<Movimentacao>(dados['movimentacoes']);
-    const usuarios = this.comoLista<UsuarioSalao>(dados['usuarios']);
-    const categorias = this.comoLista<CategoriaSalao>(dados['categorias']);
-    const formas = this.comoLista<FormaConfigurada>(dados['formas']);
-
-    if (!horarios || horarios.length !== DIAS_SEMANA.length) {
-      return { ok: false, mensagem: 'O backup não tem os horários da semana.' };
-    }
-    if (
-      !bloqueios ||
-      !profissionais ||
-      !clientes ||
-      !servicos ||
-      !produtos ||
-      !agendamentos ||
-      !caixas ||
-      !movimentacoes ||
-      !categorias
-    ) {
-      return { ok: false, mensagem: 'O backup está incompleto.' };
-    }
-    if (!usuarios?.some((usuario) => usuario.id === this.usuarioAtualId && usuario.perfil === 'ADMIN')) {
-      return { ok: false, mensagem: 'O backup precisa incluir a conta em uso.' };
-    }
-    if (!formas || !this.formasCompletas(formas)) {
-      return { ok: false, mensagem: 'O backup não tem as formas de pagamento.' };
-    }
-
-    this.substituir(this.horarios, horarios);
-    this.substituir(this.bloqueios, bloqueios);
-    this.substituir(this.profissionais, profissionais);
-    this.substituir(this.clientes, clientes);
-    this.substituir(this.servicos, servicos);
-    this.substituir(this.produtos, produtos);
-    this.substituir(this.agendamentos, agendamentos);
-    this.substituir(this.caixas, caixas);
-    this.substituir(this.movimentacoes, movimentacoes);
-    this.substituir(this.usuarios, usuarios.map((usuario) => ({ ...usuario, acessos: [...usuario.acessos] })));
-    this.substituir(this.categorias, categorias);
-    for (const atual of this.formas) {
-      const restaurada = formas.find((forma) => forma.forma === atual.forma);
-      if (!restaurada) {
-        continue;
-      }
-      atual.ativa = restaurada.ativa;
-      atual.taxaPercentual = restaurada.taxaPercentual;
-      atual.maxParcelas = restaurada.forma === 'Cartão de crédito' ? restaurada.maxParcelas : 1;
-    }
-    if (typeof dados['sequencia'] === 'number' && dados['sequencia'] > this.sequencia) {
-      this.sequencia = dados['sequencia'];
-    }
-    return { ok: true, mensagem: 'Backup restaurado.' };
-  }
-
-  produtosNaCategoria(nome: string): number {
-    return this.produtos.filter((produto) => produto.categoria.toLowerCase() === nome.toLowerCase()).length;
-  }
-
-  alterarSenha(dados: TrocaSenha): ResultadoOperacao {
-    if (!dados.atual || dados.atual !== this.senha) {
-      return { ok: false, mensagem: 'A senha atual não confere.' };
-    }
-    if (dados.nova.length < 6) {
-      return { ok: false, mensagem: 'A nova senha precisa ter pelo menos 6 caracteres.' };
-    }
-    if (dados.nova !== dados.confirmacao) {
-      return { ok: false, mensagem: 'A confirmação não confere com a nova senha.' };
-    }
-    if (dados.nova === dados.atual) {
-      return { ok: false, mensagem: 'A nova senha precisa ser diferente da atual.' };
-    }
-    this.senha = dados.nova;
-    return { ok: true, mensagem: 'Senha alterada.' };
   }
 
   private obterOuCriarCliente(nome: string): Cliente {
