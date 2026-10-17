@@ -197,6 +197,16 @@
                 }
               </select>
             </label>
+            @if (forma === 'Cartão de crédito' || (dividir && forma2 === 'Cartão de crédito')) {
+              <label class="field">
+                Parcelas
+                <select name="parcelas" [(ngModel)]="parcelas" [disabled]="!caixaAberto">
+                  @for (vezes of parcelasCredito; track vezes) {
+                    <option [ngValue]="vezes">{{ vezes === 1 ? 'À vista' : vezes + 'x' }}</option>
+                  }
+                </select>
+              </label>
+            }
           </div>
 
           @if (descontoInvalido) {
@@ -295,7 +305,7 @@
             Pagamento
             <select name="filtroForma" [(ngModel)]="filtroForma">
               <option value="todas">Todas</option>
-              @for (opcao of estado.formasPagamento; track opcao) {
+              @for (opcao of estado.formasConsulta; track opcao) {
                 <option [value]="opcao">{{ opcao }}</option>
               }
             </select>
@@ -384,7 +394,7 @@
             Pagamento
             <select name="relForma" [(ngModel)]="relForma">
               <option value="todas">Todas</option>
-              @for (opcao of estado.formasPagamento; track opcao) {
+              @for (opcao of estado.formasConsulta; track opcao) {
                 <option [value]="opcao">{{ opcao }}</option>
               }
             </select>
@@ -429,6 +439,14 @@
             <div>
               <p class="rotulo">Descontos</p>
               <strong>{{ totaisRelatorio.descontos | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
+            </div>
+            <div>
+              <p class="rotulo">Taxas</p>
+              <strong>{{ totaisRelatorio.taxas | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
+            </div>
+            <div>
+              <p class="rotulo">Líquido</p>
+              <strong>{{ totaisRelatorio.liquido | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
             </div>
           </div>
 
@@ -693,6 +711,16 @@
               }
             </select>
           </label>
+          @if (atendimento.forma === 'Cartão de crédito' || (atendimento.dividir && atendimento.forma2 === 'Cartão de crédito')) {
+            <label class="field">
+              Parcelas
+              <select name="parcelasAtendimento" [(ngModel)]="atendimento.parcelas">
+                @for (vezes of parcelasCredito; track vezes) {
+                  <option [ngValue]="vezes">{{ vezes === 1 ? 'À vista' : vezes + 'x' }}</option>
+                }
+              </select>
+            </label>
+          }
         </div>
         @if (descontoAtendimentoInvalido) {
           <p class="aviso erro">{{ textoDescontoAtendimento }}</p>

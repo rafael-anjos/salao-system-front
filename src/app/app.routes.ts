@@ -6,6 +6,7 @@ import { Dashboard } from './components/dashboard/dashboard';
 import { Caixa } from './components/caixa/caixa';
 import { Profissionais } from './components/profissionais/profissionais';
 import { Servicos } from './components/servicos/servicos';
+import { Configuracoes } from './components/configuracoes/configuracoes';
 
 export const routes: Routes = [
     { path: '', component: Dashboard },
@@ -15,5 +16,6 @@ export const routes: Routes = [
     { path: 'estoque', component: EstoqueComponent },
     { path: 'servicos', component: Servicos },
     { path: 'profissionais', component: Profissionais },
+    { path: 'configuracoes', component: Configuracoes },
 
 ];
