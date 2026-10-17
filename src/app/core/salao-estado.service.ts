@@ -166,6 +166,78 @@ export interface ResultadoOperacao {
   id?: string;
 }
 
+export type TipoConta = 'fixa' | 'parcelada' | 'avulsa';
+export type StatusConta = 'pendente' | 'pago';
+
+export interface ContaContrato {
+  id: string;
+  nome: string;
+  valor: number;
+  tipo: TipoConta;
+  diaVencimento: number;
+  inicioCompetencia: string;
+  parcelas?: number;
+  canceladaApartir?: string;
+}
+
+export interface ContaLancamento {
+  id: string;
+  contratoId: string;
+  competencia: string;
+  vencimento: string;
+  valor: number;
+  status: StatusConta;
+  pagoEm?: string;
+  numeroParcela?: number;
+}
+
+export interface ContaVisivel {
+  lancamentoId: string;
+  contratoId: string;
+  nome: string;
+  valor: number;
+  vencimento: string;
+  tipo: TipoConta;
+  status: StatusConta;
+  numeroParcela?: number;
+  parcelas?: number;
+  vencida: boolean;
+  podeEncerrar: boolean;
+}
+
+export interface Sangria {
+  id: string;
+  descricao: string;
+  valor: number;
+  data: string;
+}
+
+export interface NovaConta {
+  nome: string;
+  valor: number;
+  tipo: TipoConta;
+  diaVencimento?: number;
+  vencimento?: string;
+  parcelas?: number;
+  status: StatusConta;
+}
+
+export interface LinhaParticipacao {
+  nome: string;
+  quantidade: number;
+  total: number;
+  percentual: number;
+}
+
+export interface TotaisPeriodo {
+  entradas: number;
+  saidas: number;
+  lucro: number;
+  vendas: number;
+  quantidadeVendas: number;
+  ticket: number;
+}
+
 export const FORMAS_PAGAMENTO: FormaPagamento[] = [
   'Dinheiro',
   'Pix',
@@ -184,6 +256,34 @@ const HOJE = dataIso();
 
 export function arredondar(valor: number): number {
   return Math.round((valor + Number.EPSILON) * 100) / 100;
+}
+
+export function competenciaDe(iso: string): string {
+  return iso.slice(0, 7);
+}
+
+export function deslocarMes(competencia: string, delta: number): string {
+  const [ano, mes] = competencia.split('-').map(Number);
+  const data = new Date(ano, mes - 1 + delta, 1);
+  return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
+}
+
+export function vencimentoNoMes(competencia: string, dia: number): string {
+  const [ano, mes] = competencia.split('-').map(Number);
+  const ultimo = new Date(ano, mes, 0).getDate();
+  const diaReal = Math.min(Math.max(1, dia), ultimo);
+  return `${competencia}-${String(diaReal).padStart(2, '0')}`;
+}
+
+export function somarDias(iso: string, dias: number): string {
+  const [ano, mes, dia] = iso.split('-').map(Number);
+  const data = new Date(ano, mes - 1, dia);
+  data.setDate(data.getDate() + dias);
+  return dataIso(data);
+}
+
+function compararCompetencia(a: string, b: string): number {
+  return a.localeCompare(b);
 }
 
 function somar(valores: number[]): number {
@@ -385,8 +485,15 @@ export class SalaoEstadoService {
 
   readonly caixas: CaixaRegistro[] = [];
   readonly movimentacoes: Movimentacao[] = [];
+  readonly contas: ContaContrato[] = [];
+  readonly lancamentosConta: ContaLancamento[] = [];
+  readonly sangrias: Sangria[] = [];
 
   private sequencia = 0;
+
+  constructor() {
+    this.semearDemonstracao();
+  }
 
   get caixaAberto(): boolean {
     return this.caixas.some((caixa) => caixa.status === 'aberto');
@@ -988,6 +1095,550 @@ export class SalaoEstadoService {
       mensagem: ativo ? 'Serviço reativado.' : 'Serviço desativado.',
       id: servico.id,
     };
+  }
+
+  garantirLancamentos(competencia: string): void {
+    if (!/^\d{4}-\d{2}$/.test(competencia)) {
+      return;
+    }
+    for (const contrato of this.contas) {
+      for (const mes of this.mesesDevidos(contrato, competencia)) {
+        const existe = this.lancamentosConta.some(
+          (item) => item.contratoId === contrato.id && item.competencia === mes,
+        );
+        if (existe) {
+          continue;
+        }
+        const indice = this.indiceParcela(contrato, mes);
+        this.lancamentosConta.push({
+          id: this.novoId('cta'),
+          contratoId: contrato.id,
+          competencia: mes,
+          vencimento: vencimentoNoMes(mes, contrato.diaVencimento),
+          valor: contrato.valor,
+          status: 'pendente',
+          numeroParcela: contrato.tipo === 'parcelada' ? indice + 1 : undefined,
+        });
+      }
+    }
+  }
+
+  contasDoMes(competencia: string): ContaVisivel[] {
+    this.garantirLancamentos(competencia);
+    const hoje = dataIso();
+    return this.lancamentosConta
+      .filter((item) => item.competencia === competencia)
+      .map((item) => {
+        const contrato = this.contas.find((conta) => conta.id === item.contratoId);
+        return { item, contrato };
+      })
+      .filter((linha): linha is { item: ContaLancamento; contrato: ContaContrato } => {
+        if (!linha.contrato) {
+          return false;
+        }
+        if (linha.contrato.tipo === 'avulsa' && linha.item.status === 'pago') {
+          return false;
+        }
+        return true;
+      })
+      .map(({ item, contrato }) => ({
+        lancamentoId: item.id,
+        contratoId: contrato.id,
+        nome: contrato.nome,
+        valor: item.valor,
+        vencimento: item.vencimento,
+        tipo: contrato.tipo,
+        status: item.status,
+        numeroParcela: item.numeroParcela,
+        parcelas: contrato.parcelas,
+        vencida: item.status === 'pendente' && item.vencimento < hoje,
+        podeEncerrar: contrato.tipo === 'fixa' && !contrato.canceladaApartir,
+      }))
+      .sort((a, b) => a.vencimento.localeCompare(b.vencimento) || a.nome.localeCompare(b.nome, 'pt-BR'));
+  }
+
+  contasAPagar(competencia: string): number {
+    return somar(
+      this.contasDoMes(competencia)
+        .filter((conta) => conta.status === 'pendente')
+        .map((conta) => conta.valor),
+    );
+  }
+
+  criarConta(dados: NovaConta): ResultadoOperacao {
+    const nome = dados.nome.trim();
+    const valor = arredondar(Number(dados.valor));
+    if (nome.length < 2) {
+      return { ok: false, mensagem: 'Informe o nome da conta.' };
+    }
+    if (!Number.isFinite(valor) || valor <= 0) {
+      return { ok: false, mensagem: 'Informe um valor maior que zero.' };
+    }
+    if (dados.tipo !== 'fixa' && dados.tipo !== 'parcelada' && dados.tipo !== 'avulsa') {
+      return { ok: false, mensagem: 'Selecione o tipo da conta.' };
+    }
+    if (dados.status !== 'pendente' && dados.status !== 'pago') {
+      return { ok: false, mensagem: 'Selecione se a conta está pendente ou paga.' };
+    }
+
+    let dia = Number(dados.diaVencimento);
+    let inicio = competenciaDe(dataIso());
+    if (dados.tipo === 'fixa') {
+      if (!Number.isInteger(dia) || dia < 1 || dia > 31) {
+        return { ok: false, mensagem: 'Informe o dia de vencimento, de 1 a 31.' };
+      }
+    } else {
+      if (!dados.vencimento || !/^\d{4}-\d{2}-\d{2}$/.test(dados.vencimento)) {
+        return { ok: false, mensagem: 'Informe a data de vencimento.' };
+      }
+      dia = Number(dados.vencimento.slice(8, 10));
+      inicio = competenciaDe(dados.vencimento);
+    }
+
+    let parcelas: number | undefined;
+    if (dados.tipo === 'parcelada') {
+      parcelas = Math.floor(Number(dados.parcelas));
+      if (!Number.isFinite(parcelas) || parcelas < 2 || parcelas > 48) {
+        return { ok: false, mensagem: 'Informe de 2 a 48 parcelas.' };
+      }
+    }
+
+    const contrato: ContaContrato = {
+      id: this.novoId('ctt'),
+      nome,
+      valor,
+      tipo: dados.tipo,
+      diaVencimento: dia,
+      inicioCompetencia: inicio,
+      parcelas,
+    };
+    this.contas.push(contrato);
+    this.garantirLancamentos(inicio);
+
+    if (dados.status === 'pago') {
+      const primeiro = this.lancamentosConta.find(
+        (item) => item.contratoId === contrato.id && item.competencia === inicio,
+      );
+      if (primeiro) {
+        primeiro.status = 'pago';
+        primeiro.pagoEm = new Date().toISOString();
+      }
+    }
+
+    const mensagem =
+      dados.tipo === 'avulsa' && dados.status === 'pago'
+        ? 'Conta avulsa paga. Ela sai da lista e entra nas saídas de hoje.'
+        : 'Conta registrada.';
+    return { ok: true, mensagem, id: contrato.id };
+  }
+
+  marcarContaPaga(lancamentoId: string): ResultadoOperacao {
+    const lancamento = this.lancamentosConta.find((item) => item.id === lancamentoId);
+    if (!lancamento) {
+      return { ok: false, mensagem: 'Conta não encontrada.' };
+    }
+    if (lancamento.status === 'pago') {
+      return { ok: false, mensagem: 'Esta conta já está paga.' };
+    }
+    const contrato = this.contas.find((item) => item.id === lancamento.contratoId);
+    lancamento.status = 'pago';
+    lancamento.pagoEm = new Date().toISOString();
+    if (contrato?.tipo === 'avulsa') {
+      return { ok: true, mensagem: 'Conta avulsa paga. Ela sai da lista e entra nas saídas.', id: lancamento.id };
+    }
+    return { ok: true, mensagem: 'Conta marcada como paga.', id: lancamento.id };
+  }
+
+  encerrarContaFixa(contratoId: string): ResultadoOperacao {
+    const contrato = this.contas.find((item) => item.id === contratoId);
+    if (!contrato || contrato.tipo !== 'fixa') {
+      return { ok: false, mensagem: 'Só uma conta fixa pode ser encerrada.' };
+    }
+    if (contrato.canceladaApartir) {
+      return { ok: false, mensagem: 'Esta conta fixa já foi encerrada.' };
+    }
+    contrato.canceladaApartir = deslocarMes(competenciaDe(dataIso()), 1);
+    return { ok: true, mensagem: 'A conta deixa de se repetir a partir do próximo mês.', id: contrato.id };
+  }
+
+  registrarSangria(dados: { descricao: string; valor: number; data: string }): ResultadoOperacao {
+    const descricao = dados.descricao.trim();
+    const valor = arredondar(Number(dados.valor));
+    if (descricao.length < 2) {
+      return { ok: false, mensagem: 'Descreva a sangria.' };
+    }
+    if (!Number.isFinite(valor) || valor <= 0) {
+      return { ok: false, mensagem: 'Informe um valor maior que zero.' };
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dados.data) || dados.data > dataIso()) {
+      return { ok: false, mensagem: 'Informe uma data até hoje.' };
+    }
+    const sangria: Sangria = {
+      id: this.novoId('san'),
+      descricao,
+      valor,
+      data: dados.data,
+    };
+    this.sangrias.push(sangria);
+    return { ok: true, mensagem: 'Sangria registrada.', id: sangria.id };
+  }
+
+  sangriasDoPeriodo(inicio: string, fim: string): Sangria[] {
+    return this.sangrias
+      .filter((item) => item.data >= inicio && item.data <= fim)
+      .sort((a, b) => b.data.localeCompare(a.data) || b.id.localeCompare(a.id));
+  }
+
+  totaisPeriodo(inicio: string, fim: string): TotaisPeriodo {
+    const movimentos = this.movimentosNoPeriodo(inicio, fim);
+    const entradas = somar(
+      movimentos.filter((item) => item.tipo === 'entrada' || item.tipo === 'venda').map((item) => item.valor),
+    );
+    const saidasCaixa = somar(
+      movimentos.filter((item) => item.tipo === 'saida' || item.tipo === 'estorno').map((item) => item.valor),
+    );
+    const sangrias = somar(this.sangriasDoPeriodo(inicio, fim).map((item) => item.valor));
+    const contasPagas = somar(
+      this.lancamentosConta
+        .filter((item) => item.status === 'pago' && item.pagoEm)
+        .filter((item) => {
+          const dia = dataIso(new Date(item.pagoEm as string));
+          return dia >= inicio && dia <= fim;
+        })
+        .map((item) => item.valor),
+    );
+    const vendas = movimentos.filter((item) => item.tipo === 'venda');
+    const totalVendas = somar(vendas.map((item) => item.valor));
+    return {
+      entradas,
+      saidas: arredondar(saidasCaixa + sangrias + contasPagas),
+      lucro: arredondar(entradas - (saidasCaixa + sangrias + contasPagas)),
+      vendas: totalVendas,
+      quantidadeVendas: vendas.length,
+      ticket: vendas.length ? arredondar(totalVendas / vendas.length) : 0,
+    };
+  }
+
+  receitaPorServico(inicio: string, fim: string): LinhaParticipacao[] {
+    return this.participacao(
+      this.movimentosNoPeriodo(inicio, fim).filter((item) => item.tipo === 'venda'),
+      (item) => item.tipo === 'servico',
+    );
+  }
+
+  receitaPorForma(inicio: string, fim: string): LinhaParticipacao[] {
+    const totais = new Map<FormaPagamento, number>();
+    for (const forma of this.formasPagamento) {
+      totais.set(forma, 0);
+    }
+    for (const movimento of this.movimentosNoPeriodo(inicio, fim)) {
+      if (movimento.tipo !== 'venda' && movimento.tipo !== 'entrada') {
+        continue;
+      }
+      for (const pagamento of movimento.pagamentos) {
+        totais.set(pagamento.forma, arredondar((totais.get(pagamento.forma) ?? 0) + pagamento.valor));
+      }
+    }
+    const ordem: FormaPagamento[] = ['Pix', 'Dinheiro', 'Cartão de débito', 'Cartão de crédito'];
+    const linhas = ordem.map((forma) => ({
+      nome: forma,
+      quantidade: 0,
+      total: arredondar(totais.get(forma) ?? 0),
+      percentual: 0,
+    }));
+    return this.comPercentual(linhas);
+  }
+
+  receitaServicoProduto(inicio: string, fim: string): { servicos: LinhaParticipacao; revenda: LinhaParticipacao } {
+    const vendas = this.movimentosNoPeriodo(inicio, fim).filter((item) => item.tipo === 'venda');
+    const servicos = this.somarItens(vendas, 'servico');
+    const revenda = this.somarItens(vendas, 'produto');
+    const total = arredondar(servicos.total + revenda.total);
+    servicos.percentual = total ? arredondar((servicos.total / total) * 100) : 0;
+    revenda.percentual = total ? arredondar(100 - servicos.percentual) : 0;
+    if (!total) {
+      revenda.percentual = 0;
+    }
+    return { servicos, revenda };
+  }
+
+  private mesesDevidos(contrato: ContaContrato, ate: string): string[] {
+    const meses: string[] = [];
+    if (contrato.tipo === 'avulsa') {
+      if (compararCompetencia(contrato.inicioCompetencia, ate) <= 0) {
+        meses.push(contrato.inicioCompetencia);
+      }
+      return meses;
+    }
+    if (contrato.tipo === 'parcelada') {
+      const total = contrato.parcelas ?? 0;
+      for (let indice = 0; indice < total; indice += 1) {
+        const mes = deslocarMes(contrato.inicioCompetencia, indice);
+        if (compararCompetencia(mes, ate) <= 0) {
+          meses.push(mes);
+        }
+      }
+      return meses;
+    }
+    let mes = contrato.inicioCompetencia;
+    while (compararCompetencia(mes, ate) <= 0 && meses.length < 36) {
+      if (!contrato.canceladaApartir || compararCompetencia(mes, contrato.canceladaApartir) < 0) {
+        meses.push(mes);
+      }
+      mes = deslocarMes(mes, 1);
+    }
+    return meses;
+  }
+
+  private indiceParcela(contrato: ContaContrato, competencia: string): number {
+    let indice = 0;
+    let mes = contrato.inicioCompetencia;
+    while (mes !== competencia && indice < 60) {
+      mes = deslocarMes(mes, 1);
+      indice += 1;
+    }
+    return indice;
+  }
+
+  private movimentosNoPeriodo(inicio: string, fim: string): Movimentacao[] {
+    return this.movimentacoes.filter((item) => {
+      const dia = dataIso(new Date(item.dataHora));
+      return dia >= inicio && dia <= fim;
+    });
+  }
+
+  private participacao(vendas: Movimentacao[], aceita: (item: ItemMovimento) => boolean): LinhaParticipacao[] {
+    const mapa = new Map<string, LinhaParticipacao>();
+    for (const venda of vendas) {
+      const bruto = somar(venda.itens.map((item) => item.quantidade * item.precoUnitario));
+      const fator = bruto > 0 ? venda.valor / bruto : 0;
+      for (const item of venda.itens.filter(aceita)) {
+        const atual = mapa.get(item.nome) ?? { nome: item.nome, quantidade: 0, total: 0, percentual: 0 };
+        atual.quantidade += item.quantidade;
+        atual.total = arredondar(atual.total + item.quantidade * item.precoUnitario * fator);
+        mapa.set(item.nome, atual);
+      }
+    }
+    return this.comPercentual([...mapa.values()].sort((a, b) => b.total - a.total || a.nome.localeCompare(b.nome, 'pt-BR')));
+  }
+
+  private somarItens(vendas: Movimentacao[], tipo: 'servico' | 'produto'): LinhaParticipacao {
+    let quantidade = 0;
+    let total = 0;
+    for (const venda of vendas) {
+      const bruto = somar(venda.itens.map((item) => item.quantidade * item.precoUnitario));
+      const fator = bruto > 0 ? venda.valor / bruto : 0;
+      for (const item of venda.itens.filter((linha) => linha.tipo === tipo)) {
+        quantidade += item.quantidade;
+        total = arredondar(total + item.quantidade * item.precoUnitario * fator);
+      }
+    }
+    return { nome: tipo === 'servico' ? 'Serviços' : 'Revenda', quantidade, total, percentual: 0 };
+  }
+
+  private comPercentual(linhas: LinhaParticipacao[]): LinhaParticipacao[] {
+    const total = somar(linhas.map((linha) => linha.total));
+    if (!total) {
+      return linhas.map((linha) => ({ ...linha, percentual: 0 }));
+    }
+    const ultimoComValor = linhas.reduce((indice, linha, posicao) => (linha.total ? posicao : indice), -1);
+    let acumulado = 0;
+    return linhas.map((linha, indice) => {
+      if (!linha.total) {
+        return { ...linha, percentual: 0 };
+      }
+      const percentual =
+        indice === ultimoComValor ? arredondar(100 - acumulado) : arredondar((linha.total / total) * 100);
+      acumulado = arredondar(acumulado + percentual);
+      return { ...linha, percentual };
+    });
+  }
+
+  private semearDemonstracao(): void {
+    const hoje = dataIso();
+    const diaHoje = Number(hoje.slice(8, 10));
+    const mesAtual = competenciaDe(hoje);
+    const mesAnterior = deslocarMes(mesAtual, -1);
+    const [anoAtual, numeroMes] = mesAtual.split('-').map(Number);
+    const [anoAnterior, numeroAnterior] = mesAnterior.split('-').map(Number);
+
+    const caixaAnterior: CaixaRegistro = {
+      id: 'cx-demo-anterior',
+      abertoEm: new Date(anoAnterior, numeroAnterior - 1, 1, 8).toISOString(),
+      fechadoEm: new Date(anoAnterior, numeroAnterior - 1, 28, 20).toISOString(),
+      responsavelAbertura: this.usuarioAtual,
+      responsavelFechamento: this.usuarioAtual,
+      saldoInicial: 200,
+      status: 'fechado',
+      valorContado: 200,
+      diferencaDinheiro: 0,
+    };
+    const caixaAtual: CaixaRegistro = {
+      id: 'cx-demo-atual',
+      abertoEm: new Date(anoAtual, numeroMes - 1, 1, 8).toISOString(),
+      fechadoEm: new Date(anoAtual, numeroMes - 1, Math.min(diaHoje, 28), 20).toISOString(),
+      responsavelAbertura: this.usuarioAtual,
+      responsavelFechamento: this.usuarioAtual,
+      saldoInicial: 180,
+      status: 'fechado',
+      valorContado: 180,
+      diferencaDinheiro: 0,
+    };
+    this.caixas.push(caixaAnterior, caixaAtual);
+
+    const vendas: { dia: number; caixaId: string; ano: number; mes: number; servicoId: string; forma: FormaPagamento; profissionalId: string }[] = [
+      { dia: 1, caixaId: caixaAtual.id, ano: anoAtual, mes: numeroMes, servicoId: 'srv-coloracao-lista', forma: 'Pix', profissionalId: 'pro-valentina' },
+      { dia: 3, caixaId: caixaAtual.id, ano: anoAtual, mes: numeroMes, servicoId: 'srv-mechas', forma: 'Cartão de crédito', profissionalId: 'pro-valentina' },
+      { dia: 4, caixaId: caixaAtual.id, ano: anoAtual, mes: numeroMes, servicoId: 'srv-corte-lista', forma: 'Dinheiro', profissionalId: 'pro-paula' },
+      { dia: 6, caixaId: caixaAtual.id, ano: anoAtual, mes: numeroMes, servicoId: 'srv-hidratacao', forma: 'Pix', profissionalId: 'pro-ana' },
+      { dia: 8, caixaId: caixaAtual.id, ano: anoAtual, mes: numeroMes, servicoId: 'srv-escova', forma: 'Cartão de débito', profissionalId: 'pro-paula' },
+      { dia: 10, caixaId: caixaAtual.id, ano: anoAtual, mes: numeroMes, servicoId: 'srv-progressiva-lista', forma: 'Pix', profissionalId: 'pro-ana' },
+      { dia: 13, caixaId: caixaAtual.id, ano: anoAtual, mes: numeroMes, servicoId: 'srv-coloracao-lista', forma: 'Cartão de crédito', profissionalId: 'pro-valentina' },
+      { dia: 15, caixaId: caixaAtual.id, ano: anoAtual, mes: numeroMes, servicoId: 'srv-corte-lista', forma: 'Pix', profissionalId: 'pro-paula' },
+      { dia: 2, caixaId: caixaAnterior.id, ano: anoAnterior, mes: numeroAnterior, servicoId: 'srv-coloracao-lista', forma: 'Pix', profissionalId: 'pro-valentina' },
+      { dia: 3, caixaId: caixaAnterior.id, ano: anoAnterior, mes: numeroAnterior, servicoId: 'srv-corte-lista', forma: 'Dinheiro', profissionalId: 'pro-paula' },
+      { dia: 4, caixaId: caixaAnterior.id, ano: anoAnterior, mes: numeroAnterior, servicoId: 'srv-mechas', forma: 'Cartão de crédito', profissionalId: 'pro-ana' },
+      { dia: 6, caixaId: caixaAnterior.id, ano: anoAnterior, mes: numeroAnterior, servicoId: 'srv-hidratacao', forma: 'Pix', profissionalId: 'pro-paula' },
+      { dia: 8, caixaId: caixaAnterior.id, ano: anoAnterior, mes: numeroAnterior, servicoId: 'srv-escova', forma: 'Dinheiro', profissionalId: 'pro-ana' },
+      { dia: 10, caixaId: caixaAnterior.id, ano: anoAnterior, mes: numeroAnterior, servicoId: 'srv-progressiva-lista', forma: 'Cartão de débito', profissionalId: 'pro-valentina' },
+      { dia: 12, caixaId: caixaAnterior.id, ano: anoAnterior, mes: numeroAnterior, servicoId: 'srv-coloracao-lista', forma: 'Pix', profissionalId: 'pro-ana' },
+      { dia: 14, caixaId: caixaAnterior.id, ano: anoAnterior, mes: numeroAnterior, servicoId: 'srv-corte-lista', forma: 'Dinheiro', profissionalId: 'pro-paula' },
+    ];
+
+    for (const plano of vendas) {
+      if (plano.dia > diaHoje) {
+        continue;
+      }
+      const servico = this.servicos.find((item) => item.id === plano.servicoId);
+      const profissional = this.profissionais.find((item) => item.id === plano.profissionalId);
+      if (!servico || !profissional) {
+        continue;
+      }
+      this.movimentacoes.push({
+        id: this.novoId('V'),
+        caixaId: plano.caixaId,
+        dataHora: new Date(plano.ano, plano.mes - 1, plano.dia, 12).toISOString(),
+        tipo: 'venda',
+        descricao: servico.nome,
+        profissional: profissional.nome,
+        profissionalId: profissional.id,
+        itens: [{ tipo: 'servico', id: servico.id, nome: servico.nome, quantidade: 1, precoUnitario: servico.preco }],
+        pagamentos: [{ forma: plano.forma, valor: servico.preco }],
+        valor: servico.preco,
+        desconto: 0,
+        responsavel: this.usuarioAtual,
+      });
+    }
+
+    if (diaHoje >= 15) {
+      const mascara = this.produtos.find((item) => item.id === 'prd-mascara');
+      if (mascara) {
+        this.movimentacoes.push({
+          id: this.novoId('V'),
+          caixaId: caixaAtual.id,
+          dataHora: new Date(anoAtual, numeroMes - 1, 15, 15).toISOString(),
+          tipo: 'venda',
+          descricao: mascara.nome,
+          profissional: 'Paula',
+          profissionalId: 'pro-paula',
+          itens: [{ tipo: 'produto', id: mascara.id, nome: mascara.nome, quantidade: 1, precoUnitario: mascara.preco }],
+          pagamentos: [{ forma: 'Dinheiro', valor: mascara.preco }],
+          valor: mascara.preco,
+          desconto: 0,
+          responsavel: this.usuarioAtual,
+        });
+      }
+    }
+    if (diaHoje >= 9) {
+      const mascara = this.produtos.find((item) => item.id === 'prd-mascara');
+      if (mascara) {
+        this.movimentacoes.push({
+          id: this.novoId('V'),
+          caixaId: caixaAnterior.id,
+          dataHora: new Date(anoAnterior, numeroAnterior - 1, 9, 15).toISOString(),
+          tipo: 'venda',
+          descricao: mascara.nome,
+          profissional: 'Ana',
+          profissionalId: 'pro-ana',
+          itens: [{ tipo: 'produto', id: mascara.id, nome: mascara.nome, quantidade: 1, precoUnitario: mascara.preco }],
+          pagamentos: [{ forma: 'Pix', valor: mascara.preco }],
+          valor: mascara.preco,
+          desconto: 0,
+          responsavel: this.usuarioAtual,
+        });
+      }
+    }
+
+    const aluguel: ContaContrato = {
+      id: 'ctt-aluguel',
+      nome: 'Aluguel',
+      valor: 1500,
+      tipo: 'fixa',
+      diaVencimento: 5,
+      inicioCompetencia: deslocarMes(mesAtual, -2),
+    };
+    const energia: ContaContrato = {
+      id: 'ctt-energia',
+      nome: 'Energia',
+      valor: 280,
+      tipo: 'fixa',
+      diaVencimento: 20,
+      inicioCompetencia: deslocarMes(mesAtual, -2),
+    };
+    const internet: ContaContrato = {
+      id: 'ctt-internet',
+      nome: 'Internet',
+      valor: 129.9,
+      tipo: 'fixa',
+      diaVencimento: 10,
+      inicioCompetencia: deslocarMes(mesAtual, -2),
+    };
+    const equipamento: ContaContrato = {
+      id: 'ctt-equipamento',
+      nome: 'Equipamento',
+      valor: 200,
+      tipo: 'parcelada',
+      diaVencimento: 15,
+      inicioCompetencia: deslocarMes(mesAtual, -2),
+      parcelas: 6,
+    };
+    const conserto: ContaContrato = {
+      id: 'ctt-conserto',
+      nome: 'Conserto',
+      valor: 350,
+      tipo: 'avulsa',
+      diaVencimento: 12,
+      inicioCompetencia: mesAtual,
+    };
+    this.contas.push(aluguel, energia, internet, equipamento, conserto);
+    this.garantirLancamentos(mesAtual);
+
+    for (const lancamento of this.lancamentosConta) {
+      const passado = compararCompetencia(lancamento.competencia, mesAtual) < 0;
+      const internetDoMes = lancamento.contratoId === internet.id && lancamento.competencia === mesAtual && diaHoje >= 10;
+      if (passado || internetDoMes) {
+        lancamento.status = 'pago';
+        lancamento.pagoEm = new Date(
+          Number(lancamento.vencimento.slice(0, 4)),
+          Number(lancamento.vencimento.slice(5, 7)) - 1,
+          Number(lancamento.vencimento.slice(8, 10)),
+          11,
+        ).toISOString();
+      }
+    }
+
+    this.sangrias.push(
+      { id: 'san-demo-1', descricao: 'Retirada pessoal', valor: 400, data: vencimentoNoMes(mesAtual, 1) },
+      { id: 'san-demo-2', descricao: 'Pagamento fornecedor', valor: 180, data: vencimentoNoMes(mesAtual, Math.min(14, diaHoje)) },
+    );
+    if (diaHoje >= 7) {
+      this.sangrias.push({
+        id: 'san-demo-3',
+        descricao: 'Retirada pessoal',
+        valor: 250,
+        data: vencimentoNoMes(mesAnterior, 7),
+      });
+    }
   }
 
   private obterOuCriarCliente(nome: string): Cliente {
