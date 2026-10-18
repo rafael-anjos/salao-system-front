@@ -25,9 +25,162 @@ export interface ProfissionalCadastro {
   telefone: string;
 }
 
+export const PROCEDIMENTOS_FICHA = ['Coloração', 'Mechas', 'Correção de cor'] as const;
+
+export type ProcedimentoFicha = (typeof PROCEDIMENTOS_FICHA)[number];
+export type FormolProgressiva = 'com' | 'sem' | '';
+
+export interface AnamneseCapilar {
+  procedimentos: ProcedimentoFicha[];
+  cor: string;
+  temProgressiva: boolean | null;
+  formol: FormolProgressiva;
+  alergias: string;
+  observacoes: string;
+}
+
 export interface Cliente {
   id: string;
   nome: string;
+  telefone: string;
+  nascimento: string;
+  email: string;
+  observacoes: string;
+  consentimentoSaude: boolean;
+  tags: string[];
+  ativo: boolean;
+  anamnese: AnamneseCapilar;
+}
+
+export interface ClienteCadastro {
+  id?: string;
+  nome: string;
+  telefone: string;
+  nascimento?: string;
+  email?: string;
+  observacoes?: string;
+  consentimentoSaude?: boolean;
+  tags?: string[];
+  ativo?: boolean;
+}
+
+export interface ProdutoFormula {
+  marca: string;
+  linha: string;
+  cor: string;
+  oxidante: string;
+  proporcao: string;
+  tempoPausa: string;
+}
+
+export interface FotoVisita {
+  id: string;
+  momento: 'antes' | 'depois';
+  dados: string;
+}
+
+export interface FichaVisita {
+  id: string;
+  clienteId: string;
+  agendamentoId?: string;
+  data: string;
+  servico: string;
+  profissional: string;
+  produtos: ProdutoFormula[];
+  observacoes: string;
+  retorno: string;
+  fotos: FotoVisita[];
+  valor: number;
+}
+
+export interface FichaVisitaCadastro {
+  id?: string;
+  clienteId: string;
+  agendamentoId?: string;
+  data: string;
+  servico: string;
+  profissional: string;
+  produtos: ProdutoFormula[];
+  observacoes?: string;
+  retorno?: string;
+  fotos?: FotoVisita[];
+  valor?: number;
+}
+
+export interface ResumoCliente {
+  totalVisitas: number;
+  ultimaVisita: string | null;
+  totalGasto: number;
+  proximo: AgendamentoDia | null;
+}
+
+export function anamneseVazia(): AnamneseCapilar {
+  return {
+    procedimentos: [],
+    cor: '',
+    temProgressiva: null,
+    formol: '',
+    alergias: '',
+    observacoes: '',
+  };
+}
+
+export function normalizarAnamnese(bruto: unknown): AnamneseCapilar {
+  if (!bruto || typeof bruto !== 'object') {
+    return anamneseVazia();
+  }
+  const dados = bruto as Record<string, unknown>;
+  const procedimentos = Array.isArray(dados['procedimentos'])
+    ? dados['procedimentos'].filter(
+        (item): item is ProcedimentoFicha =>
+          typeof item === 'string' && (PROCEDIMENTOS_FICHA as readonly string[]).includes(item),
+      )
+    : [];
+  const quimica = Array.isArray(dados['quimica']) ? dados['quimica'] : [];
+  const teveProgressiva = quimica.some(
+    (item) => !!item && typeof item === 'object' && (item as { tipo?: string }).tipo === 'Progressiva',
+  );
+  let temProgressiva: boolean | null = null;
+  if (dados['temProgressiva'] === true || dados['temProgressiva'] === false) {
+    temProgressiva = dados['temProgressiva'];
+  } else if (teveProgressiva) {
+    temProgressiva = true;
+  }
+  const observacoesPropria = typeof dados['observacoes'] === 'string' ? dados['observacoes'].trim() : '';
+  const extras = ['observacoesSaude', 'cuidadosCasa', 'preferencias']
+    .map((chave) => dados[chave])
+    .filter((item): item is string => typeof item === 'string' && !!item.trim());
+  const formol = dados['formol'] === 'com' || dados['formol'] === 'sem' ? dados['formol'] : '';
+  return {
+    procedimentos,
+    cor: typeof dados['cor'] === 'string' ? dados['cor'] : '',
+    temProgressiva,
+    formol: temProgressiva ? formol : '',
+    alergias: typeof dados['alergias'] === 'string' ? dados['alergias'] : '',
+    observacoes: [observacoesPropria, ...extras].filter(Boolean).join('\n'),
+  };
+}
+
+export function montarCliente(dados: Pick<Cliente, 'id' | 'nome'> & Partial<Omit<Cliente, 'id' | 'nome'>>): Cliente {
+  const anamnese = dados.anamnese;
+  return {
+    telefone: '',
+    nascimento: '',
+    email: '',
+    observacoes: '',
+    consentimentoSaude: false,
+    ativo: true,
+    ...dados,
+    tags: dados.tags ? [...dados.tags] : [],
+    anamnese: normalizarAnamnese(anamnese),
+  };
+}
+
+export function linkWhatsapp(telefone: string, texto = ''): string {
+  const digitos = telefone.replace(/\D/g, '');
+  const comPais = digitos.startsWith('55') && digitos.length > 11 ? digitos : `55${digitos}`;
+  const base = `https://wa.me/${comPais}`;
+  return texto ? `${base}?text=${encodeURIComponent(texto)}` : base;
 }
 
 export interface Servico {
@@ -86,6 +239,7 @@ export type PerfilUsuario = 'ADMIN' | 'OPERADOR';
 export type ModuloAcesso =
   | 'inicio'
   | 'agenda'
+  | 'clientes'
   | 'caixa'
   | 'financeiro'
   | 'estoque'
@@ -97,6 +251,7 @@ export type ModuloAcesso =
 export const MODULOS_ACESSO: { id: ModuloAcesso; nome: string }[] = [
   { id: 'inicio', nome: 'Início' },
   { id: 'agenda', nome: 'Agenda' },
+  { id: 'clientes', nome: 'Clientes' },
   { id: 'caixa', nome: 'Caixa' },
   { id: 'financeiro', nome: 'Financeiro' },
   { id: 'estoque', nome: 'Estoque' },
@@ -193,6 +348,7 @@ export interface AgendamentoDia {
 export interface AgendamentoCadastro {
   id?: string;
   clienteNome: string;
+  clienteId?: string;
   servicoId: string;
   profissionalId: string;
   data: string;
@@ -266,6 +422,8 @@ export interface ItemPedido {
 export interface PedidoVenda {
   profissionalId: string;
   clienteId: string | null;
+  /** Nome de quem não está cadastrado. Não cria ficha de cliente. */
+  clienteNome?: string;
   itens: ItemPedido[];
   desconto: number;
   pagamentos: PagamentoRegistrado[];
@@ -383,6 +541,17 @@ export function dataIso(data = new Date()): string {
 }
 
 const HOJE = dataIso();
+
+function isoDiasAtras(dias: number): string {
+  const data = new Date();
+  data.setDate(data.getDate() - dias);
+  return dataIso(data);
+}
+
+function nascimentoNesteMes(idade: number, dia: number): string {
+  const hoje = new Date();
+  return `${hoje.getFullYear() - idade}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+}
 
 export function arredondar(valor: number): number {
   return Math.round((valor + Number.EPSILON) * 100) / 100;
@@ -555,12 +724,119 @@ export class SalaoEstadoService {
   ];
 
   readonly clientes: Cliente[] = [
-    { id: 'cli-maria', nome: 'Maria Silva' },
-    { id: 'cli-ana', nome: 'Ana Costa' },
-    { id: 'cli-juliana', nome: 'Juliana Alves' },
-    { id: 'cli-carla', nome: 'Carla Mendes' },
-    { id: 'cli-beatriz', nome: 'Beatriz Nunes' },
-    { id: 'cli-fernanda', nome: 'Fernanda Rocha' },
+    montarCliente({
+      id: 'cli-maria',
+      nome: 'Maria Silva',
+      telefone: '(11) 98801-2210',
+      nascimento: nascimentoNesteMes(34, 9),
+      email: 'maria.silva@email.com',
+      observacoes: 'Prefere horário de manhã.',
+      consentimentoSaude: true,
+      tags: ['VIP', 'Alergia'],
+      anamnese: {
+        ...anamneseVazia(),
+        procedimentos: ['Coloração'],
+        cor: '7.1',
+        temProgressiva: false,
+        alergias: 'Amônia. Arde o couro se a tinta tiver cheiro forte.',
+        observacoes: 'Sem clarear além do que já está.',
+      },
+    }),
+    montarCliente({
+      id: 'cli-ana',
+      nome: 'Ana Costa',
+      telefone: '(11) 99720-1184',
+      nascimento: '1992-03-14',
+      consentimentoSaude: true,
+      tags: ['VIP'],
+      anamnese: {
+        ...anamneseVazia(),
+        procedimentos: ['Mechas'],
+        cor: 'Loiro',
+        temProgressiva: true,
+        formol: 'sem',
+        observacoes: 'Corte em camadas, sem tirar muito comprimento.',
+      },
+    }),
+    montarCliente({
+      id: 'cli-juliana',
+      nome: 'Juliana Alves',
+      telefone: '(11) 98110-4402',
+      nascimento: '1988-07-02',
+      anamnese: { ...anamneseVazia(), procedimentos: ['Coloração'], cor: 'Castanho', temProgressiva: false },
+    }),
+    montarCliente({
+      id: 'cli-carla',
+      nome: 'Carla Mendes',
+      telefone: '(11) 99654-3301',
+      nascimento: '1995-11-21',
+      anamnese: { ...anamneseVazia(), temProgressiva: false, observacoes: 'Cabelo ressecado. Hidratação antes de química.' },
+    }),
+    montarCliente({
+      id: 'cli-beatriz',
+      nome: 'Beatriz Nunes',
+      telefone: '(11) 98765-2219',
+      nascimento: '1990-01-30',
+    }),
+    montarCliente({
+      id: 'cli-fernanda',
+      nome: 'Fernanda Rocha',
+      telefone: '(11) 99102-7788',
+      nascimento: '1986-05-18',
+      anamnese: {
+        ...anamneseVazia(),
+        procedimentos: ['Correção de cor'],
+        cor: '6.0',
+        temProgressiva: true,
+        formol: 'com',
+      },
+    }),
+  ];
+
+  readonly fichas: FichaVisita[] = [
+    {
+      id: 'fv-maria-hoje',
+      clienteId: 'cli-maria',
+      agendamentoId: 'ag-maria',
+      data: HOJE,
+      servico: 'Coloração',
+      profissional: 'Eula Moraes',
+      produtos: [
+        {
+          marca: 'Wella',
+          linha: 'Koleston Perfect',
+          cor: '7.1',
+          oxidante: '20 volumes',
+          proporcao: '1:1',
+          tempoPausa: '35 min',
+        },
+      ],
+      observacoes: 'Tom fechou no comprimento. Raiz um tom mais fechada que o restante.',
+      retorno: 'Retoque de raiz em 30 dias',
+      fotos: [],
+      valor: 280,
+    },
+    {
+      id: 'fv-maria-anterior',
+      clienteId: 'cli-maria',
+      data: isoDiasAtras(170),
+      servico: 'Coloração',
+      profissional: 'Paula',
+      produtos: [
+        {
+          marca: 'Wella',
+          linha: 'Koleston Perfect',
+          cor: '7.0',
+          oxidante: '20 volumes',
+          proporcao: '1:1',
+          tempoPausa: '40 min',
+        },
+      ],
+      observacoes: 'Ficou quente demais. Na próxima, puxar o 7.1.',
+      retorno: 'Retoque em 45 dias',
+      fotos: [],
+      valor: 260,
+    },
   ];
 
   readonly servicos: Servico[] = [
@@ -865,6 +1141,7 @@ export class SalaoEstadoService {
         return { ok: false, mensagem: 'Cliente não encontrado.' };
       }
     }
+    const nomeAvulso = cliente ? '' : (pedido.clienteNome?.trim() ?? '');
 
     let agendamento: AgendamentoDia | undefined;
     if (pedido.agendamentoId) {
@@ -988,7 +1265,7 @@ export class SalaoEstadoService {
       dataHora: new Date().toISOString(),
       tipo: 'venda',
       descricao: itens.map((item) => item.nome).join(', '),
-      cliente: cliente?.nome,
+      cliente: cliente?.nome ?? (nomeAvulso || undefined),
       clienteId: cliente?.id,
       profissional: profissional.nome,
       profissionalId: profissional.id,
@@ -1115,9 +1392,6 @@ export class SalaoEstadoService {
     const hora = this.normalizarHora(dados.hora);
     const observacao = dados.observacao?.trim() ?? '';
 
-    if (!clienteNome) {
-      return { ok: false, mensagem: 'Informe o nome do cliente.' };
-    }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dados.data) || Number.isNaN(new Date(`${dados.data}T00:00:00`).getTime())) {
       return { ok: false, mensagem: 'Informe a data do agendamento.' };
     }
@@ -1161,18 +1435,24 @@ export class SalaoEstadoService {
       if (!mesmoHorario) {
         return false;
       }
-      return item.profissionalId === profissional.id || item.cliente.trim().toLowerCase() === clienteNome.toLowerCase();
+      const mesmoCliente = !!clienteNome && item.cliente.trim().toLowerCase() === clienteNome.toLowerCase();
+      return item.profissionalId === profissional.id || mesmoCliente;
     });
     if (conflito) {
       return { ok: false, mensagem: 'Esse horário já está ocupado para a profissional ou para o cliente.' };
     }
 
-    const cliente = this.obterOuCriarCliente(clienteNome);
+    const vinculado = dados.clienteId ? this.clientes.find((item) => item.id === dados.clienteId) : undefined;
+    if (dados.clienteId && !vinculado) {
+      return { ok: false, mensagem: 'Cliente não encontrada.' };
+    }
+    const nomeAgenda = vinculado?.nome ?? (clienteNome || 'Serviço avulso');
+    const clienteId = vinculado?.id ?? '';
     if (atual) {
       atual.data = dados.data;
       atual.hora = hora;
-      atual.cliente = cliente.nome;
-      atual.clienteId = cliente.id;
+      atual.cliente = nomeAgenda;
+      atual.clienteId = clienteId;
       atual.servico = servico.nome;
       atual.servicoId = servico.id;
       atual.profissional = profissional.nome;
@@ -1186,8 +1466,8 @@ export class SalaoEstadoService {
       id: this.novoId('ag'),
       data: dados.data,
       hora,
-      cliente: cliente.nome,
-      clienteId: cliente.id,
+      cliente: nomeAgenda,
+      clienteId,
       servico: servico.nome,
       servicoId: servico.id,
       profissional: profissional.nome,
@@ -1208,6 +1488,7 @@ export class SalaoEstadoService {
     return this.salvarAgendamento({
       id: atual.id,
       clienteNome: atual.cliente,
+      clienteId: atual.clienteId || undefined,
       servicoId: atual.servicoId,
       profissionalId: atual.profissionalId,
       data,
@@ -1992,16 +2273,284 @@ export class SalaoEstadoService {
         data: vencimentoNoMes(mesAnterior, 7),
       });
     }
+
+    this.semearClientesForaDoGiro();
   }
 
-  private obterOuCriarCliente(nome: string): Cliente {
-    const existente = this.clientes.find((cliente) => cliente.nome.trim().toLowerCase() === nome.toLowerCase());
-    if (existente) {
-      return existente;
+  private semearClientesForaDoGiro(): void {
+    const renata = montarCliente({
+      id: 'cli-renata',
+      nome: 'Renata Lima',
+      telefone: '(11) 98440-2291',
+      nascimento: nascimentoNesteMes(29, 22),
+      consentimentoSaude: true,
+      tags: ['VIP'],
+      anamnese: {
+        ...anamneseVazia(),
+        procedimentos: ['Coloração'],
+        cor: '8.31',
+        temProgressiva: false,
+        observacoes: 'Loiro bege, sem platinar.',
+      },
+    });
+    const helena = montarCliente({
+      id: 'cli-helena',
+      nome: 'Helena Dias',
+      telefone: '(11) 97611-8080',
+      nascimento: '1984-12-03',
+      observacoes: 'Pediu para não receber mensagem por enquanto.',
+      consentimentoSaude: true,
+      tags: ['Alergia'],
+      ativo: false,
+      anamnese: {
+        ...anamneseVazia(),
+        procedimentos: ['Coloração'],
+        alergias: 'PPD em tintas escuras.',
+        temProgressiva: false,
+        observacoes: 'Evitar tintas escuras.',
+      },
+    });
+    this.clientes.push(renata, helena);
+
+    const dataRenata = isoDiasAtras(40);
+    this.agendamentos.push({
+      id: 'ag-renata-retorno',
+      data: dataRenata,
+      hora: '15:00',
+      cliente: renata.nome,
+      clienteId: renata.id,
+      servico: 'Coloração',
+      servicoId: 'srv-coloracao-lista',
+      profissional: 'Paula',
+      profissionalId: 'pro-paula',
+      status: 'Concluído',
+      preco: 150,
+    });
+    this.fichas.push({
+      id: 'fv-renata',
+      clienteId: renata.id,
+      agendamentoId: 'ag-renata-retorno',
+      data: dataRenata,
+      servico: 'Coloração',
+      profissional: 'Paula',
+      produtos: [
+        {
+          marca: 'L\'Oréal',
+          linha: 'Majirel',
+          cor: '8.31',
+          oxidante: '20 volumes',
+          proporcao: '1:1,5',
+          tempoPausa: '35 min',
+        },
+      ],
+      observacoes: 'Bege fechou bem. Evitar 9.',
+      retorno: 'Retoque em 30 dias',
+      fotos: [],
+      valor: 150,
+    });
+
+    const dataHelena = isoDiasAtras(100);
+    this.agendamentos.push({
+      id: 'ag-helena-retorno',
+      data: dataHelena,
+      hora: '11:00',
+      cliente: helena.nome,
+      clienteId: helena.id,
+      servico: 'Hidratação',
+      servicoId: 'srv-hidratacao',
+      profissional: 'Ana',
+      profissionalId: 'pro-ana',
+      status: 'Concluído',
+      preco: 80,
+    });
+  }
+
+  salvarCliente(dados: ClienteCadastro): ResultadoOperacao {
+    const nome = dados.nome.trim();
+    const telefone = this.formatarTelefone(dados.telefone);
+    const digitos = telefone.replace(/\D/g, '');
+    if (!nome) {
+      return { ok: false, mensagem: 'Informe o nome da cliente.' };
     }
-    const criado: Cliente = { id: this.novoId('cli'), nome };
+    if (digitos.length < 10 || digitos.length > 11) {
+      return { ok: false, mensagem: 'Informe um telefone com DDD.' };
+    }
+
+    const duplicado = this.clientes.some(
+      (cliente) => cliente.id !== dados.id && cliente.telefone.replace(/\D/g, '') === digitos,
+    );
+    if (duplicado) {
+      return { ok: false, mensagem: 'Já existe uma cliente com esse telefone.' };
+    }
+
+    const email = dados.email?.trim() ?? '';
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return { ok: false, mensagem: 'Informe um e-mail válido ou deixe o campo vazio.' };
+    }
+    const nascimento = dados.nascimento?.trim() ?? '';
+    if (nascimento && !/^\d{4}-\d{2}-\d{2}$/.test(nascimento)) {
+      return { ok: false, mensagem: 'Informe a data de nascimento.' };
+    }
+    if (nascimento && nascimento > dataIso()) {
+      return { ok: false, mensagem: 'A data de nascimento não pode ser futura.' };
+    }
+
+    const tags = [...new Set((dados.tags ?? []).map((tag) => tag.trim()).filter(Boolean))];
+    const registro = {
+      nome,
+      telefone,
+      nascimento,
+      email,
+      observacoes: dados.observacoes?.trim() ?? '',
+      consentimentoSaude: !!dados.consentimentoSaude,
+      tags,
+      ativo: dados.ativo !== false,
+    };
+
+    if (dados.id) {
+      const atual = this.clientes.find((cliente) => cliente.id === dados.id);
+      if (!atual) {
+        return { ok: false, mensagem: 'Cliente não encontrada.' };
+      }
+      Object.assign(atual, registro);
+      this.atualizarNomeCliente(atual.id, nome);
+      return { ok: true, mensagem: 'Cliente atualizada.', id: atual.id };
+    }
+
+    const criado = montarCliente({ id: this.novoId('cli'), ...registro });
     this.clientes.push(criado);
-    return criado;
+    return { ok: true, mensagem: 'Cliente cadastrada.', id: criado.id };
+  }
+
+  salvarAnamnese(clienteId: string, anamnese: AnamneseCapilar, consentimento: boolean): ResultadoOperacao {
+    const cliente = this.clientes.find((item) => item.id === clienteId);
+    if (!cliente) {
+      return { ok: false, mensagem: 'Cliente não encontrada.' };
+    }
+    const alergias = anamnese.alergias.trim();
+    const observacoes = anamnese.observacoes.trim();
+    const cor = anamnese.cor.trim();
+    if (alergias && !consentimento) {
+      return { ok: false, mensagem: 'Marque o consentimento para guardar a alergia.' };
+    }
+    cliente.consentimentoSaude = consentimento || cliente.consentimentoSaude;
+    const temProgressiva = anamnese.temProgressiva;
+    cliente.anamnese = {
+      procedimentos: anamnese.procedimentos.filter((item) => PROCEDIMENTOS_FICHA.includes(item)),
+      cor,
+      temProgressiva,
+      formol: temProgressiva ? anamnese.formol : '',
+      alergias,
+      observacoes,
+    };
+    const semAlergia = cliente.tags.filter((tag) => tag.toLowerCase() !== 'alergia');
+    cliente.tags = alergias ? [...semAlergia, 'Alergia'] : semAlergia;
+    return { ok: true, mensagem: 'Ficha de anamnese salva.', id: cliente.id };
+  }
+
+  fichasDaCliente(clienteId: string): FichaVisita[] {
+    return this.fichas
+      .filter((ficha) => ficha.clienteId === clienteId)
+      .sort((a, b) => b.data.localeCompare(a.data) || b.id.localeCompare(a.id));
+  }
+
+  ultimaFormula(clienteId: string): FichaVisita | null {
+    return this.fichasDaCliente(clienteId)[0] ?? null;
+  }
+
+  resumoCliente(clienteId: string): ResumoCliente {
+    const concluidos = this.agendamentos.filter((item) => item.clienteId === clienteId && item.status === 'Concluído');
+    const manuais = this.fichas.filter((ficha) => ficha.clienteId === clienteId && !ficha.agendamentoId);
+    const vendas = this.movimentacoes.filter((item) => item.tipo === 'venda' && item.clienteId === clienteId);
+    const comVenda = new Set(vendas.map((item) => item.agendamentoId).filter((id): id is string => !!id));
+    const semVenda = concluidos.filter((item) => !item.vendaId && !comVenda.has(item.id));
+    const totalGasto = arredondar(
+      somar(vendas.map((item) => item.valor)) + somar(semVenda.map((item) => item.preco)) + somar(manuais.map((item) => item.valor)),
+    );
+    const datas = [...concluidos.map((item) => item.data), ...manuais.map((item) => item.data)].sort();
+    const totalVisitas = concluidos.length + manuais.length;
+    const agora = new Date();
+    const hoje = dataIso(agora);
+    const hora = `${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`;
+    const proximo =
+      this.agendamentos
+        .filter((item) => {
+          if (item.clienteId !== clienteId || item.status === 'Cancelado' || item.status === 'Falta' || item.status === 'Concluído') {
+            return false;
+          }
+          return item.data > hoje || (item.data === hoje && item.hora >= hora);
+        })
+        .sort((a, b) => `${a.data}${a.hora}`.localeCompare(`${b.data}${b.hora}`))[0] ?? null;
+
+    return {
+      totalVisitas,
+      ultimaVisita: datas.at(-1) ?? null,
+      totalGasto,
+      proximo,
+    };
+  }
+
+  salvarFicha(dados: FichaVisitaCadastro): ResultadoOperacao {
+    const cliente = this.clientes.find((item) => item.id === dados.clienteId);
+    if (!cliente) {
+      return { ok: false, mensagem: 'Cliente não encontrada.' };
+    }
+    const servico = dados.servico.trim();
+    const profissional = dados.profissional.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dados.data)) {
+      return { ok: false, mensagem: 'Informe a data do atendimento.' };
+    }
+    if (!servico) {
+      return { ok: false, mensagem: 'Informe o serviço.' };
+    }
+    if (!profissional) {
+      return { ok: false, mensagem: 'Informe a profissional.' };
+    }
+    const fotos = (dados.fotos ?? []).filter((foto) => foto.dados.startsWith('data:image/'));
+    if (fotos.length > 4) {
+      return { ok: false, mensagem: 'A ficha aceita até 4 fotos.' };
+    }
+    if (fotos.length && !cliente.consentimentoSaude) {
+      return { ok: false, mensagem: 'Marque o consentimento na ficha da cliente antes de guardar fotos.' };
+    }
+    const produtos = dados.produtos
+      .map((produto) => ({
+        marca: produto.marca.trim(),
+        linha: produto.linha.trim(),
+        cor: produto.cor.trim(),
+        oxidante: produto.oxidante.trim(),
+        proporcao: produto.proporcao.trim(),
+        tempoPausa: produto.tempoPausa.trim(),
+      }))
+      .filter((produto) => Object.values(produto).some(Boolean));
+    const valor = arredondar(Number(dados.valor ?? 0));
+    if (!Number.isFinite(valor) || valor < 0) {
+      return { ok: false, mensagem: 'Informe o valor cobrado.' };
+    }
+
+    const ficha: FichaVisita = {
+      id: dados.id ?? this.novoId('fv'),
+      clienteId: cliente.id,
+      agendamentoId: dados.agendamentoId,
+      data: dados.data,
+      servico,
+      profissional,
+      produtos,
+      observacoes: dados.observacoes?.trim() ?? '',
+      retorno: dados.retorno?.trim() ?? '',
+      fotos,
+      valor,
+    };
+    if (dados.id) {
+      const index = this.fichas.findIndex((item) => item.id === dados.id);
+      if (index < 0) {
+        return { ok: false, mensagem: 'Atendimento não encontrado.' };
+      }
+      this.fichas[index] = ficha;
+      return { ok: true, mensagem: 'Ficha do atendimento atualizada.', id: ficha.id };
+    }
+    this.fichas.push(ficha);
+    return { ok: true, mensagem: 'Ficha do atendimento registrada.', id: ficha.id };
   }
 
   private normalizarHora(valor: string): string {
@@ -2020,6 +2569,19 @@ export class SalaoEstadoService {
   private minutos(hora: string): number {
     const [horas, minutos] = hora.split(':').map(Number);
     return horas * 60 + minutos;
+  }
+
+  private atualizarNomeCliente(clienteId: string, nome: string): void {
+    for (const agendamento of this.agendamentos) {
+      if (agendamento.clienteId === clienteId) {
+        agendamento.cliente = nome;
+      }
+    }
+    for (const movimento of this.movimentacoes) {
+      if (movimento.clienteId === clienteId) {
+        movimento.cliente = nome;
+      }
+    }
   }
 
   private atualizarNomeNoHistorico(profissionalId: string, nome: string): void {
@@ -2548,6 +3110,7 @@ export class SalaoEstadoService {
         formas: this.formas,
         profissionais: this.profissionais,
         clientes: this.clientes,
+        fichas: this.fichas,
         servicos: this.servicos,
         produtos: this.produtos,
         agendamentos: this.agendamentos,
@@ -2638,7 +3201,16 @@ export class SalaoEstadoService {
     );
     this.substituir(
       this.clientes,
-      clientes.map((cliente) => ({ ...cliente })),
+      clientes.map((cliente) => this.normalizarCliente(cliente)),
+    );
+    const fichas = this.comoLista<FichaVisita>(dados['fichas']) ?? [];
+    this.substituir(
+      this.fichas,
+      fichas.map((ficha) => ({
+        ...ficha,
+        produtos: (ficha.produtos ?? []).map((produto) => ({ ...produto })),
+        fotos: (ficha.fotos ?? []).map((foto) => ({ ...foto })),
+      })),
     );
     this.substituir(
       this.servicos,
@@ -2758,6 +3330,22 @@ export class SalaoEstadoService {
 
   private comoLista<T>(valor: unknown): T[] | null {
     return Array.isArray(valor) ? (valor as T[]) : null;
+  }
+
+  private normalizarCliente(bruto: Cliente): Cliente {
+    const anamnese = bruto.anamnese;
+    return montarCliente({
+      id: bruto.id,
+      nome: typeof bruto.nome === 'string' ? bruto.nome : '',
+      telefone: typeof bruto.telefone === 'string' ? bruto.telefone : '',
+      nascimento: typeof bruto.nascimento === 'string' ? bruto.nascimento : '',
+      email: typeof bruto.email === 'string' ? bruto.email : '',
+      observacoes: typeof bruto.observacoes === 'string' ? bruto.observacoes : '',
+      consentimentoSaude: !!bruto.consentimentoSaude,
+      tags: Array.isArray(bruto.tags) ? bruto.tags.filter((tag) => typeof tag === 'string') : [],
+      ativo: bruto.ativo !== false,
+      anamnese: normalizarAnamnese(anamnese),
+    });
   }
 
   private substituir<T>(destino: T[], origem: T[]): void {

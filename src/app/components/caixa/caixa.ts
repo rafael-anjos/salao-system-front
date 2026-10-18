@@ -1,6 +1,7 @@
 import { CurrencyPipe } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { BuscaCliente } from '../clientes/busca-cliente/busca-cliente';
 import {
   AgendamentoDia,
   arredondar,
@@ -50,11 +51,17 @@ interface RascunhoAtendimento {
   forma2: FormaPagamento;
   valor2: number | null;
   termo: string;
+  temCliente: boolean;
+  registrarFicha: boolean;
+  observacaoFicha: string;
+  retornoFicha: string;
+  fotoAntes: string;
+  fotoDepois: string;
 }
 
 @Component({
   selector: 'app-caixa',
-  imports: [FormsModule, CurrencyPipe],
+  imports: [FormsModule, CurrencyPipe, BuscaCliente],
   templateUrl: './caixa.html',
   styleUrl: './caixa.css',
 })
@@ -74,6 +81,7 @@ export class Caixa {
   saldoInicial: number | null = null;
   profissionalId = '';
   clienteId = '';
+  clienteNome = '';
   linhas: LinhaVenda[] = [];
   desconto: number | null = 0;
   forma: FormaPagamento = 'Pix';
@@ -434,6 +442,7 @@ export class Caixa {
     const resultado = this.estado.registrarVenda({
       profissionalId: this.profissionalId,
       clienteId: this.clienteId || null,
+      clienteNome: this.clienteId ? undefined : this.clienteNome,
       itens,
       desconto,
       pagamentos,
@@ -450,7 +459,14 @@ export class Caixa {
     this.dividir = false;
     this.valor2 = null;
     this.termoItem = '';
+    this.clienteId = '';
+    this.clienteNome = '';
     this.publicar('ok', `${resultado.mensagem} ${resultado.id}.`);
+  }
+
+  definirCliente(evento: { id: string; nome: string }): void {
+    this.clienteId = evento.id;
+    this.clienteNome = evento.nome;
   }
 
   abrirMovimento(): void {
@@ -545,6 +561,12 @@ export class Caixa {
       forma2: 'Dinheiro',
       valor2: null,
       termo: '',
+      temCliente: !!agendamento.clienteId,
+      registrarFicha: false,
+      observacaoFicha: '',
+      retornoFicha: '',
+      fotoAntes: '',
+      fotoDepois: '',
     };
   }
 
@@ -573,6 +595,9 @@ export class Caixa {
       return;
     }
 
+    const fichaPedida = this.rascunho.registrarFicha;
+    const fichaRascunho = { ...this.rascunho };
+    const valorFicha = this.totalAtendimento;
     this.processando = true;
     const resultado = this.estado.registrarVenda({
       profissionalId: this.rascunho.profissionalId,
@@ -589,7 +614,63 @@ export class Caixa {
       return;
     }
     this.rascunho = null;
+    if (fichaPedida) {
+      const agendamento = this.estado.agendamentos.find((item) => item.id === fichaRascunho.agendamentoId);
+      const fotos = [];
+      if (fichaRascunho.fotoAntes) {
+        fotos.push({ id: 'antes', momento: 'antes' as const, dados: fichaRascunho.fotoAntes });
+      }
+      if (fichaRascunho.fotoDepois) {
+        fotos.push({ id: 'depois', momento: 'depois' as const, dados: fichaRascunho.fotoDepois });
+      }
+      const ficha = this.estado.salvarFicha({
+        clienteId: agendamento?.clienteId ?? '',
+        agendamentoId: fichaRascunho.agendamentoId,
+        data: agendamento?.data ?? dataIso(),
+        servico: agendamento?.servico ?? fichaRascunho.servicos.filter((item) => item.confirmar).map((item) => item.nome).join(', '),
+        profissional: fichaRascunho.profissional,
+        produtos: [],
+        observacoes: fichaRascunho.observacaoFicha,
+        retorno: fichaRascunho.retornoFicha,
+        fotos,
+        valor: valorFicha,
+      });
+      if (!ficha.ok) {
+        this.publicar('erro', `Venda registrada. A ficha não foi salva: ${ficha.mensagem}`);
+        return;
+      }
+      this.publicar('ok', `${resultado.mensagem} ${resultado.id}. Ficha técnica registrada.`);
+      return;
+    }
     this.publicar('ok', `${resultado.mensagem} ${resultado.id}.`);
+  }
+
+  async escolherFotoAtendimento(event: Event, momento: 'antes' | 'depois'): Promise<void> {
+    if (!this.rascunho) {
+      return;
+    }
+    const input = event.target as HTMLInputElement;
+    const arquivo = input.files?.[0];
+    input.value = '';
+    if (!arquivo || !arquivo.type.startsWith('image/')) {
+      this.publicar('erro', 'Escolha uma imagem para a ficha.');
+      return;
+    }
+    if (arquivo.size > 1_200_000) {
+      this.publicar('erro', 'Cada foto precisa ter menos de 1,2 MB.');
+      return;
+    }
+    const dados = await new Promise<string>((resolve, reject) => {
+      const leitor = new FileReader();
+      leitor.onload = () => resolve(String(leitor.result ?? ''));
+      leitor.onerror = () => reject(leitor.error);
+      leitor.readAsDataURL(arquivo);
+    });
+    if (momento === 'antes') {
+      this.rascunho.fotoAntes = dados;
+      return;
+    }
+    this.rascunho.fotoDepois = dados;
   }
 
   resumoDoCaixa(caixaId: string) {

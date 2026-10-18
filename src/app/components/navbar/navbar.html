@@ -14,6 +14,12 @@
             </a>
         </li>
         <li>
+            <a routerLink="/clientes" routerLinkActive #clientesActive="routerLinkActive" [class.active]="clientesActive.isActive">
+                <img class="nav-icon" [src]="clientesActive.isActive ? 'client-green.svg' : 'client.svg'" alt="">
+                Clientes
+            </a>
+        </li>
+        <li>
             <a routerLink="/caixa" routerLinkActive #caixaActive="routerLinkActive" [routerLinkActiveOptions]="{exact: true}" [class.active]="caixaActive.isActive">
                 <img class="nav-icon" [src]="caixaActive.isActive ? 'caixa-green.svg' : 'caixa.svg'" alt="Caixa Icon">
                 Caixa

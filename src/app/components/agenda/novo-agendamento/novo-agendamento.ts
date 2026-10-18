@@ -1,10 +1,11 @@
 import { Component, EventEmitter, HostListener, inject, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { BuscaCliente } from '../../clientes/busca-cliente/busca-cliente';
 import { AgendamentoDia, Profissional, SalaoEstadoService, Servico } from '../../../core/salao-estado.service';
 
 @Component({
   selector: 'app-novo-agendamento',
-  imports: [FormsModule],
+  imports: [FormsModule, BuscaCliente],
   templateUrl: './novo-agendamento.html',
   styleUrl: './novo-agendamento.css',
 })
@@ -14,10 +15,12 @@ export class NovoAgendamento implements OnInit {
   @Input() agendamento: AgendamentoDia | null = null;
   @Input() dataInicial = '';
   @Input() horaInicial = '';
+  @Input() clienteIdInicial = '';
   @Output() cancelar = new EventEmitter<void>();
   @Output() salvar = new EventEmitter<void>();
 
   clienteNome = '';
+  clienteId = '';
   servicoId = '';
   profissionalId = '';
   data = '';
@@ -27,7 +30,9 @@ export class NovoAgendamento implements OnInit {
 
   ngOnInit() {
     if (this.agendamento) {
-      this.clienteNome = this.agendamento.cliente;
+      this.clienteNome =
+        !this.agendamento.clienteId && this.agendamento.cliente === 'Serviço avulso' ? '' : this.agendamento.cliente;
+      this.clienteId = this.agendamento.clienteId;
       this.servicoId = this.agendamento.servicoId;
       this.profissionalId = this.agendamento.profissionalId;
       this.data = this.agendamento.data;
@@ -38,6 +43,13 @@ export class NovoAgendamento implements OnInit {
 
     this.data = this.dataInicial;
     this.hora = this.horaInicial;
+    if (this.clienteIdInicial) {
+      const cliente = this.estado.clientes.find((item) => item.id === this.clienteIdInicial);
+      if (cliente) {
+        this.clienteNome = cliente.nome;
+        this.clienteId = cliente.id;
+      }
+    }
     const padrao = this.profissionais.find((item) => item.nome === this.estado.usuarioAtual);
     this.profissionalId = padrao?.id ?? this.profissionais[0]?.id ?? '';
   }
@@ -53,8 +65,9 @@ export class NovoAgendamento implements OnInit {
     return !!this.agendamento && (this.agendamento.status === 'Concluído' || !!this.agendamento.vendaId);
   }
 
-  get clientes(): string[] {
-    return this.estado.clientes.map((cliente) => cliente.nome);
+  definirCliente(evento: { id: string; nome: string }): void {
+    this.clienteId = evento.id;
+    this.clienteNome = evento.nome;
   }
 
   get servicos(): Servico[] {
@@ -94,6 +107,7 @@ export class NovoAgendamento implements OnInit {
     const resultado = this.estado.salvarAgendamento({
       id: this.agendamento?.id,
       clienteNome: this.clienteNome,
+      clienteId: this.clienteId || undefined,
       servicoId: this.servicoId,
       profissionalId: this.profissionalId,
       data: this.data,

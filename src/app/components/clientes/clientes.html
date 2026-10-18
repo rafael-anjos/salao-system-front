@@ -1,0 +1,394 @@
+<div class="container">
+  <main>
+    @if (cliente; as atual) {
+      <header>
+        <h1>{{ atual.nome }}</h1>
+        <div class="header-btn">
+          <button class="secundario" type="button" (click)="voltarLista()">Voltar à lista</button>
+          <button class="notification-btn" type="button" aria-label="Notificações">
+            <img class="img-padrao" src="notification-green.svg" alt="">
+            <img class="img-hover" src="notification.svg" alt="">
+            <img class="img-active" src="notification-green.svg" alt="">
+          </button>
+          <button class="secundario" type="button" [disabled]="!atual.telefone" (click)="abrirWhatsapp(atual)">WhatsApp</button>
+          <button class="secundario" type="button" (click)="agendar(atual)">Novo agendamento</button>
+          <button class="agendamento-btn" type="button" (click)="abrirEdicao(atual)">Editar</button>
+        </div>
+      </header>
+
+      <div class="conteudo">
+        <div class="topo-perfil">
+          <p class="fone">{{ atual.telefone || 'Sem telefone' }}</p>
+          @if (atual.tags.length) {
+            <ul class="tags">
+              @for (tag of atual.tags; track tag) {
+                <li [class.alergia]="tag.toLowerCase() === 'alergia'">{{ tag }}</li>
+              }
+            </ul>
+          }
+          @if (atual.anamnese.alergias) {
+            <p class="alerta" role="alert">Alergia: {{ atual.anamnese.alergias }}</p>
+          }
+        </div>
+
+        <section class="formula" aria-labelledby="titulo-formula">
+          <h2 id="titulo-formula">Último atendimento</h2>
+          @if (formula; as ficha) {
+            <p class="quando">{{ formatarDia(ficha.data) }} · {{ ficha.servico }} · {{ ficha.profissional }}</p>
+            @if (ficha.observacoes) {
+              <p>{{ ficha.observacoes }}</p>
+            }
+            @if (ficha.retorno) {
+              <p class="retorno">{{ ficha.retorno }}</p>
+            }
+          } @else {
+            <p class="vazio-formula">Nenhum atendimento registrado ainda.</p>
+          }
+        </section>
+
+        <div class="abas" role="tablist">
+          <button class="btn-aba" type="button" role="tab" [class.ativo]="aba === 'resumo'" (click)="aba = 'resumo'">Resumo</button>
+          <button class="btn-aba" type="button" role="tab" [class.ativo]="aba === 'anamnese'" (click)="aba = 'anamnese'">Ficha de anamnese</button>
+          <button class="btn-aba" type="button" role="tab" [class.ativo]="aba === 'atendimentos'" (click)="aba = 'atendimentos'">Atendimentos</button>
+        </div>
+
+        @if (aba === 'resumo' && resumo; as dados) {
+          <section class="painel" aria-label="Resumo">
+            <dl class="ficha-dados">
+              <div><dt>Telefone</dt><dd>{{ atual.telefone || 'Não informado' }}</dd></div>
+              <div><dt>Nascimento</dt><dd>{{ atual.nascimento ? formatarDia(atual.nascimento) : 'Não informado' }}</dd></div>
+              <div><dt>E-mail</dt><dd>{{ atual.email || 'Não informado' }}</dd></div>
+              <div><dt>Última visita</dt><dd>{{ dados.ultimaVisita ? formatarDia(dados.ultimaVisita) : 'Nenhuma' }}</dd></div>
+              <div><dt>Total de visitas</dt><dd>{{ dados.totalVisitas }}</dd></div>
+              <div><dt>Total gasto</dt><dd>{{ dados.totalGasto | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</dd></div>
+              <div>
+                <dt>Próximo agendamento</dt>
+                <dd>
+                  @if (dados.proximo; as proximo) {
+                    {{ formatarDia(proximo.data) }} às {{ proximo.hora }} · {{ proximo.servico }}
+                  } @else {
+                    Nenhum
+                  }
+                </dd>
+              </div>
+            </dl>
+            @if (atual.observacoes) {
+              <p class="nota">{{ atual.observacoes }}</p>
+            }
+          </section>
+        }
+
+        @if (aba === 'anamnese') {
+          <form class="painel" (ngSubmit)="salvarAnamnese()">
+            <fieldset>
+              <legend>Qual o procedimento</legend>
+              <div class="checks">
+                @for (tipo of procedimentos; track tipo) {
+                  <label class="check">
+                    <input type="checkbox" [name]="'procedimento-' + tipo" [checked]="procedimentoAtivo(tipo)" (change)="alternarProcedimento(tipo, $any($event.target).checked)">
+                    {{ tipo }}
+                  </label>
+                }
+              </div>
+            </fieldset>
+
+            <div class="row">
+              <label class="field">
+                Qual cor
+                <input type="text" name="cor" [(ngModel)]="anamnese.cor" placeholder="Ex.: 7.1, loiro">
+              </label>
+              <label class="field">
+                Tem progressiva?
+                <select name="progressiva" [ngModel]="progressivaTexto" (ngModelChange)="definirProgressiva($event)">
+                  <option value="">Não informado</option>
+                  <option value="sim">Sim</option>
+                  <option value="nao">Não</option>
+                </select>
+              </label>
+            </div>
+
+            @if (anamnese.temProgressiva) {
+              <fieldset>
+                <legend>Formol</legend>
+                <div class="checks">
+                  <label class="check">
+                    <input type="radio" name="formol" value="com" [(ngModel)]="anamnese.formol">
+                    Com formol
+                  </label>
+                  <label class="check">
+                    <input type="radio" name="formol" value="sem" [(ngModel)]="anamnese.formol">
+                    Sem formol
+                  </label>
+                </div>
+              </fieldset>
+            }
+
+            <label class="field">
+              Tem alergia?
+              <textarea name="alergias" rows="2" [(ngModel)]="anamnese.alergias" placeholder="Se tiver, escreva a quê"></textarea>
+            </label>
+            <label class="field">
+              Observação
+              <textarea name="observacaoFicha" rows="4" [(ngModel)]="anamnese.observacoes" placeholder="Escreva o que quiser lembrar desta cliente"></textarea>
+            </label>
+            @if (anamnese.alergias.trim()) {
+              <label class="check">
+                <input type="checkbox" name="consentimentoAnamnese" [(ngModel)]="consentimentoAnamnese">
+                Autorizo guardar a alergia desta cliente.
+              </label>
+            }
+            @if (erroAnamnese) {
+              <p class="erro" role="alert">{{ erroAnamnese }}</p>
+            }
+            @if (avisoAnamnese) {
+              <p class="ok" role="status">{{ avisoAnamnese }}</p>
+            }
+            <div class="foot-inline">
+              <button class="agendamento-btn" type="submit">Salvar anamnese</button>
+            </div>
+          </form>
+        }
+
+        @if (aba === 'atendimentos') {
+          <section class="painel" aria-label="Atendimentos">
+            <div class="barra-interna">
+              <p>Atendimentos, do mais recente ao mais antigo.</p>
+              <button class="agendamento-btn" type="button" (click)="abrirFicha()">Registrar atendimento</button>
+            </div>
+            @for (ficha of fichas; track ficha.id) {
+              <article class="visita">
+                <header>
+                  <h3>{{ formatarDia(ficha.data) }} · {{ ficha.servico }}</h3>
+                  <strong>{{ ficha.valor | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
+                </header>
+                <p>{{ ficha.profissional }}</p>
+                @if (ficha.observacoes) {
+                  <p>{{ ficha.observacoes }}</p>
+                }
+                @if (ficha.retorno) {
+                  <p class="retorno">{{ ficha.retorno }}</p>
+                }
+                @if (ficha.fotos.length) {
+                  <div class="fotos">
+                    @for (foto of fotosDaFicha(ficha, 'antes'); track foto.id) {
+                      <figure>
+                        <img [src]="foto.dados" alt="Antes do atendimento de {{ atual.nome }}">
+                        <figcaption>Antes</figcaption>
+                      </figure>
+                    }
+                    @for (foto of fotosDaFicha(ficha, 'depois'); track foto.id) {
+                      <figure>
+                        <img [src]="foto.dados" alt="Depois do atendimento de {{ atual.nome }}">
+                        <figcaption>Depois</figcaption>
+                      </figure>
+                    }
+                  </div>
+                }
+              </article>
+            } @empty {
+              <p class="vazio-formula">Nenhum atendimento registrado.</p>
+            }
+          </section>
+        }
+      </div>
+    } @else if (clienteId) {
+      <header>
+        <h1>Cliente</h1>
+      </header>
+      <div class="conteudo">
+        <p class="vazio-formula">Esta cliente não está na lista.</p>
+        <button class="agendamento-btn" type="button" (click)="voltarLista()">Voltar para clientes</button>
+      </div>
+    } @else {
+      <header>
+        <h1>Clientes</h1>
+        <div class="header-btn">
+          <button class="notification-btn" type="button" aria-label="Notificações">
+            <img class="img-padrao" src="notification-green.svg" alt="">
+            <img class="img-hover" src="notification.svg" alt="">
+            <img class="img-active" src="notification-green.svg" alt="">
+          </button>
+          <button class="agendamento-btn" type="button" (click)="abrirCadastro()">+ Novo cliente</button>
+        </div>
+      </header>
+
+      <div class="conteudo">
+        <div class="barra-filtros">
+          <input type="search" name="buscaCliente" placeholder="Buscar por nome ou telefone" [(ngModel)]="termo">
+        </div>
+        <div class="abas filtros" role="tablist" aria-label="Filtros de clientes">
+          @for (item of filtros; track item.id) {
+            <button class="btn-aba" type="button" role="tab" [class.ativo]="filtro === item.id" (click)="filtro = item.id">
+              {{ item.nome }}
+            </button>
+          }
+        </div>
+
+        <div class="container-tabela">
+          <table class="tabela">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Telefone / WhatsApp</th>
+                <th>Última visita</th>
+                <th>Visitas</th>
+                <th>Tags</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (cliente of clientesVisiveis; track cliente.id) {
+                <tr>
+                  <td class="nome">{{ cliente.nome }}</td>
+                  <td>{{ cliente.telefone || 'Sem telefone' }}</td>
+                  <td>{{ resumoDe(cliente).ultimaVisita ? formatarDia(resumoDe(cliente).ultimaVisita) : 'Nenhuma' }}</td>
+                  <td class="numero">{{ resumoDe(cliente).totalVisitas }}</td>
+                  <td>
+                    @if (cliente.tags.length) {
+                      <ul class="tags">
+                        @for (tag of cliente.tags; track tag) {
+                          <li [class.alergia]="tag.toLowerCase() === 'alergia'">{{ tag }}</li>
+                        }
+                      </ul>
+                    }
+                  </td>
+                  <td>
+                    <div class="acoes">
+                      <button class="btn-acao" type="button" (click)="abrirPerfil(cliente)">Abrir perfil</button>
+                      <button class="btn-acao" type="button" [disabled]="!cliente.telefone" (click)="abrirWhatsapp(cliente)">WhatsApp</button>
+                      @if (mensagemPronta) {
+                        <button class="btn-acao" type="button" [disabled]="!cliente.telefone" (click)="abrirWhatsapp(cliente, true)">Mensagem</button>
+                      }
+                      <button class="btn-acao" type="button" (click)="agendar(cliente)">Agendar</button>
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td class="vazio" colspan="6">Nenhuma cliente neste filtro.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+          <div class="rodape-tabela">
+            <span>Mostrando {{ clientesVisiveis.length }} {{ clientesVisiveis.length === 1 ? 'cliente' : 'clientes' }}</span>
+          </div>
+        </div>
+      </div>
+    }
+  </main>
+
+  @if (mostrarCadastro) {
+    <div class="overlay" (click)="fecharCadastro()">
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="titulo-cadastro" (click)="$event.stopPropagation()">
+        <header class="titulo">
+          <h2 id="titulo-cadastro">{{ tituloCadastro }}</h2>
+          <p>Nome e telefone são obrigatórios. O restante completa a ficha.</p>
+        </header>
+        <form (ngSubmit)="salvarCadastro()">
+          <div class="row">
+            <label class="field">
+              Nome
+              <input type="text" name="nome" [(ngModel)]="nome" required>
+            </label>
+            <label class="field">
+              Telefone / WhatsApp
+              <input type="tel" name="telefone" [(ngModel)]="telefone" required>
+            </label>
+          </div>
+          <div class="row">
+            <label class="field">
+              Data de nascimento
+              <input type="date" name="nascimento" [(ngModel)]="nascimento">
+            </label>
+            <label class="field">
+              E-mail
+              <input type="email" name="email" [(ngModel)]="email">
+            </label>
+          </div>
+          <label class="field">
+            Tags
+            <input type="text" name="tags" [(ngModel)]="tagsTexto" placeholder="VIP">
+          </label>
+          <label class="field">
+            Observações gerais
+            <textarea name="observacoes" rows="3" [(ngModel)]="observacoes"></textarea>
+          </label>
+          <label class="check">
+            <input type="checkbox" name="consentimento" [(ngModel)]="consentimento">
+            Autorizo guardar dados de saúde e fotos desta cliente.
+          </label>
+          <label class="check">
+            <input type="checkbox" name="inativa" [(ngModel)]="inativa">
+            Cliente inativa
+          </label>
+          @if (erroCadastro) {
+            <p class="erro" role="alert">{{ erroCadastro }}</p>
+          }
+          <div class="foot-btn">
+            <button class="cancel" type="button" (click)="fecharCadastro()">Cancelar</button>
+            <button class="save" type="submit">Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  @if (mostrarFicha && cliente) {
+    <div class="overlay" (click)="fecharFicha()">
+      <div class="sheet sheet-larga" role="dialog" aria-modal="true" aria-labelledby="titulo-ficha" (click)="$event.stopPropagation()">
+        <header class="titulo">
+          <h2 id="titulo-ficha">Registrar atendimento</h2>
+          <p>Serviço, profissional e uma observação, se quiser.</p>
+        </header>
+        <form (ngSubmit)="salvarFicha()">
+          <div class="row">
+            <label class="field">
+              Data
+              <input type="date" name="fichaData" [(ngModel)]="fichaData" required>
+            </label>
+            <label class="field">
+              Valor cobrado
+              <input type="number" name="fichaValor" min="0" step="0.01" [(ngModel)]="fichaValor">
+            </label>
+          </div>
+          <div class="row">
+            <label class="field">
+              Serviço
+              <input type="text" name="fichaServico" [(ngModel)]="fichaServico" required>
+            </label>
+            <label class="field">
+              Profissional
+              <input type="text" name="fichaProfissional" [(ngModel)]="fichaProfissional" required>
+            </label>
+          </div>
+          <label class="field">
+            Observações do atendimento
+            <textarea name="fichaObs" rows="2" [(ngModel)]="fichaObservacoes"></textarea>
+          </label>
+          <label class="field">
+            Recomendação de retorno
+            <input type="text" name="fichaRetorno" [(ngModel)]="fichaRetorno" placeholder="Retoque em 30 dias">
+          </label>
+          <div class="row">
+            <label class="field">
+              Foto antes
+              <input type="file" accept="image/*" (change)="escolherFoto($event, 'antes')">
+            </label>
+            <label class="field">
+              Foto depois
+              <input type="file" accept="image/*" (change)="escolherFoto($event, 'depois')">
+            </label>
+          </div>
+          @if (erroFicha) {
+            <p class="erro" role="alert">{{ erroFicha }}</p>
+          }
+          <div class="foot-btn">
+            <button class="cancel" type="button" (click)="fecharFicha()">Cancelar</button>
+            <button class="save" type="submit">Salvar ficha</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+</div>

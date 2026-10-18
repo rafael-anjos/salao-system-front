@@ -99,15 +99,13 @@
                 }
               </select>
             </label>
-            <label class="field">
-              Cliente
-              <select name="cliente" [(ngModel)]="clienteId" [disabled]="!caixaAberto">
-                <option value="">Venda avulsa</option>
-                @for (cliente of estado.clientes; track cliente.id) {
-                  <option [value]="cliente.id">{{ cliente.nome }}</option>
-                }
-              </select>
-            </label>
+            <app-busca-cliente
+              rotulo="Cliente"
+              placeholder="Nome, telefone ou deixe em branco para venda avulsa"
+              [clienteId]="clienteId"
+              [desabilitado]="!caixaAberto"
+              (clienteChange)="definirCliente($event)">
+            </app-busca-cliente>
           </div>
 
           <div class="busca-item">
@@ -746,6 +744,30 @@
               <input type="number" name="valor2Atendimento" min="0" step="0.01" [(ngModel)]="atendimento.valor2">
             </label>
           </div>
+        }
+
+        @if (atendimento.temCliente) {
+          <fieldset class="servicos">
+            <legend>Ficha do atendimento</legend>
+            <label class="check">
+              <input type="checkbox" name="registrarFicha" [(ngModel)]="atendimento.registrarFicha">
+              Guardar este atendimento na ficha da cliente
+            </label>
+            @if (atendimento.registrarFicha) {
+              <label class="field">
+                Observações
+                <textarea name="fichaObs" rows="2" [(ngModel)]="atendimento.observacaoFicha"></textarea>
+              </label>
+              <label class="field">
+                Recomendação de retorno
+                <input type="text" name="fichaRetorno" [(ngModel)]="atendimento.retornoFicha" placeholder="Retoque em 30 dias">
+              </label>
+              <div class="row">
+                <label class="field">Foto antes <input type="file" accept="image/*" (change)="escolherFotoAtendimento($event, 'antes')"></label>
+                <label class="field">Foto depois <input type="file" accept="image/*" (change)="escolherFotoAtendimento($event, 'depois')"></label>
+              </div>
+            }
+          </fieldset>
         }
 
         <footer class="resumo-venda">
