@@ -8,7 +8,7 @@ web
 
 ## Users
 
-Paula e a equipe do Eula Moraes Studio usam o sistema no balcão, durante o expediente, para agenda, caixa, estoque e o controle financeiro do salão.
+Paula e a equipe do Eula Moraes Studio usam o sistema no balcão, durante o expediente, para agenda, clientes, caixa, estoque e o controle financeiro do salão.
 
 ## Product Purpose
 
@@ -24,7 +24,7 @@ Uso no navegador, ao lado do atendimento. Vendas nascem no caixa. Contas fixas, 
 
 ## Capabilities and Constraints
 
-- Telas: início, agenda, caixa, financeiro, estoque, serviços e profissionais.
+- Telas: início, agenda, clientes, caixa, financeiro, estoque, relatórios, serviços, profissionais e configurações.
 - Formas de pagamento: Pix, dinheiro, cartão de débito e cartão de crédito.
 - Conta fixa se repete todo mês até ser encerrada. Parcelada dura o número de meses informado. Avulsa sai da lista depois de paga.
 - Sangria é saída sem categoria de produto. Toda saída reduz o lucro líquido. Conta pendente só reduz o lucro quando é marcada como paga.

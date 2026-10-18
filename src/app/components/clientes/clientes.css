@@ -1,0 +1,603 @@
+:host {
+    --ink: #1c3112;
+    --muted: #5a6854;
+    --line: color-mix(in srgb, #1c3112 14%, white);
+    --canvas: #f3f4f2;
+    --critico: #9b1c2c;
+    font-family: 'Montserrat', sans-serif;
+    color: var(--ink);
+}
+
+:host ::selection {
+    background: var(--ink);
+    color: white;
+}
+
+.container {
+    display: flex;
+    background-color: var(--canvas);
+    min-height: 100vh;
+    width: 100%;
+}
+
+main {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-height: 100vh;
+    min-width: 0;
+}
+
+main > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 10vh;
+    width: 100%;
+    padding: 0.75rem 1.25rem;
+    background-color: white;
+    box-shadow: 1px 1px 7px 1px #b3b3b3;
+}
+
+main > header h1 {
+    font-size: 1.875rem;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+}
+
+.header-btn,
+.acoes,
+.foot-btn,
+.foot-inline,
+.barra-interna {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.agendamento-btn,
+.notification-btn,
+.btn-aba,
+.btn-acao,
+.cancel,
+.save,
+.secundario {
+    font-family: inherit;
+}
+
+.agendamento-btn,
+.secundario,
+.save {
+    font-weight: 500;
+    font-size: 0.9375rem;
+    height: 2.375rem;
+    padding: 0 1.1rem;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.agendamento-btn,
+.save {
+    background-color: var(--ink);
+    border: 1px solid var(--ink);
+    color: white;
+}
+
+.secundario {
+    background: white;
+    border: 1px solid var(--ink);
+    color: var(--ink);
+}
+
+.agendamento-btn:hover,
+.save:hover,
+.secundario:hover {
+    background-color: white;
+    color: var(--ink);
+}
+
+.secundario:hover {
+    background: var(--ink);
+    color: white;
+}
+
+.secundario:disabled,
+.btn-acao:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
+.notification-btn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid var(--ink);
+    background-color: white;
+    cursor: pointer;
+    height: 35px;
+    width: 35px;
+    border-radius: 100%;
+}
+
+.header-btn button img {
+    height: 20px;
+    width: 20px;
+}
+
+.notification-btn .img-hover,
+.notification-btn .img-active {
+    display: none;
+}
+
+.notification-btn:hover:not(:active) .img-padrao {
+    display: none;
+}
+
+.notification-btn:hover:not(:active) .img-hover {
+    display: inline-block;
+}
+
+.notification-btn:active .img-padrao,
+.notification-btn:active .img-hover {
+    display: none;
+}
+
+.notification-btn:active .img-active {
+    display: inline-block;
+}
+
+.notification-btn:hover {
+    background-color: var(--ink);
+}
+
+.notification-btn:active {
+    background-color: white;
+}
+
+.agendamento-btn:focus-visible,
+.notification-btn:focus-visible,
+.btn-aba:focus-visible,
+.btn-acao:focus-visible,
+.cancel:focus-visible,
+.save:focus-visible,
+.secundario:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+}
+
+.conteudo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    padding: 0.75rem 0.75rem 1.25rem;
+    flex: 1;
+}
+
+.barra-filtros input,
+.field input,
+.field textarea,
+.field select,
+.quimica input {
+    width: 100%;
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: var(--ink);
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.65rem 0.75rem;
+}
+
+.barra-filtros input {
+    max-width: 28rem;
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: #5a6854;
+}
+
+.abas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.btn-aba {
+    height: 2.1rem;
+    padding: 0 0.85rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: white;
+    color: var(--ink);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-aba.ativo {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: white;
+}
+
+.container-tabela,
+.painel,
+.formula {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px color-mix(in srgb, #1c3112 8%, transparent);
+}
+
+.container-tabela {
+    overflow: auto;
+}
+
+.tabela {
+    width: 100%;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+}
+
+.tabela th,
+.tabela td {
+    padding: 0.8rem 0.9rem;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    vertical-align: middle;
+    font-size: 0.875rem;
+}
+
+.tabela th {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.nome {
+    font-weight: 600;
+}
+
+.numero {
+    font-variant-numeric: tabular-nums;
+}
+
+.vazio,
+.vazio-formula {
+    color: var(--muted);
+    font-size: 0.875rem;
+}
+
+.rodape-tabela,
+.barra-interna {
+    justify-content: space-between;
+    padding: 0.75rem 0.9rem;
+    color: var(--muted);
+    font-size: 0.8125rem;
+}
+
+.tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.tags li {
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--ink) 8%, white);
+    font-size: 0.6875rem;
+    font-weight: 600;
+}
+
+.tags li.alergia {
+    background: color-mix(in srgb, var(--critico) 12%, white);
+    color: var(--critico);
+}
+
+.btn-acao {
+    height: 2rem;
+    padding: 0 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: white;
+    color: var(--ink);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-acao:hover:not(:disabled) {
+    border-color: var(--ink);
+}
+
+.acoes {
+    flex-wrap: wrap;
+}
+
+.topo-perfil {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem 0.9rem;
+}
+
+.fone {
+    font-size: 0.9375rem;
+    font-weight: 600;
+}
+
+.alerta {
+    width: 100%;
+    margin: 0;
+    padding: 0.7rem 0.85rem;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--critico) 12%, white);
+    color: var(--critico);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.formula {
+    padding: 1.1rem 1.2rem 1.2rem;
+    animation: assentar 480ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.formula h2,
+.visita h3,
+.titulo h2 {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+.formula h2 {
+    font-size: 0.95rem;
+}
+
+.quando,
+.produto,
+.retorno,
+.nota,
+.titulo p,
+.visita p {
+    margin-top: 0.35rem;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: var(--muted);
+}
+
+.cor {
+    margin-top: 0.35rem;
+    font-size: clamp(2rem, 4vw, 3.25rem);
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+}
+
+.retorno {
+    color: var(--ink);
+    font-weight: 600;
+}
+
+.painel {
+    padding: 1rem 1.1rem 1.15rem;
+}
+
+.ficha-dados {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.9rem 1rem;
+}
+
+.ficha-dados dt {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.ficha-dados dd {
+    margin-top: 0.2rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.grade,
+.row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.grade {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+fieldset {
+    margin: 0 0 0.9rem;
+    padding: 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+}
+
+legend {
+    padding: 0 0.3rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.checks,
+.quimica {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem 1rem;
+}
+
+.quimica input {
+    max-width: 14rem;
+    margin-bottom: 0.35rem;
+}
+
+.check {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0.7rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+}
+
+.foot-inline {
+    justify-content: flex-end;
+}
+
+.visita {
+    padding: 0.85rem 0;
+    border-top: 1px solid var(--line);
+}
+
+.visita:first-of-type {
+    border-top: none;
+}
+
+.visita header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.visita h3 {
+    font-size: 1rem;
+}
+
+.fotos {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 0.7rem;
+}
+
+.fotos img {
+    width: 7.5rem;
+    height: 7.5rem;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.fotos figcaption {
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+}
+
+.erro,
+.ok {
+    margin-bottom: 0.75rem;
+    font-size: 0.8125rem;
+}
+
+.erro {
+    color: var(--critico);
+}
+
+.ok {
+    color: var(--ink);
+}
+
+.overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    padding: 1.25rem;
+    overflow: auto;
+    background: color-mix(in srgb, #1c3112 28%, transparent);
+}
+
+.sheet {
+    width: min(36rem, 100%);
+    margin: auto;
+    padding: 1.5rem 1.5rem 1.25rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px color-mix(in srgb, #1c3112 18%, transparent);
+}
+
+.sheet-larga {
+    width: min(44rem, 100%);
+}
+
+.sheet form {
+    margin-top: 1rem;
+}
+
+.foot-btn {
+    justify-content: space-between;
+}
+
+.foot-btn button {
+    flex: 1;
+    height: 2.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
+.cancel {
+    background: white;
+    color: var(--ink);
+    border: 1px solid color-mix(in srgb, #1c3112 28%, white);
+}
+
+@keyframes assentar {
+    from {
+        transform: translateY(8px);
+        filter: blur(4px);
+    }
+    to {
+        transform: none;
+        filter: none;
+    }
+}
+
+@media (max-width: 960px) {
+    main > header {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 1rem;
+    }
+
+    .header-btn {
+        flex-wrap: wrap;
+    }
+
+    .ficha-dados,
+    .grade,
+    .row {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .formula {
+        animation: none;
+    }
+}

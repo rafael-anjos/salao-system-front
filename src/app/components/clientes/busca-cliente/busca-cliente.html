@@ -1,0 +1,58 @@
+<div class="busca">
+  <label [attr.for]="idCampo">{{ rotulo }}</label>
+  <div class="linha">
+    <input
+      [id]="idCampo"
+      type="search"
+      role="combobox"
+      [attr.aria-expanded]="aberta"
+      aria-autocomplete="list"
+      [attr.aria-controls]="idLista"
+      autocomplete="off"
+      [placeholder]="placeholder"
+      [required]="obrigatorio"
+      [disabled]="desabilitado"
+      [ngModel]="texto"
+      (ngModelChange)="aoDigitar($event)"
+      (focus)="aberta = true">
+    <button class="novo" type="button" [disabled]="desabilitado" (click)="abrirRapido()">+ Novo cliente</button>
+  </div>
+  @if (aberta && sugestoes.length > 0) {
+    <ul class="lista" [id]="idLista" role="listbox">
+      @for (cliente of sugestoes; track cliente.id) {
+        <li>
+          <button type="button" role="option" (click)="escolher(cliente)">
+            <span>{{ cliente.nome }}</span>
+            <span class="fone">{{ cliente.telefone || 'Sem telefone' }}</span>
+          </button>
+        </li>
+      }
+    </ul>
+  }
+</div>
+
+@if (rapido) {
+  <div class="overlay" (click)="fecharRapido()">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="titulo-rapido" (click)="$event.stopPropagation()">
+      <header class="titulo">
+        <h2 id="titulo-rapido">Novo cliente</h2>
+        <p>Nome e telefone. O restante da ficha pode ser completado depois.</p>
+      </header>
+      <label class="campo">
+        Nome
+        <input type="text" name="nomeRapido" [(ngModel)]="nomeRapido" required>
+      </label>
+      <label class="campo">
+        Telefone / WhatsApp
+        <input type="tel" name="telefoneRapido" [(ngModel)]="telefoneRapido" placeholder="(11) 90000-0000" required>
+      </label>
+      @if (erroRapido) {
+        <p class="erro" role="alert">{{ erroRapido }}</p>
+      }
+      <div class="foot-btn">
+        <button class="cancel" type="button" (click)="fecharRapido()">Cancelar</button>
+        <button class="save" type="button" (click)="salvarRapido()">Salvar</button>
+      </div>
+    </div>
+  </div>
+}

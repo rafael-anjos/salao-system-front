@@ -323,7 +323,7 @@ export class Configuracoes {
   abrirUsuario(): void {
     this.usuarioAlvo = null;
     this.nomeUsuario = '';
-    this.acessosMarcados = ['inicio', 'agenda', 'caixa'];
+    this.acessosMarcados = ['inicio', 'agenda', 'clientes', 'caixa'];
     this.erro = '';
     this.painel = 'usuario';
   }

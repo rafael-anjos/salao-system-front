@@ -11,28 +11,20 @@
                 @if (somenteLeitura) {
                     Este atendimento já foi finalizado.
                 } @else {
-                    Cliente, serviço, profissional, data e horário de início.
+                    Serviço, profissional, data e horário. Cliente é opcional.
                 }
             </p>
         </header>
 
         <form (ngSubmit)="onSalvar()">
-            <label class="field">
-                Nome do cliente
-                <input
-                    type="text"
-                    name="cliente"
-                    list="clientes-agenda"
-                    autocomplete="name"
-                    [(ngModel)]="clienteNome"
-                    [disabled]="somenteLeitura"
-                    required>
-                <datalist id="clientes-agenda">
-                    @for (cliente of clientes; track cliente) {
-                        <option [value]="cliente"></option>
-                    }
-                </datalist>
-            </label>
+            <app-busca-cliente
+                rotulo="Cliente (opcional)"
+                placeholder="Busque uma cliente ou deixe em branco para serviço avulso"
+                [clienteId]="clienteId"
+                [nomeLivre]="clienteNome"
+                [desabilitado]="somenteLeitura"
+                (clienteChange)="definirCliente($event)">
+            </app-busca-cliente>
 
             <label class="field">
                 Serviço a fazer

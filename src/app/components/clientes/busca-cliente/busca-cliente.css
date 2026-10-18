@@ -1,0 +1,208 @@
+:host {
+    --ink: #1c3112;
+    --muted: #5a6854;
+    --line: color-mix(in srgb, #1c3112 16%, white);
+    --critico: #9b1c2c;
+    display: block;
+    font-family: 'Montserrat', sans-serif;
+    color: var(--ink);
+}
+
+.busca {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.linha {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+input,
+.novo,
+.cancel,
+.save {
+    font-family: inherit;
+}
+
+input {
+    width: 100%;
+    min-width: 0;
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: var(--ink);
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.65rem 0.75rem;
+    outline: none;
+}
+
+input:focus,
+.novo:focus-visible,
+.cancel:focus-visible,
+.save:focus-visible,
+.lista button:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+}
+
+input::placeholder {
+    color: #5a6854;
+}
+
+.novo {
+    flex: 0 0 auto;
+    height: 2.45rem;
+    padding: 0 0.75rem;
+    border: 1px solid var(--ink);
+    border-radius: 8px;
+    background: white;
+    color: var(--ink);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.novo:hover:not(:disabled) {
+    background: var(--ink);
+    color: white;
+}
+
+.novo:disabled,
+input:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.lista {
+    position: absolute;
+    z-index: 5;
+    top: calc(100% + 0.25rem);
+    left: 0;
+    right: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 10px 24px color-mix(in srgb, #1c3112 14%, transparent);
+    overflow: hidden;
+}
+
+.lista button {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.65rem 0.75rem;
+    border: none;
+    border-top: 1px solid var(--line);
+    background: white;
+    color: inherit;
+    font: inherit;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+}
+
+.lista li:first-child button {
+    border-top: none;
+}
+
+.lista button:hover {
+    background: color-mix(in srgb, #1c3112 6%, white);
+}
+
+.fone {
+    color: var(--muted);
+    font-weight: 400;
+}
+
+.overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    display: flex;
+    justify-content: center;
+    padding: 1.25rem;
+    overflow: auto;
+    background: color-mix(in srgb, #1c3112 28%, transparent);
+}
+
+.sheet {
+    width: min(26rem, 100%);
+    margin: auto;
+    padding: 1.5rem 1.5rem 1.25rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px color-mix(in srgb, #1c3112 18%, transparent);
+}
+
+.titulo h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+.titulo p {
+    margin-top: 0.3rem;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    font-weight: 400;
+    color: var(--muted);
+}
+
+.campo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-top: 0.85rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.erro {
+    margin-top: 0.75rem;
+    font-size: 0.8125rem;
+    color: var(--critico);
+}
+
+.foot-btn {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.foot-btn button {
+    flex: 1;
+    height: 2.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
+.cancel {
+    background: white;
+    color: var(--ink);
+    border: 1px solid color-mix(in srgb, #1c3112 28%, white);
+}
+
+.save {
+    background: var(--ink);
+    color: white;
+    border: 1px solid var(--ink);
+}
+
+.save:hover {
+    background: white;
+    color: var(--ink);
+}

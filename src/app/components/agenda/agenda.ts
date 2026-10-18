@@ -1,5 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { Component, HostListener, inject, OnDestroy, OnInit } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { AgendamentoDia, dataIso, rotuloStatusAgendamento, SalaoEstadoService, StatusAgendamento } from '../../core/salao-estado.service';
 import { Calendario } from './calendario/calendario';
 import { NovoAgendamento } from './novo-agendamento/novo-agendamento';
@@ -38,6 +39,7 @@ const PASSO_MINUTOS = 15;
 })
 export class AgendaComponent implements OnInit, OnDestroy {
   private readonly estado = inject(SalaoEstadoService);
+  private readonly rota = inject(ActivatedRoute);
   private cliqueTimer: ReturnType<typeof setTimeout> | null = null;
   private fecharMenuNoClique = false;
 
@@ -48,6 +50,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
   editando: AgendamentoDia | null = null;
   dataInicial = '';
   horaInicial = '';
+  clientePrefill = '';
   movendo: AgendamentoDia | null = null;
   destino: DestinoMovimento | null = null;
   menu: MenuAgendamento | null = null;
@@ -63,10 +66,11 @@ export class AgendaComponent implements OnInit, OnDestroy {
     return lista;
   }
 
-  abrirFormulario() {
+  abrirFormulario(clienteId = '') {
     this.cancelarMovimento();
     this.menu = null;
     this.editando = null;
+    this.clientePrefill = clienteId;
     this.dataInicial = dataIso(new Date());
     this.horaInicial = '';
     this.mostrarFormulario = true;
@@ -75,6 +79,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
   abrirNoHorario(dia: Date, hora: string) {
     this.cancelarMovimento();
     this.editando = null;
+    this.clientePrefill = '';
     this.dataInicial = dataIso(dia);
     this.horaInicial = hora;
     this.mostrarFormulario = true;
@@ -227,6 +232,10 @@ export class AgendaComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.construirAgenda();
+    const clienteId = this.rota.snapshot.queryParamMap.get('cliente');
+    if (clienteId && this.estado.clientes.some((cliente) => cliente.id === clienteId)) {
+      this.abrirFormulario(clienteId);
+    }
   }
 
   ngOnDestroy() {
