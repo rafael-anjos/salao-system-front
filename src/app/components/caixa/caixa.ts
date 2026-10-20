@@ -55,8 +55,6 @@ interface RascunhoAtendimento {
   registrarFicha: boolean;
   observacaoFicha: string;
   retornoFicha: string;
-  fotoAntes: string;
-  fotoDepois: string;
 }
 
 @Component({
@@ -565,8 +563,6 @@ export class Caixa {
       registrarFicha: false,
       observacaoFicha: '',
       retornoFicha: '',
-      fotoAntes: '',
-      fotoDepois: '',
     };
   }
 
@@ -616,13 +612,6 @@ export class Caixa {
     this.rascunho = null;
     if (fichaPedida) {
       const agendamento = this.estado.agendamentos.find((item) => item.id === fichaRascunho.agendamentoId);
-      const fotos = [];
-      if (fichaRascunho.fotoAntes) {
-        fotos.push({ id: 'antes', momento: 'antes' as const, dados: fichaRascunho.fotoAntes });
-      }
-      if (fichaRascunho.fotoDepois) {
-        fotos.push({ id: 'depois', momento: 'depois' as const, dados: fichaRascunho.fotoDepois });
-      }
       const ficha = this.estado.salvarFicha({
         clienteId: agendamento?.clienteId ?? '',
         agendamentoId: fichaRascunho.agendamentoId,
@@ -632,7 +621,7 @@ export class Caixa {
         produtos: [],
         observacoes: fichaRascunho.observacaoFicha,
         retorno: fichaRascunho.retornoFicha,
-        fotos,
+        fotos: [],
         valor: valorFicha,
       });
       if (!ficha.ok) {
@@ -643,34 +632,6 @@ export class Caixa {
       return;
     }
     this.publicar('ok', `${resultado.mensagem} ${resultado.id}.`);
-  }
-
-  async escolherFotoAtendimento(event: Event, momento: 'antes' | 'depois'): Promise<void> {
-    if (!this.rascunho) {
-      return;
-    }
-    const input = event.target as HTMLInputElement;
-    const arquivo = input.files?.[0];
-    input.value = '';
-    if (!arquivo || !arquivo.type.startsWith('image/')) {
-      this.publicar('erro', 'Escolha uma imagem para a ficha.');
-      return;
-    }
-    if (arquivo.size > 1_200_000) {
-      this.publicar('erro', 'Cada foto precisa ter menos de 1,2 MB.');
-      return;
-    }
-    const dados = await new Promise<string>((resolve, reject) => {
-      const leitor = new FileReader();
-      leitor.onload = () => resolve(String(leitor.result ?? ''));
-      leitor.onerror = () => reject(leitor.error);
-      leitor.readAsDataURL(arquivo);
-    });
-    if (momento === 'antes') {
-      this.rascunho.fotoAntes = dados;
-      return;
-    }
-    this.rascunho.fotoDepois = dados;
   }
 
   resumoDoCaixa(caixaId: string) {

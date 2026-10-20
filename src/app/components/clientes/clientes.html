@@ -42,7 +42,7 @@
               <p class="retorno">{{ ficha.retorno }}</p>
             }
           } @else {
-            <p class="vazio-formula">Nenhum atendimento registrado ainda.</p>
+            <p class="vazio-formula">Nenhum atendimento registrado.</p>
           }
         </section>
 
@@ -80,63 +80,79 @@
 
         @if (aba === 'anamnese') {
           <form class="painel" (ngSubmit)="salvarAnamnese()">
+            <div class="grade">
+              <label class="field">
+                Tipo de cabelo
+                <select name="tipoCabelo" [(ngModel)]="anamnese.tipoCabelo">
+                  <option value="">Selecione</option>
+                  @for (tipo of tiposCabelo; track tipo) {
+                    <option [value]="tipo">{{ tipo }}</option>
+                  }
+                </select>
+              </label>
+              <label class="field">
+                Comprimento
+                <input type="text" name="comprimento" [(ngModel)]="anamnese.comprimento" placeholder="Curto, médio, longo">
+              </label>
+              <label class="field">
+                Couro cabeludo
+                <select name="couro" [(ngModel)]="anamnese.couroCabeludo">
+                  <option value="">Selecione</option>
+                  @for (item of couros; track item) {
+                    <option [value]="item">{{ item }}</option>
+                  }
+                </select>
+              </label>
+            </div>
+
             <fieldset>
-              <legend>Qual o procedimento</legend>
-              <div class="checks">
-                @for (tipo of procedimentos; track tipo) {
+              <legend>Química anterior</legend>
+              @for (tipo of quimicas; track tipo) {
+                <div class="quimica">
                   <label class="check">
-                    <input type="checkbox" [name]="'procedimento-' + tipo" [checked]="procedimentoAtivo(tipo)" (change)="alternarProcedimento(tipo, $any($event.target).checked)">
+                    <input type="checkbox" [name]="'quimica-' + tipo" [checked]="quimicaAtiva(tipo)" (change)="alternarQuimica(tipo, $any($event.target).checked)">
                     {{ tipo }}
+                  </label>
+                  @if (quimicaAtiva(tipo)) {
+                    <input
+                      type="text"
+                      [name]="'data-' + tipo"
+                      placeholder="Data aproximada"
+                      [ngModel]="dataQuimica(tipo)"
+                      (ngModelChange)="definirDataQuimica(tipo, $event)">
+                  }
+                </div>
+              }
+            </fieldset>
+
+            <fieldset>
+              <legend>Condição atual do cabelo</legend>
+              <div class="checks">
+                @for (condicao of condicoesOpcoes; track condicao) {
+                  <label class="check">
+                    <input type="checkbox" [name]="'condicao-' + condicao" [checked]="condicaoAtiva(condicao)" (change)="alternarCondicao(condicao, $any($event.target).checked)">
+                    {{ condicao }}
                   </label>
                 }
               </div>
             </fieldset>
 
-            <div class="row">
-              <label class="field">
-                Qual cor
-                <input type="text" name="cor" [(ngModel)]="anamnese.cor" placeholder="Ex.: 7.1, loiro">
-              </label>
-              <label class="field">
-                Tem progressiva?
-                <select name="progressiva" [ngModel]="progressivaTexto" (ngModelChange)="definirProgressiva($event)">
-                  <option value="">Não informado</option>
-                  <option value="sim">Sim</option>
-                  <option value="nao">Não</option>
-                </select>
-              </label>
-            </div>
-
-            @if (anamnese.temProgressiva) {
-              <fieldset>
-                <legend>Formol</legend>
-                <div class="checks">
-                  <label class="check">
-                    <input type="radio" name="formol" value="com" [(ngModel)]="anamnese.formol">
-                    Com formol
-                  </label>
-                  <label class="check">
-                    <input type="radio" name="formol" value="sem" [(ngModel)]="anamnese.formol">
-                    Sem formol
-                  </label>
-                </div>
-              </fieldset>
-            }
-
             <label class="field">
-              Tem alergia?
-              <textarea name="alergias" rows="2" [(ngModel)]="anamnese.alergias" placeholder="Se tiver, escreva a quê"></textarea>
+              Alergias e sensibilidade a produtos
+              <textarea name="alergias" rows="2" [(ngModel)]="anamnese.alergias"></textarea>
             </label>
             <label class="field">
-              Observação
-              <textarea name="observacaoFicha" rows="4" [(ngModel)]="anamnese.observacoes" placeholder="Escreva o que quiser lembrar desta cliente"></textarea>
+              Observações de saúde
+              <textarea name="saude" rows="2" [(ngModel)]="anamnese.observacoesSaude" placeholder="Gestante, medicamento, o que a Paula precisar lembrar"></textarea>
             </label>
-            @if (anamnese.alergias.trim()) {
-              <label class="check">
-                <input type="checkbox" name="consentimentoAnamnese" [(ngModel)]="consentimentoAnamnese">
-                Autorizo guardar a alergia desta cliente.
-              </label>
-            }
+            <label class="field">
+              Preferências da cliente
+              <textarea name="preferencias" rows="2" [(ngModel)]="anamnese.preferencias"></textarea>
+            </label>
+            <label class="check">
+              <input type="checkbox" name="consentimentoAnamnese" [(ngModel)]="consentimentoAnamnese">
+              Autorizo guardar dados de saúde desta cliente.
+            </label>
             @if (erroAnamnese) {
               <p class="erro" role="alert">{{ erroAnamnese }}</p>
             }
@@ -152,7 +168,7 @@
         @if (aba === 'atendimentos') {
           <section class="painel" aria-label="Atendimentos">
             <div class="barra-interna">
-              <p>Atendimentos, do mais recente ao mais antigo.</p>
+              <p>Ficha técnica de cada visita, da mais recente para a mais antiga.</p>
               <button class="agendamento-btn" type="button" (click)="abrirFicha()">Registrar atendimento</button>
             </div>
             @for (ficha of fichas; track ficha.id) {
@@ -168,25 +184,9 @@
                 @if (ficha.retorno) {
                   <p class="retorno">{{ ficha.retorno }}</p>
                 }
-                @if (ficha.fotos.length) {
-                  <div class="fotos">
-                    @for (foto of fotosDaFicha(ficha, 'antes'); track foto.id) {
-                      <figure>
-                        <img [src]="foto.dados" alt="Antes do atendimento de {{ atual.nome }}">
-                        <figcaption>Antes</figcaption>
-                      </figure>
-                    }
-                    @for (foto of fotosDaFicha(ficha, 'depois'); track foto.id) {
-                      <figure>
-                        <img [src]="foto.dados" alt="Depois do atendimento de {{ atual.nome }}">
-                        <figcaption>Depois</figcaption>
-                      </figure>
-                    }
-                  </div>
-                }
               </article>
             } @empty {
-              <p class="vazio-formula">Nenhum atendimento registrado.</p>
+              <p class="vazio-formula">Nenhum atendimento com ficha técnica.</p>
             }
           </section>
         }
@@ -316,7 +316,7 @@
           </label>
           <label class="check">
             <input type="checkbox" name="consentimento" [(ngModel)]="consentimento">
-            Autorizo guardar dados de saúde e fotos desta cliente.
+            Autorizo guardar dados de saúde desta cliente.
           </label>
           <label class="check">
             <input type="checkbox" name="inativa" [(ngModel)]="inativa">
@@ -338,8 +338,8 @@
     <div class="overlay" (click)="fecharFicha()">
       <div class="sheet sheet-larga" role="dialog" aria-modal="true" aria-labelledby="titulo-ficha" (click)="$event.stopPropagation()">
         <header class="titulo">
-          <h2 id="titulo-ficha">Registrar atendimento</h2>
-          <p>Serviço, profissional e uma observação, se quiser.</p>
+          <h2 id="titulo-ficha">Ficha do atendimento</h2>
+          <p>Data, serviço e observações da visita.</p>
         </header>
         <form (ngSubmit)="salvarFicha()">
           <div class="row">
@@ -370,16 +370,6 @@
             Recomendação de retorno
             <input type="text" name="fichaRetorno" [(ngModel)]="fichaRetorno" placeholder="Retoque em 30 dias">
           </label>
-          <div class="row">
-            <label class="field">
-              Foto antes
-              <input type="file" accept="image/*" (change)="escolherFoto($event, 'antes')">
-            </label>
-            <label class="field">
-              Foto depois
-              <input type="file" accept="image/*" (change)="escolherFoto($event, 'depois')">
-            </label>
-          </div>
           @if (erroFicha) {
             <p class="erro" role="alert">{{ erroFicha }}</p>
           }

@@ -762,10 +762,6 @@
                 Recomendação de retorno
                 <input type="text" name="fichaRetorno" [(ngModel)]="atendimento.retornoFicha" placeholder="Retoque em 30 dias">
               </label>
-              <div class="row">
-                <label class="field">Foto antes <input type="file" accept="image/*" (change)="escolherFotoAtendimento($event, 'antes')"></label>
-                <label class="field">Foto depois <input type="file" accept="image/*" (change)="escolherFotoAtendimento($event, 'depois')"></label>
-              </div>
             }
           </fieldset>
         }

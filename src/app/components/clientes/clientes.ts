@@ -7,13 +7,16 @@ import {
   AnamneseCapilar,
   anamneseVazia,
   Cliente,
+  CONDICOES_CABELO,
+  CondicaoCabelo,
+  COUROS_CABELUDOS,
   dataIso,
   FichaVisita,
-  FotoVisita,
   linkWhatsapp,
-  ProcedimentoFicha,
-  PROCEDIMENTOS_FICHA,
   SalaoEstadoService,
+  TIPOS_CABELO,
+  TIPOS_QUIMICA,
+  TipoQuimica,
 } from '../../core/salao-estado.service';
 
 type FiltroCliente = 'todos' | 'aniversario' | 'retorno-30' | 'retorno-60' | 'retorno-90' | 'inativos';
@@ -39,7 +42,10 @@ export class Clientes implements OnInit, OnDestroy {
     { id: 'retorno-90', nome: 'Sem retorno há 90 dias' },
     { id: 'inativos', nome: 'Inativos' },
   ];
-  readonly procedimentos = PROCEDIMENTOS_FICHA;
+  readonly tiposCabelo = TIPOS_CABELO;
+  readonly couros = COUROS_CABELUDOS;
+  readonly quimicas = TIPOS_QUIMICA;
+  readonly condicoesOpcoes = CONDICOES_CABELO;
 
   filtro: FiltroCliente = 'todos';
   termo = '';
@@ -71,7 +77,6 @@ export class Clientes implements OnInit, OnDestroy {
   fichaObservacoes = '';
   fichaRetorno = '';
   fichaValor: number | null = null;
-  fichaFotos: FotoVisita[] = [];
 
   ngOnInit(): void {
     this.assinatura = this.rota.paramMap.subscribe((params) => {
@@ -233,37 +238,6 @@ export class Clientes implements OnInit, OnDestroy {
     return `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
   }
 
-  procedimentoAtivo(tipo: ProcedimentoFicha): boolean {
-    return this.anamnese.procedimentos.includes(tipo);
-  }
-
-  alternarProcedimento(tipo: ProcedimentoFicha, marcado: boolean): void {
-    if (marcado) {
-      this.anamnese.procedimentos = [...this.anamnese.procedimentos, tipo];
-      return;
-    }
-    this.anamnese.procedimentos = this.anamnese.procedimentos.filter((item) => item !== tipo);
-  }
-
-  get progressivaTexto(): string {
-    if (this.anamnese.temProgressiva === true) {
-      return 'sim';
-    }
-    if (this.anamnese.temProgressiva === false) {
-      return 'nao';
-    }
-    return '';
-  }
-
-  definirProgressiva(valor: string): void {
-    if (valor === 'sim') {
-      this.anamnese.temProgressiva = true;
-      return;
-    }
-    this.anamnese.temProgressiva = valor === 'nao' ? false : null;
-    this.anamnese.formol = '';
-  }
-
   salvarAnamnese(): void {
     if (!this.cliente) {
       return;
@@ -279,6 +253,41 @@ export class Clientes implements OnInit, OnDestroy {
     this.copiarAnamnese();
   }
 
+  quimicaAtiva(tipo: TipoQuimica): boolean {
+    return this.anamnese.quimica.some((item) => item.tipo === tipo);
+  }
+
+  alternarQuimica(tipo: TipoQuimica, marcado: boolean): void {
+    if (marcado) {
+      this.anamnese.quimica = [...this.anamnese.quimica, { tipo, dataAproximada: '' }];
+      return;
+    }
+    this.anamnese.quimica = this.anamnese.quimica.filter((item) => item.tipo !== tipo);
+  }
+
+  dataQuimica(tipo: TipoQuimica): string {
+    return this.anamnese.quimica.find((item) => item.tipo === tipo)?.dataAproximada ?? '';
+  }
+
+  definirDataQuimica(tipo: TipoQuimica, valor: string): void {
+    const atual = this.anamnese.quimica.find((item) => item.tipo === tipo);
+    if (atual) {
+      atual.dataAproximada = valor;
+    }
+  }
+
+  condicaoAtiva(condicao: CondicaoCabelo): boolean {
+    return this.anamnese.condicoes.includes(condicao);
+  }
+
+  alternarCondicao(condicao: CondicaoCabelo, marcado: boolean): void {
+    if (marcado) {
+      this.anamnese.condicoes = [...this.anamnese.condicoes, condicao];
+      return;
+    }
+    this.anamnese.condicoes = this.anamnese.condicoes.filter((item) => item !== condicao);
+  }
+
   abrirFicha(): void {
     const cliente = this.cliente;
     if (!cliente) {
@@ -291,7 +300,6 @@ export class Clientes implements OnInit, OnDestroy {
     this.fichaObservacoes = '';
     this.fichaRetorno = '';
     this.fichaValor = null;
-    this.fichaFotos = [];
     this.erroFicha = '';
     this.mostrarFicha = true;
   }
@@ -312,7 +320,7 @@ export class Clientes implements OnInit, OnDestroy {
       produtos: [],
       observacoes: this.fichaObservacoes,
       retorno: this.fichaRetorno,
-      fotos: this.fichaFotos,
+      fotos: [],
       valor: Number(this.fichaValor ?? 0),
     });
     if (!resultado.ok) {
@@ -321,35 +329,6 @@ export class Clientes implements OnInit, OnDestroy {
     }
     this.mostrarFicha = false;
     this.aba = 'atendimentos';
-  }
-
-  async escolherFoto(event: Event, momento: 'antes' | 'depois'): Promise<void> {
-    const input = event.target as HTMLInputElement;
-    const arquivo = input.files?.[0];
-    input.value = '';
-    if (!arquivo) {
-      return;
-    }
-    if (!arquivo.type.startsWith('image/')) {
-      this.erroFicha = 'Escolha um arquivo de imagem.';
-      return;
-    }
-    if (arquivo.size > 1_200_000) {
-      this.erroFicha = 'Cada foto precisa ter menos de 1,2 MB.';
-      return;
-    }
-    const dados = await this.lerArquivo(arquivo);
-    const demais = this.fichaFotos.filter((foto) => foto.momento !== momento);
-    this.fichaFotos = [...demais, { id: `${momento}-${Date.now()}`, momento, dados }];
-    this.erroFicha = '';
-  }
-
-  fotoDe(momento: 'antes' | 'depois'): FotoVisita | undefined {
-    return this.fichaFotos.find((foto) => foto.momento === momento);
-  }
-
-  fotosDaFicha(ficha: FichaVisita, momento: 'antes' | 'depois'): FotoVisita[] {
-    return ficha.fotos.filter((foto) => foto.momento === momento);
   }
 
   @HostListener('document:keydown.escape')
@@ -383,12 +362,4 @@ export class Clientes implements OnInit, OnDestroy {
     return Math.floor((hoje.getTime() - visita.getTime()) / 86_400_000);
   }
 
-  private lerArquivo(arquivo: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const leitor = new FileReader();
-      leitor.onload = () => resolve(String(leitor.result ?? ''));
-      leitor.onerror = () => reject(leitor.error);
-      leitor.readAsDataURL(arquivo);
-    });
-  }
 }

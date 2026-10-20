@@ -25,18 +25,39 @@ export interface ProfissionalCadastro {
   telefone: string;
 }
 
-export const PROCEDIMENTOS_FICHA = ['Coloração', 'Mechas', 'Correção de cor'] as const;
+export const TIPOS_CABELO = ['Liso', 'Ondulado', 'Cacheado', 'Crespo'] as const;
+export const ESPESSURAS_CABELO = ['Fino', 'Médio', 'Grosso'] as const;
+export const POROSIDADES_CABELO = ['Baixa', 'Média', 'Alta'] as const;
+export const COUROS_CABELUDOS = ['Normal', 'Oleoso', 'Seco', 'Sensível'] as const;
+export const TIPOS_QUIMICA = ['Coloração', 'Descoloração', 'Progressiva', 'Relaxamento'] as const;
+export const CONDICOES_CABELO = ['Danificado', 'Ressecado', 'Quebradiço', 'Com queda', 'Elástico', 'Poroso'] as const;
 
-export type ProcedimentoFicha = (typeof PROCEDIMENTOS_FICHA)[number];
-export type FormolProgressiva = 'com' | 'sem' | '';
+export type TipoCabelo = (typeof TIPOS_CABELO)[number];
+export type EspessuraCabelo = (typeof ESPESSURAS_CABELO)[number];
+export type PorosidadeCabelo = (typeof POROSIDADES_CABELO)[number];
+export type CouroCabeludo = (typeof COUROS_CABELUDOS)[number];
+export type TipoQuimica = (typeof TIPOS_QUIMICA)[number];
+export type CondicaoCabelo = (typeof CONDICOES_CABELO)[number];
+
+export interface QuimicaAnterior {
+  tipo: TipoQuimica;
+  dataAproximada: string;
+}
 
 export interface AnamneseCapilar {
-  procedimentos: ProcedimentoFicha[];
-  cor: string;
-  temProgressiva: boolean | null;
-  formol: FormolProgressiva;
+  tipoCabelo: TipoCabelo | '';
+  comprimento: string;
+  espessura: EspessuraCabelo | '';
+  porosidade: PorosidadeCabelo | '';
+  couroCabeludo: CouroCabeludo | '';
+  quimica: QuimicaAnterior[];
+  condicoes: CondicaoCabelo[];
   alergias: string;
-  observacoes: string;
+  testeMecha: boolean | null;
+  testeMechaData: string;
+  observacoesSaude: string;
+  cuidadosCasa: string;
+  preferencias: string;
 }
 
 export interface Cliente {
@@ -45,6 +66,7 @@ export interface Cliente {
   telefone: string;
   nascimento: string;
   email: string;
+  instagram: string;
   observacoes: string;
   consentimentoSaude: boolean;
   tags: string[];
@@ -58,6 +80,7 @@ export interface ClienteCadastro {
   telefone: string;
   nascimento?: string;
   email?: string;
+  instagram?: string;
   observacoes?: string;
   consentimentoSaude?: boolean;
   tags?: string[];
@@ -111,53 +134,25 @@ export interface ResumoCliente {
   totalVisitas: number;
   ultimaVisita: string | null;
   totalGasto: number;
+  ticketMedio: number;
   proximo: AgendamentoDia | null;
 }
 
 export function anamneseVazia(): AnamneseCapilar {
   return {
-    procedimentos: [],
-    cor: '',
-    temProgressiva: null,
-    formol: '',
+    tipoCabelo: '',
+    comprimento: '',
+    espessura: '',
+    porosidade: '',
+    couroCabeludo: '',
+    quimica: [],
+    condicoes: [],
     alergias: '',
-    observacoes: '',
-  };
-}
-
-export function normalizarAnamnese(bruto: unknown): AnamneseCapilar {
-  if (!bruto || typeof bruto !== 'object') {
-    return anamneseVazia();
-  }
-  const dados = bruto as Record<string, unknown>;
-  const procedimentos = Array.isArray(dados['procedimentos'])
-    ? dados['procedimentos'].filter(
-        (item): item is ProcedimentoFicha =>
-          typeof item === 'string' && (PROCEDIMENTOS_FICHA as readonly string[]).includes(item),
-      )
-    : [];
-  const quimica = Array.isArray(dados['quimica']) ? dados['quimica'] : [];
-  const teveProgressiva = quimica.some(
-    (item) => !!item && typeof item === 'object' && (item as { tipo?: string }).tipo === 'Progressiva',
-  );
-  let temProgressiva: boolean | null = null;
-  if (dados['temProgressiva'] === true || dados['temProgressiva'] === false) {
-    temProgressiva = dados['temProgressiva'];
-  } else if (teveProgressiva) {
-    temProgressiva = true;
-  }
-  const observacoesPropria = typeof dados['observacoes'] === 'string' ? dados['observacoes'].trim() : '';
-  const extras = ['observacoesSaude', 'cuidadosCasa', 'preferencias']
-    .map((chave) => dados[chave])
-    .filter((item): item is string => typeof item === 'string' && !!item.trim());
-  const formol = dados['formol'] === 'com' || dados['formol'] === 'sem' ? dados['formol'] : '';
-  return {
-    procedimentos,
-    cor: typeof dados['cor'] === 'string' ? dados['cor'] : '',
-    temProgressiva,
-    formol: temProgressiva ? formol : '',
-    alergias: typeof dados['alergias'] === 'string' ? dados['alergias'] : '',
-    observacoes: [observacoesPropria, ...extras].filter(Boolean).join('\n'),
+    testeMecha: null,
+    testeMechaData: '',
+    observacoesSaude: '',
+    cuidadosCasa: '',
+    preferencias: '',
   };
 }
 
@@ -167,12 +162,18 @@ export function montarCliente(dados: Pick<Cliente, 'id' | 'nome'> & Partial<Omit
     telefone: '',
     nascimento: '',
     email: '',
+    instagram: '',
     observacoes: '',
     consentimentoSaude: false,
     ativo: true,
     ...dados,
     tags: dados.tags ? [...dados.tags] : [],
-    anamnese: normalizarAnamnese(anamnese),
+    anamnese: {
+      ...anamneseVazia(),
+      ...anamnese,
+      quimica: anamnese?.quimica ? anamnese.quimica.map((item) => ({ ...item })) : [],
+      condicoes: anamnese?.condicoes ? [...anamnese.condicoes] : [],
+    },
   };
 }
 
@@ -730,16 +731,24 @@ export class SalaoEstadoService {
       telefone: '(11) 98801-2210',
       nascimento: nascimentoNesteMes(34, 9),
       email: 'maria.silva@email.com',
+      instagram: 'maria.silva',
       observacoes: 'Prefere horário de manhã.',
       consentimentoSaude: true,
       tags: ['VIP', 'Alergia'],
       anamnese: {
         ...anamneseVazia(),
-        procedimentos: ['Coloração'],
-        cor: '7.1',
-        temProgressiva: false,
+        tipoCabelo: 'Cacheado',
+        comprimento: 'Na altura do ombro',
+        espessura: 'Médio',
+        porosidade: 'Alta',
+        couroCabeludo: 'Sensível',
+        quimica: [{ tipo: 'Coloração', dataAproximada: 'Há 6 meses' }],
+        condicoes: ['Ressecado'],
         alergias: 'Amônia. Arde o couro se a tinta tiver cheiro forte.',
-        observacoes: 'Sem clarear além do que já está.',
+        testeMecha: true,
+        testeMechaData: isoDiasAtras(180),
+        cuidadosCasa: 'Máscara uma vez por semana. Sem chapinha.',
+        preferencias: 'Tom 7.1, sem clarear além do que já está.',
       },
     }),
     montarCliente({
@@ -747,15 +756,18 @@ export class SalaoEstadoService {
       nome: 'Ana Costa',
       telefone: '(11) 99720-1184',
       nascimento: '1992-03-14',
+      instagram: 'ana.costa',
       consentimentoSaude: true,
       tags: ['VIP'],
       anamnese: {
         ...anamneseVazia(),
-        procedimentos: ['Mechas'],
-        cor: 'Loiro',
-        temProgressiva: true,
-        formol: 'sem',
-        observacoes: 'Corte em camadas, sem tirar muito comprimento.',
+        tipoCabelo: 'Ondulado',
+        comprimento: 'Longo',
+        espessura: 'Fino',
+        porosidade: 'Média',
+        couroCabeludo: 'Normal',
+        quimica: [{ tipo: 'Progressiva', dataAproximada: 'Há 1 ano' }],
+        preferencias: 'Corte em camadas, sem tirar muito comprimento.',
       },
     }),
     montarCliente({
@@ -763,14 +775,14 @@ export class SalaoEstadoService {
       nome: 'Juliana Alves',
       telefone: '(11) 98110-4402',
       nascimento: '1988-07-02',
-      anamnese: { ...anamneseVazia(), procedimentos: ['Coloração'], cor: 'Castanho', temProgressiva: false },
+      anamnese: { ...anamneseVazia(), tipoCabelo: 'Liso', comprimento: 'Curto', espessura: 'Médio', porosidade: 'Baixa', couroCabeludo: 'Oleoso' },
     }),
     montarCliente({
       id: 'cli-carla',
       nome: 'Carla Mendes',
       telefone: '(11) 99654-3301',
       nascimento: '1995-11-21',
-      anamnese: { ...anamneseVazia(), temProgressiva: false, observacoes: 'Cabelo ressecado. Hidratação antes de química.' },
+      anamnese: { ...anamneseVazia(), tipoCabelo: 'Crespo', comprimento: 'Médio', espessura: 'Grosso', porosidade: 'Alta', couroCabeludo: 'Seco', condicoes: ['Ressecado'] },
     }),
     montarCliente({
       id: 'cli-beatriz',
@@ -785,10 +797,12 @@ export class SalaoEstadoService {
       nascimento: '1986-05-18',
       anamnese: {
         ...anamneseVazia(),
-        procedimentos: ['Correção de cor'],
-        cor: '6.0',
-        temProgressiva: true,
-        formol: 'com',
+        tipoCabelo: 'Ondulado',
+        comprimento: 'Longo',
+        espessura: 'Grosso',
+        porosidade: 'Média',
+        couroCabeludo: 'Normal',
+        quimica: [{ tipo: 'Relaxamento', dataAproximada: 'Há 8 meses' }],
       },
     }),
   ];
@@ -2283,14 +2297,18 @@ export class SalaoEstadoService {
       nome: 'Renata Lima',
       telefone: '(11) 98440-2291',
       nascimento: nascimentoNesteMes(29, 22),
+      instagram: 'renata.lima',
       consentimentoSaude: true,
       tags: ['VIP'],
       anamnese: {
         ...anamneseVazia(),
-        procedimentos: ['Coloração'],
-        cor: '8.31',
-        temProgressiva: false,
-        observacoes: 'Loiro bege, sem platinar.',
+        tipoCabelo: 'Liso',
+        comprimento: 'Longo',
+        espessura: 'Fino',
+        porosidade: 'Média',
+        couroCabeludo: 'Normal',
+        quimica: [{ tipo: 'Coloração', dataAproximada: 'Há 40 dias' }],
+        preferencias: 'Loiro bege, sem platinar.',
       },
     });
     const helena = montarCliente({
@@ -2304,10 +2322,15 @@ export class SalaoEstadoService {
       ativo: false,
       anamnese: {
         ...anamneseVazia(),
-        procedimentos: ['Coloração'],
+        tipoCabelo: 'Cacheado',
+        comprimento: 'Médio',
+        espessura: 'Médio',
+        porosidade: 'Alta',
+        couroCabeludo: 'Sensível',
         alergias: 'PPD em tintas escuras.',
-        temProgressiva: false,
-        observacoes: 'Evitar tintas escuras.',
+        testeMecha: true,
+        testeMechaData: isoDiasAtras(120),
+        condicoes: ['Quebradiço'],
       },
     });
     this.clientes.push(renata, helena);
@@ -2395,12 +2418,14 @@ export class SalaoEstadoService {
       return { ok: false, mensagem: 'A data de nascimento não pode ser futura.' };
     }
 
+    const instagram = (dados.instagram ?? '').trim().replace(/^@+/, '');
     const tags = [...new Set((dados.tags ?? []).map((tag) => tag.trim()).filter(Boolean))];
     const registro = {
       nome,
       telefone,
       nascimento,
       email,
+      instagram,
       observacoes: dados.observacoes?.trim() ?? '',
       consentimentoSaude: !!dados.consentimentoSaude,
       tags,
@@ -2428,20 +2453,25 @@ export class SalaoEstadoService {
       return { ok: false, mensagem: 'Cliente não encontrada.' };
     }
     const alergias = anamnese.alergias.trim();
-    const observacoes = anamnese.observacoes.trim();
-    const cor = anamnese.cor.trim();
-    if (alergias && !consentimento) {
-      return { ok: false, mensagem: 'Marque o consentimento para guardar a alergia.' };
+    const saude = anamnese.observacoesSaude.trim();
+    const pedeSaude = !!alergias || !!saude || anamnese.condicoes.length > 0 || anamnese.testeMecha !== null;
+    if (pedeSaude && !consentimento) {
+      return { ok: false, mensagem: 'Marque o consentimento para guardar dados de saúde.' };
     }
     cliente.consentimentoSaude = consentimento || cliente.consentimentoSaude;
-    const temProgressiva = anamnese.temProgressiva;
     cliente.anamnese = {
-      procedimentos: anamnese.procedimentos.filter((item) => PROCEDIMENTOS_FICHA.includes(item)),
-      cor,
-      temProgressiva,
-      formol: temProgressiva ? anamnese.formol : '',
+      ...anamneseVazia(),
+      ...anamnese,
       alergias,
-      observacoes,
+      observacoesSaude: saude,
+      cuidadosCasa: anamnese.cuidadosCasa.trim(),
+      preferencias: anamnese.preferencias.trim(),
+      comprimento: anamnese.comprimento.trim(),
+      testeMechaData: anamnese.testeMechaData.trim(),
+      quimica: anamnese.quimica
+        .filter((item) => TIPOS_QUIMICA.includes(item.tipo))
+        .map((item) => ({ tipo: item.tipo, dataAproximada: item.dataAproximada.trim() })),
+      condicoes: anamnese.condicoes.filter((item) => CONDICOES_CABELO.includes(item)),
     };
     const semAlergia = cliente.tags.filter((tag) => tag.toLowerCase() !== 'alergia');
     cliente.tags = alergias ? [...semAlergia, 'Alergia'] : semAlergia;
@@ -2486,6 +2516,7 @@ export class SalaoEstadoService {
       totalVisitas,
       ultimaVisita: datas.at(-1) ?? null,
       totalGasto,
+      ticketMedio: totalVisitas ? arredondar(totalGasto / totalVisitas) : 0,
       proximo,
     };
   }
@@ -3340,11 +3371,19 @@ export class SalaoEstadoService {
       telefone: typeof bruto.telefone === 'string' ? bruto.telefone : '',
       nascimento: typeof bruto.nascimento === 'string' ? bruto.nascimento : '',
       email: typeof bruto.email === 'string' ? bruto.email : '',
+      instagram: typeof bruto.instagram === 'string' ? bruto.instagram : '',
       observacoes: typeof bruto.observacoes === 'string' ? bruto.observacoes : '',
       consentimentoSaude: !!bruto.consentimentoSaude,
       tags: Array.isArray(bruto.tags) ? bruto.tags.filter((tag) => typeof tag === 'string') : [],
       ativo: bruto.ativo !== false,
-      anamnese: normalizarAnamnese(anamnese),
+      anamnese: anamnese
+        ? {
+            ...anamneseVazia(),
+            ...anamnese,
+            quimica: Array.isArray(anamnese.quimica) ? anamnese.quimica : [],
+            condicoes: Array.isArray(anamnese.condicoes) ? anamnese.condicoes : [],
+          }
+        : anamneseVazia(),
     });
   }
 
