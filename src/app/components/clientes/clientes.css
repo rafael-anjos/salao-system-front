@@ -336,14 +336,11 @@ textarea::placeholder {
 }
 
 .alerta {
-    width: 100%;
     margin: 0;
-    padding: 0.7rem 0.85rem;
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--critico) 12%, white);
     color: var(--critico);
-    font-size: 0.875rem;
-    font-weight: 600;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.35;
 }
 
 .formula {
@@ -487,23 +484,35 @@ legend {
     font-size: 1rem;
 }
 
-.fotos {
+.resumo-ficha {
+    color: var(--ink);
+    font-weight: 600;
+}
+
+.resumo-fixo {
     display: flex;
-    gap: 0.75rem;
-    margin-top: 0.7rem;
+    flex-direction: column;
+    gap: 0.85rem;
+    margin-bottom: 1.1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--line);
 }
 
-.fotos img {
-    width: 7.5rem;
-    height: 7.5rem;
-    object-fit: cover;
-    border-radius: 8px;
+.resumo-fixo fieldset {
+    margin: 0;
+    padding: 0.75rem 0.85rem 0.2rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
 }
 
-.fotos figcaption {
-    margin-top: 0.25rem;
+.resumo-fixo legend {
+    padding: 0 0.25rem;
     font-size: 0.75rem;
-    color: var(--muted);
+    font-weight: 600;
+}
+
+.resumo-fixo .checks {
+    margin-bottom: 0.35rem;
 }
 
 .erro,

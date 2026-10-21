@@ -4,24 +4,22 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import {
-  AnamneseCapilar,
-  anamneseVazia,
   Cliente,
   dataIso,
+  FichaAtendimento,
   FichaVisita,
-  FotoVisita,
   linkWhatsapp,
-  ProcedimentoFicha,
-  PROCEDIMENTOS_FICHA,
+  resumoFichaAtendimento,
   SalaoEstadoService,
 } from '../../core/salao-estado.service';
+import { FichaAtendimentoPainel } from '../ficha-atendimento/ficha-atendimento';
 
-type FiltroCliente = 'todos' | 'aniversario' | 'retorno-30' | 'retorno-60' | 'retorno-90' | 'inativos';
-type AbaPerfil = 'resumo' | 'anamnese' | 'atendimentos';
+type FiltroCliente = 'todos' | 'alergia' | 'aniversario' | 'retorno-30' | 'retorno-60' | 'retorno-90' | 'inativos';
+type AbaPerfil = 'resumo' | 'atendimentos';
 
 @Component({
   selector: 'app-clientes',
-  imports: [FormsModule, CurrencyPipe],
+  imports: [FormsModule, CurrencyPipe, FichaAtendimentoPainel],
   templateUrl: './clientes.html',
   styleUrl: './clientes.css',
 })
@@ -33,14 +31,13 @@ export class Clientes implements OnInit, OnDestroy {
 
   readonly filtros: { id: FiltroCliente; nome: string }[] = [
     { id: 'todos', nome: 'Todos' },
+    { id: 'alergia', nome: 'Com alergia' },
     { id: 'aniversario', nome: 'Aniversariantes do mês' },
     { id: 'retorno-30', nome: 'Sem retorno há 30 dias' },
     { id: 'retorno-60', nome: 'Sem retorno há 60 dias' },
     { id: 'retorno-90', nome: 'Sem retorno há 90 dias' },
     { id: 'inativos', nome: 'Inativos' },
   ];
-  readonly procedimentos = PROCEDIMENTOS_FICHA;
-
   filtro: FiltroCliente = 'todos';
   termo = '';
   clienteId: string | null = null;
@@ -56,12 +53,16 @@ export class Clientes implements OnInit, OnDestroy {
   tagsTexto = '';
   consentimento = false;
   inativa = false;
+  senhaAdmin = '';
   erroCadastro = '';
 
-  anamnese: AnamneseCapilar = anamneseVazia();
-  consentimentoAnamnese = false;
-  erroAnamnese = '';
-  avisoAnamnese = '';
+  alergiaTem = false;
+  alergiaTexto = '';
+  observacoesSaude = '';
+  erroResumo = '';
+  avisoResumo = '';
+
+  fichaLeituraId = '';
 
   mostrarFicha = false;
   erroFicha = '';
@@ -71,15 +72,15 @@ export class Clientes implements OnInit, OnDestroy {
   fichaObservacoes = '';
   fichaRetorno = '';
   fichaValor: number | null = null;
-  fichaFotos: FotoVisita[] = [];
 
   ngOnInit(): void {
     this.assinatura = this.rota.paramMap.subscribe((params) => {
       this.clienteId = params.get('id');
       this.aba = 'resumo';
-      this.erroAnamnese = '';
-      this.avisoAnamnese = '';
-      this.copiarAnamnese();
+      this.erroResumo = '';
+      this.avisoResumo = '';
+      this.fichaLeituraId = '';
+      this.copiarResumo();
     });
   }
 
@@ -116,6 +117,9 @@ export class Clientes implements OnInit, OnDestroy {
             return false;
           }
         }
+        if (this.filtro === 'alergia') {
+          return !!cliente.anamnese.alergias.trim();
+        }
         if (this.filtro === 'inativos') {
           return !cliente.ativo;
         }
@@ -140,6 +144,17 @@ export class Clientes implements OnInit, OnDestroy {
     return this.editandoId ? 'Editar cliente' : 'Novo cliente';
   }
 
+  get pedeSenhaInativa(): boolean {
+    if (!this.inativa && !this.editandoId) {
+      return false;
+    }
+    const atual = this.estado.clientes.find((cliente) => cliente.id === this.editandoId);
+    if (!atual) {
+      return this.inativa;
+    }
+    return this.inativa !== !atual.ativo;
+  }
+
   abrirCadastro(): void {
     this.editandoId = '';
     this.nome = '';
@@ -150,6 +165,7 @@ export class Clientes implements OnInit, OnDestroy {
     this.tagsTexto = '';
     this.consentimento = false;
     this.inativa = false;
+    this.senhaAdmin = '';
     this.erroCadastro = '';
     this.mostrarCadastro = true;
   }
@@ -164,6 +180,7 @@ export class Clientes implements OnInit, OnDestroy {
     this.tagsTexto = cliente.tags.join(', ');
     this.consentimento = cliente.consentimentoSaude;
     this.inativa = !cliente.ativo;
+    this.senhaAdmin = '';
     this.erroCadastro = '';
     this.mostrarCadastro = true;
   }
@@ -183,6 +200,7 @@ export class Clientes implements OnInit, OnDestroy {
       tags: this.tagsTexto.split(',').map((tag) => tag.trim()).filter(Boolean),
       consentimentoSaude: this.consentimento,
       ativo: !this.inativa,
+      senhaAdmin: this.senhaAdmin,
     });
     if (!resultado.ok) {
       this.erroCadastro = resultado.mensagem;
@@ -233,50 +251,42 @@ export class Clientes implements OnInit, OnDestroy {
     return `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
   }
 
-  procedimentoAtivo(tipo: ProcedimentoFicha): boolean {
-    return this.anamnese.procedimentos.includes(tipo);
-  }
-
-  alternarProcedimento(tipo: ProcedimentoFicha, marcado: boolean): void {
-    if (marcado) {
-      this.anamnese.procedimentos = [...this.anamnese.procedimentos, tipo];
-      return;
-    }
-    this.anamnese.procedimentos = this.anamnese.procedimentos.filter((item) => item !== tipo);
-  }
-
-  get progressivaTexto(): string {
-    if (this.anamnese.temProgressiva === true) {
-      return 'sim';
-    }
-    if (this.anamnese.temProgressiva === false) {
-      return 'nao';
-    }
-    return '';
-  }
-
-  definirProgressiva(valor: string): void {
-    if (valor === 'sim') {
-      this.anamnese.temProgressiva = true;
-      return;
-    }
-    this.anamnese.temProgressiva = valor === 'nao' ? false : null;
-    this.anamnese.formol = '';
-  }
-
-  salvarAnamnese(): void {
+  salvarResumo(): void {
     if (!this.cliente) {
       return;
     }
-    const resultado = this.estado.salvarAnamnese(this.cliente.id, this.anamnese, this.consentimentoAnamnese);
-    if (!resultado.ok) {
-      this.erroAnamnese = resultado.mensagem;
-      this.avisoAnamnese = '';
+    const alergia = this.alergiaTem ? this.alergiaTexto.trim() : '';
+    if (this.alergiaTem && !alergia) {
+      this.erroResumo = 'Escreva qual é a alergia.';
+      this.avisoResumo = '';
       return;
     }
-    this.erroAnamnese = '';
-    this.avisoAnamnese = resultado.mensagem;
-    this.copiarAnamnese();
+    const resultado = this.estado.salvarResumoCliente(this.cliente.id, {
+      alergia,
+      observacoesSaude: this.observacoesSaude,
+    });
+    if (!resultado.ok) {
+      this.erroResumo = resultado.mensagem;
+      this.avisoResumo = '';
+      return;
+    }
+    this.erroResumo = '';
+    this.avisoResumo = resultado.mensagem;
+    this.copiarResumo();
+  }
+
+  anamneseDe(visita: FichaVisita): FichaAtendimento | null {
+    return this.estado.fichaDoAtendimento(visita);
+  }
+
+  resumoAnamnese(visita: FichaVisita): string {
+    const ficha = this.anamneseDe(visita);
+    return ficha ? resumoFichaAtendimento(ficha) : '';
+  }
+
+  verFicha(visita: FichaVisita): void {
+    const ficha = this.anamneseDe(visita);
+    this.fichaLeituraId = ficha?.id ?? '';
   }
 
   abrirFicha(): void {
@@ -291,7 +301,6 @@ export class Clientes implements OnInit, OnDestroy {
     this.fichaObservacoes = '';
     this.fichaRetorno = '';
     this.fichaValor = null;
-    this.fichaFotos = [];
     this.erroFicha = '';
     this.mostrarFicha = true;
   }
@@ -312,7 +321,6 @@ export class Clientes implements OnInit, OnDestroy {
       produtos: [],
       observacoes: this.fichaObservacoes,
       retorno: this.fichaRetorno,
-      fotos: this.fichaFotos,
       valor: Number(this.fichaValor ?? 0),
     });
     if (!resultado.ok) {
@@ -323,37 +331,12 @@ export class Clientes implements OnInit, OnDestroy {
     this.aba = 'atendimentos';
   }
 
-  async escolherFoto(event: Event, momento: 'antes' | 'depois'): Promise<void> {
-    const input = event.target as HTMLInputElement;
-    const arquivo = input.files?.[0];
-    input.value = '';
-    if (!arquivo) {
-      return;
-    }
-    if (!arquivo.type.startsWith('image/')) {
-      this.erroFicha = 'Escolha um arquivo de imagem.';
-      return;
-    }
-    if (arquivo.size > 1_200_000) {
-      this.erroFicha = 'Cada foto precisa ter menos de 1,2 MB.';
-      return;
-    }
-    const dados = await this.lerArquivo(arquivo);
-    const demais = this.fichaFotos.filter((foto) => foto.momento !== momento);
-    this.fichaFotos = [...demais, { id: `${momento}-${Date.now()}`, momento, dados }];
-    this.erroFicha = '';
-  }
-
-  fotoDe(momento: 'antes' | 'depois'): FotoVisita | undefined {
-    return this.fichaFotos.find((foto) => foto.momento === momento);
-  }
-
-  fotosDaFicha(ficha: FichaVisita, momento: 'antes' | 'depois'): FotoVisita[] {
-    return ficha.fotos.filter((foto) => foto.momento === momento);
-  }
-
   @HostListener('document:keydown.escape')
   fecharPorTecla(): void {
+    if (this.fichaLeituraId) {
+      this.fichaLeituraId = '';
+      return;
+    }
     if (this.mostrarFicha) {
       this.fecharFicha();
       return;
@@ -363,13 +346,14 @@ export class Clientes implements OnInit, OnDestroy {
     }
   }
 
-  private copiarAnamnese(): void {
+  private copiarResumo(): void {
     const cliente = this.cliente;
     if (!cliente) {
       return;
     }
-    this.anamnese = structuredClone(cliente.anamnese);
-    this.consentimentoAnamnese = cliente.consentimentoSaude;
+    this.alergiaTexto = cliente.anamnese.alergias;
+    this.alergiaTem = !!this.alergiaTexto.trim();
+    this.observacoesSaude = cliente.observacoesSaude;
   }
 
   private diasSemVisita(clienteId: string): number | null {
@@ -381,14 +365,5 @@ export class Clientes implements OnInit, OnDestroy {
     const hoje = new Date();
     hoje.setHours(12, 0, 0, 0);
     return Math.floor((hoje.getTime() - visita.getTime()) / 86_400_000);
-  }
-
-  private lerArquivo(arquivo: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const leitor = new FileReader();
-      leitor.onload = () => resolve(String(leitor.result ?? ''));
-      leitor.onerror = () => reject(leitor.error);
-      leitor.readAsDataURL(arquivo);
-    });
   }
 }

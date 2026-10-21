@@ -1,6 +1,7 @@
 <div class="container" >
     <div class="logo"><img src="logo-image.png" alt="Logo"></div>
     <ul class="nav-titles">
+        <li class="grupo">Dia a dia</li>
         <li>
             <a routerLink="/" routerLinkActive #homeActive="routerLinkActive" [routerLinkActiveOptions]="{exact: true}" [class.active]="homeActive.isActive">
                 <img class="nav-icon" [src]="homeActive.isActive ? 'home-icon-green.svg' : 'home-icon.svg'" alt="Home Icon">
@@ -25,6 +26,7 @@
                 Caixa
             </a>
         </li>
+        <li class="grupo separado">Gestão</li>
         <li>
             <a routerLink="/financeiro" routerLinkActive #financeActive="routerLinkActive" [routerLinkActiveOptions]="{exact: true}" [class.active]="financeActive.isActive">
                 <img class="nav-icon" [src]="financeActive.isActive ? 'finance-green.svg' : 'finance.svg'" alt="Finance Icon">
@@ -43,6 +45,7 @@
                 Relatórios
             </a>
         </li>
+        <li class="grupo separado">Cadastros</li>
         <li>
             <a routerLink="/servicos" routerLinkActive #serviceActive="routerLinkActive" [routerLinkActiveOptions]="{exact: true}" [class.active]="serviceActive.isActive">
                 <img class="nav-icon" [src]="serviceActive.isActive ? 'services-green.svg' : 'services.svg'" alt="Services Icon">

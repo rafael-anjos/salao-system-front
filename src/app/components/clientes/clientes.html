@@ -27,7 +27,7 @@
             </ul>
           }
           @if (atual.anamnese.alergias) {
-            <p class="alerta" role="alert">Alergia: {{ atual.anamnese.alergias }}</p>
+            <p class="alerta">{{ atual.anamnese.alergias }}</p>
           }
         </div>
 
@@ -48,12 +48,45 @@
 
         <div class="abas" role="tablist">
           <button class="btn-aba" type="button" role="tab" [class.ativo]="aba === 'resumo'" (click)="aba = 'resumo'">Resumo</button>
-          <button class="btn-aba" type="button" role="tab" [class.ativo]="aba === 'anamnese'" (click)="aba = 'anamnese'">Ficha de anamnese</button>
           <button class="btn-aba" type="button" role="tab" [class.ativo]="aba === 'atendimentos'" (click)="aba = 'atendimentos'">Atendimentos</button>
         </div>
 
         @if (aba === 'resumo' && resumo; as dados) {
           <section class="painel" aria-label="Resumo">
+            <form class="resumo-fixo" (ngSubmit)="salvarResumo()">
+              <fieldset>
+                <legend>Alergia</legend>
+                <div class="checks">
+                  <label class="check">
+                    <input type="radio" name="alergiaResumo" [value]="false" [(ngModel)]="alergiaTem">
+                    Não
+                  </label>
+                  <label class="check">
+                    <input type="radio" name="alergiaResumo" [value]="true" [(ngModel)]="alergiaTem">
+                    Sim
+                  </label>
+                </div>
+                @if (alergiaTem) {
+                  <label class="field">
+                    Qual alergia
+                    <textarea name="alergiaTexto" rows="2" [(ngModel)]="alergiaTexto" placeholder="O que não pode usar"></textarea>
+                  </label>
+                }
+              </fieldset>
+              <label class="field">
+                Observações de saúde
+                <textarea name="saude" rows="3" [(ngModel)]="observacoesSaude" placeholder="Gestante, medicamento, o que precisar lembrar"></textarea>
+              </label>
+              @if (erroResumo) {
+                <p class="erro" role="alert">{{ erroResumo }}</p>
+              }
+              @if (avisoResumo) {
+                <p class="ok" role="status">{{ avisoResumo }}</p>
+              }
+              <div class="foot-inline">
+                <button class="agendamento-btn" type="submit">Salvar resumo</button>
+              </div>
+            </form>
             <dl class="ficha-dados">
               <div><dt>Telefone</dt><dd>{{ atual.telefone || 'Não informado' }}</dd></div>
               <div><dt>Nascimento</dt><dd>{{ atual.nascimento ? formatarDia(atual.nascimento) : 'Não informado' }}</dd></div>
@@ -78,77 +111,6 @@
           </section>
         }
 
-        @if (aba === 'anamnese') {
-          <form class="painel" (ngSubmit)="salvarAnamnese()">
-            <fieldset>
-              <legend>Qual o procedimento</legend>
-              <div class="checks">
-                @for (tipo of procedimentos; track tipo) {
-                  <label class="check">
-                    <input type="checkbox" [name]="'procedimento-' + tipo" [checked]="procedimentoAtivo(tipo)" (change)="alternarProcedimento(tipo, $any($event.target).checked)">
-                    {{ tipo }}
-                  </label>
-                }
-              </div>
-            </fieldset>
-
-            <div class="row">
-              <label class="field">
-                Qual cor
-                <input type="text" name="cor" [(ngModel)]="anamnese.cor" placeholder="Ex.: 7.1, loiro">
-              </label>
-              <label class="field">
-                Tem progressiva?
-                <select name="progressiva" [ngModel]="progressivaTexto" (ngModelChange)="definirProgressiva($event)">
-                  <option value="">Não informado</option>
-                  <option value="sim">Sim</option>
-                  <option value="nao">Não</option>
-                </select>
-              </label>
-            </div>
-
-            @if (anamnese.temProgressiva) {
-              <fieldset>
-                <legend>Formol</legend>
-                <div class="checks">
-                  <label class="check">
-                    <input type="radio" name="formol" value="com" [(ngModel)]="anamnese.formol">
-                    Com formol
-                  </label>
-                  <label class="check">
-                    <input type="radio" name="formol" value="sem" [(ngModel)]="anamnese.formol">
-                    Sem formol
-                  </label>
-                </div>
-              </fieldset>
-            }
-
-            <label class="field">
-              Tem alergia?
-              <textarea name="alergias" rows="2" [(ngModel)]="anamnese.alergias" placeholder="Se tiver, escreva a quê"></textarea>
-            </label>
-            <label class="field">
-              Observação
-              <textarea name="observacaoFicha" rows="4" [(ngModel)]="anamnese.observacoes" placeholder="Escreva o que quiser lembrar desta cliente"></textarea>
-            </label>
-            @if (anamnese.alergias.trim()) {
-              <label class="check">
-                <input type="checkbox" name="consentimentoAnamnese" [(ngModel)]="consentimentoAnamnese">
-                Autorizo guardar a alergia desta cliente.
-              </label>
-            }
-            @if (erroAnamnese) {
-              <p class="erro" role="alert">{{ erroAnamnese }}</p>
-            }
-            @if (avisoAnamnese) {
-              <p class="ok" role="status">{{ avisoAnamnese }}</p>
-            }
-            <div class="foot-inline">
-              <button class="agendamento-btn" type="submit">Salvar anamnese</button>
-            </div>
-          </form>
-        }
-
         @if (aba === 'atendimentos') {
           <section class="painel" aria-label="Atendimentos">
             <div class="barra-interna">
@@ -162,27 +124,20 @@
                   <strong>{{ ficha.valor | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
                 </header>
                 <p>{{ ficha.profissional }}</p>
+                @if (resumoAnamnese(ficha); as resumo) {
+                  <p class="resumo-ficha">{{ resumo }}</p>
+                }
+                @if (anamneseDe(ficha)?.status === 'rascunho') {
+                  <p class="retorno">Rascunho</p>
+                }
                 @if (ficha.observacoes) {
                   <p>{{ ficha.observacoes }}</p>
                 }
                 @if (ficha.retorno) {
                   <p class="retorno">{{ ficha.retorno }}</p>
                 }
-                @if (ficha.fotos.length) {
-                  <div class="fotos">
-                    @for (foto of fotosDaFicha(ficha, 'antes'); track foto.id) {
-                      <figure>
-                        <img [src]="foto.dados" alt="Antes do atendimento de {{ atual.nome }}">
-                        <figcaption>Antes</figcaption>
-                      </figure>
-                    }
-                    @for (foto of fotosDaFicha(ficha, 'depois'); track foto.id) {
-                      <figure>
-                        <img [src]="foto.dados" alt="Depois do atendimento de {{ atual.nome }}">
-                        <figcaption>Depois</figcaption>
-                      </figure>
-                    }
-                  </div>
+                @if (anamneseDe(ficha)) {
+                  <button class="btn-acao" type="button" (click)="verFicha(ficha)">Ver ficha</button>
                 }
               </article>
             } @empty {
@@ -308,7 +263,7 @@
           </div>
           <label class="field">
             Tags
-            <input type="text" name="tags" [(ngModel)]="tagsTexto" placeholder="VIP">
+            <input type="text" name="tags" [(ngModel)]="tagsTexto" placeholder="Separe por vírgula">
           </label>
           <label class="field">
             Observações gerais
@@ -316,12 +271,18 @@
           </label>
           <label class="check">
             <input type="checkbox" name="consentimento" [(ngModel)]="consentimento">
-            Autorizo guardar dados de saúde e fotos desta cliente.
+            Autorizo guardar dados de saúde desta cliente.
           </label>
           <label class="check">
             <input type="checkbox" name="inativa" [(ngModel)]="inativa">
             Cliente inativa
           </label>
+          @if (pedeSenhaInativa) {
+            <label class="field">
+              Senha da administração
+              <input type="password" name="senhaAdmin" [(ngModel)]="senhaAdmin" autocomplete="off">
+            </label>
+          }
           @if (erroCadastro) {
             <p class="erro" role="alert">{{ erroCadastro }}</p>
           }
@@ -370,16 +331,6 @@
             Recomendação de retorno
             <input type="text" name="fichaRetorno" [(ngModel)]="fichaRetorno" placeholder="Retoque em 30 dias">
           </label>
-          <div class="row">
-            <label class="field">
-              Foto antes
-              <input type="file" accept="image/*" (change)="escolherFoto($event, 'antes')">
-            </label>
-            <label class="field">
-              Foto depois
-              <input type="file" accept="image/*" (change)="escolherFoto($event, 'depois')">
-            </label>
-          </div>
           @if (erroFicha) {
             <p class="erro" role="alert">{{ erroFicha }}</p>
           }
@@ -390,5 +341,15 @@
         </form>
       </div>
     </div>
+  }
+
+  @if (fichaLeituraId && cliente) {
+    <app-ficha-atendimento
+      [clienteId]="cliente.id"
+      [fichaId]="fichaLeituraId"
+      [somenteLeitura]="true"
+      [permitirReabrir]="true"
+      (fechar)="fichaLeituraId = ''">
+    </app-ficha-atendimento>
   }
 </div>

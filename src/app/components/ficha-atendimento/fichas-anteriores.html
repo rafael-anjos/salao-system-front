@@ -1,0 +1,35 @@
+<div class="overlay" (click)="fechar.emit()">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="titulo-anteriores" (click)="$event.stopPropagation()">
+    <header class="titulo">
+      <h2 id="titulo-anteriores">Fichas anteriores</h2>
+      <p>Só atendimentos que já têm ficha, do mais recente ao mais antigo.</p>
+    </header>
+
+    <ul class="lista">
+      @for (ficha of fichas; track ficha.id) {
+        <li>
+          <p>{{ formatar(ficha.data) }} · {{ resumo(ficha) }}</p>
+          <div class="acoes">
+            <button class="cancel" type="button" (click)="ver(ficha)">Ver</button>
+            <button class="save" type="button" (click)="copiar.emit(ficha)">Copiar para esta ficha</button>
+          </div>
+        </li>
+      } @empty {
+        <li class="vazio">Nenhuma ficha anterior.</li>
+      }
+    </ul>
+
+    <div class="foot-btn">
+      <button class="cancel" type="button" (click)="fechar.emit()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+@if (leituraId) {
+  <app-ficha-atendimento
+    [clienteId]="clienteId"
+    [fichaId]="leituraId"
+    [somenteLeitura]="true"
+    (fechar)="leituraId = ''">
+  </app-ficha-atendimento>
+}

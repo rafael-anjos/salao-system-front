@@ -1,0 +1,67 @@
+:host {
+    display: block;
+    --ink: #1c3112;
+    --critico: #9b1c2c;
+    font-family: 'Montserrat', sans-serif;
+}
+
+.contexto {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.alerta {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    margin: 0;
+    color: var(--ink);
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.35;
+}
+
+.alerta span {
+    color: var(--critico);
+    font-weight: 600;
+}
+
+.atalhos {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.55rem 0.85rem;
+}
+
+.link,
+.acao {
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.link {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+.acao {
+    height: 2.15rem;
+    padding: 0 0.85rem;
+    border: 1px solid var(--ink);
+    border-radius: 8px;
+    background: white;
+    color: var(--ink);
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+.acao:hover {
+    background: var(--ink);
+    color: white;
+}

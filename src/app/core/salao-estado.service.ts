@@ -30,6 +30,44 @@ export const PROCEDIMENTOS_FICHA = ['Coloração', 'Mechas', 'Correção de cor'
 export type ProcedimentoFicha = (typeof PROCEDIMENTOS_FICHA)[number];
 export type FormolProgressiva = 'com' | 'sem' | '';
 
+export const PROCEDIMENTOS_ATENDIMENTO = ['Coloração', 'Mechas', 'Correção de cor', 'Progressiva', 'Outro'] as const;
+
+export type ProcedimentoAtendimento = (typeof PROCEDIMENTOS_ATENDIMENTO)[number];
+export type ProgressivaAtendimento = 'nao' | 'com' | 'sem' | '';
+export type StatusFichaAtendimento = 'rascunho' | 'finalizada';
+
+/** Ficha criada no atendimento. Cada visita guarda a sua; uma nova não apaga a anterior. */
+export interface FichaAtendimento {
+  id: string;
+  clienteId: string;
+  agendamentoId?: string;
+  atendimentoId?: string;
+  /** Liga a ficha ao serviço ainda sem agendamento ou venda. */
+  vinculo?: string;
+  data: string;
+  status: StatusFichaAtendimento;
+  procedimentos: ProcedimentoAtendimento[];
+  cor: string;
+  progressiva: ProgressivaAtendimento;
+  alergia: string;
+  observacoes: string;
+}
+
+export interface FichaAtendimentoCadastro {
+  id?: string;
+  clienteId: string;
+  agendamentoId?: string;
+  atendimentoId?: string;
+  vinculo?: string;
+  data: string;
+  status: StatusFichaAtendimento;
+  procedimentos: ProcedimentoAtendimento[];
+  cor: string;
+  progressiva: ProgressivaAtendimento;
+  alergia: string;
+  observacoes?: string;
+}
+
 export interface AnamneseCapilar {
   procedimentos: ProcedimentoFicha[];
   cor: string;
@@ -46,6 +84,7 @@ export interface Cliente {
   nascimento: string;
   email: string;
   observacoes: string;
+  observacoesSaude: string;
   consentimentoSaude: boolean;
   tags: string[];
   ativo: boolean;
@@ -59,9 +98,11 @@ export interface ClienteCadastro {
   nascimento?: string;
   email?: string;
   observacoes?: string;
+  observacoesSaude?: string;
   consentimentoSaude?: boolean;
   tags?: string[];
   ativo?: boolean;
+  senhaAdmin?: string;
 }
 
 export interface ProdutoFormula {
@@ -112,6 +153,25 @@ export interface ResumoCliente {
   ultimaVisita: string | null;
   totalGasto: number;
   proximo: AgendamentoDia | null;
+}
+
+export function semAcento(valor: string): string {
+  return valor.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+export function servicoPedeFicha(nome: string): boolean {
+  const texto = semAcento(nome);
+  return (
+    texto.includes('coloracao') ||
+    texto.includes('mecha') ||
+    texto.includes('correcao de cor') ||
+    texto.includes('progressiva')
+  );
+}
+
+export function resumoFichaAtendimento(ficha: Pick<FichaAtendimento, 'procedimentos' | 'cor' | 'progressiva'>): string {
+  const progressiva = ficha.progressiva === 'com' ? 'Com formol' : ficha.progressiva === 'sem' ? 'Sem formol' : '';
+  return [ficha.procedimentos.join(', '), ficha.cor.trim(), progressiva].filter(Boolean).join(' · ');
 }
 
 export function anamneseVazia(): AnamneseCapilar {
@@ -172,6 +232,7 @@ export function montarCliente(dados: Pick<Cliente, 'id' | 'nome'> & Partial<Omit
     ativo: true,
     ...dados,
     tags: dados.tags ? [...dados.tags] : [],
+    observacoesSaude: typeof dados.observacoesSaude === 'string' ? dados.observacoesSaude : '',
     anamnese: normalizarAnamnese(anamnese),
   };
 }
@@ -731,8 +792,9 @@ export class SalaoEstadoService {
       nascimento: nascimentoNesteMes(34, 9),
       email: 'maria.silva@email.com',
       observacoes: 'Prefere horário de manhã.',
+      observacoesSaude: 'Couro sensível. Avisar antes de qualquer química.',
       consentimentoSaude: true,
-      tags: ['VIP', 'Alergia'],
+      tags: ['Alergia'],
       anamnese: {
         ...anamneseVazia(),
         procedimentos: ['Coloração'],
@@ -748,7 +810,6 @@ export class SalaoEstadoService {
       telefone: '(11) 99720-1184',
       nascimento: '1992-03-14',
       consentimentoSaude: true,
-      tags: ['VIP'],
       anamnese: {
         ...anamneseVazia(),
         procedimentos: ['Mechas'],
@@ -836,6 +897,34 @@ export class SalaoEstadoService {
       retorno: 'Retoque em 45 dias',
       fotos: [],
       valor: 260,
+    },
+  ];
+
+  readonly fichasAtendimento: FichaAtendimento[] = [
+    {
+      id: 'fa-maria-hoje',
+      clienteId: 'cli-maria',
+      agendamentoId: 'ag-maria',
+      atendimentoId: 'fv-maria-hoje',
+      data: HOJE,
+      status: 'finalizada',
+      procedimentos: ['Coloração'],
+      cor: '7.1',
+      progressiva: 'nao',
+      alergia: 'Amônia. Arde o couro se a tinta tiver cheiro forte.',
+      observacoes: 'Sem clarear além do que já está.',
+    },
+    {
+      id: 'fa-maria-anterior',
+      clienteId: 'cli-maria',
+      atendimentoId: 'fv-maria-anterior',
+      data: isoDiasAtras(170),
+      status: 'finalizada',
+      procedimentos: ['Coloração'],
+      cor: '7.0',
+      progressiva: 'sem',
+      alergia: 'Amônia. Arde o couro se a tinta tiver cheiro forte.',
+      observacoes: 'Ficou quente demais. Na próxima, puxar o 7.1.',
     },
   ];
 
@@ -2284,7 +2373,6 @@ export class SalaoEstadoService {
       telefone: '(11) 98440-2291',
       nascimento: nascimentoNesteMes(29, 22),
       consentimentoSaude: true,
-      tags: ['VIP'],
       anamnese: {
         ...anamneseVazia(),
         procedimentos: ['Coloração'],
@@ -2348,6 +2436,19 @@ export class SalaoEstadoService {
       fotos: [],
       valor: 150,
     });
+    this.fichasAtendimento.push({
+      id: 'fa-renata',
+      clienteId: renata.id,
+      agendamentoId: 'ag-renata-retorno',
+      atendimentoId: 'fv-renata',
+      data: dataRenata,
+      status: 'finalizada',
+      procedimentos: ['Coloração'],
+      cor: '8.31',
+      progressiva: 'nao',
+      alergia: '',
+      observacoes: 'Loiro bege, sem platinar.',
+    });
 
     const dataHelena = isoDiasAtras(100);
     this.agendamentos.push({
@@ -2396,6 +2497,7 @@ export class SalaoEstadoService {
     }
 
     const tags = [...new Set((dados.tags ?? []).map((tag) => tag.trim()).filter(Boolean))];
+    const desejaAtivo = dados.ativo !== false;
     const registro = {
       nome,
       telefone,
@@ -2404,7 +2506,7 @@ export class SalaoEstadoService {
       observacoes: dados.observacoes?.trim() ?? '',
       consentimentoSaude: !!dados.consentimentoSaude,
       tags,
-      ativo: dados.ativo !== false,
+      ativo: desejaAtivo,
     };
 
     if (dados.id) {
@@ -2412,9 +2514,19 @@ export class SalaoEstadoService {
       if (!atual) {
         return { ok: false, mensagem: 'Cliente não encontrada.' };
       }
+      if (desejaAtivo !== atual.ativo && !this.senhaConfere(dados.senhaAdmin)) {
+        return { ok: false, mensagem: 'Informe a senha da administração para ativar ou desativar a cliente.' };
+      }
+      const alergia = atual.anamnese.alergias.trim();
+      const semAlergia = registro.tags.filter((tag) => tag.toLowerCase() !== 'alergia');
+      registro.tags = alergia ? [...semAlergia, 'Alergia'] : semAlergia;
       Object.assign(atual, registro);
       this.atualizarNomeCliente(atual.id, nome);
       return { ok: true, mensagem: 'Cliente atualizada.', id: atual.id };
+    }
+
+    if (!desejaAtivo && !this.senhaConfere(dados.senhaAdmin)) {
+      return { ok: false, mensagem: 'Informe a senha da administração para cadastrar a cliente como inativa.' };
     }
 
     const criado = montarCliente({ id: this.novoId('cli'), ...registro });
@@ -2506,13 +2618,6 @@ export class SalaoEstadoService {
     if (!profissional) {
       return { ok: false, mensagem: 'Informe a profissional.' };
     }
-    const fotos = (dados.fotos ?? []).filter((foto) => foto.dados.startsWith('data:image/'));
-    if (fotos.length > 4) {
-      return { ok: false, mensagem: 'A ficha aceita até 4 fotos.' };
-    }
-    if (fotos.length && !cliente.consentimentoSaude) {
-      return { ok: false, mensagem: 'Marque o consentimento na ficha da cliente antes de guardar fotos.' };
-    }
     const produtos = dados.produtos
       .map((produto) => ({
         marca: produto.marca.trim(),
@@ -2538,7 +2643,7 @@ export class SalaoEstadoService {
       produtos,
       observacoes: dados.observacoes?.trim() ?? '',
       retorno: dados.retorno?.trim() ?? '',
-      fotos,
+      fotos: [],
       valor,
     };
     if (dados.id) {
@@ -2551,6 +2656,187 @@ export class SalaoEstadoService {
     }
     this.fichas.push(ficha);
     return { ok: true, mensagem: 'Ficha do atendimento registrada.', id: ficha.id };
+  }
+
+  senhaConfere(senha: string | undefined | null): boolean {
+    return typeof senha === 'string' && senha.length > 0 && senha === this.senha;
+  }
+
+  salvarResumoCliente(clienteId: string, dados: { alergia: string; observacoesSaude: string }): ResultadoOperacao {
+    const cliente = this.clientes.find((item) => item.id === clienteId);
+    if (!cliente) {
+      return { ok: false, mensagem: 'Cliente não encontrada.' };
+    }
+    this.definirAlergia(cliente, dados.alergia);
+    cliente.observacoesSaude = dados.observacoesSaude.trim();
+    return { ok: true, mensagem: 'Resumo atualizado.', id: cliente.id };
+  }
+
+  fichaDoAtendimento(visita: FichaVisita): FichaAtendimento | null {
+    return (
+      this.fichasAtendimento.find(
+        (ficha) =>
+          ficha.atendimentoId === visita.id || (!!visita.agendamentoId && ficha.agendamentoId === visita.agendamentoId),
+      ) ?? null
+    );
+  }
+
+  fichaDoContexto(clienteId: string, agendamentoId?: string, vinculo?: string): FichaAtendimento | null {
+    if (!agendamentoId && !vinculo) {
+      return null;
+    }
+    return (
+      this.fichasAtendimento.find((ficha) => {
+        if (ficha.clienteId !== clienteId) {
+          return false;
+        }
+        if (agendamentoId && (ficha.agendamentoId === agendamentoId || ficha.vinculo === agendamentoId)) {
+          return true;
+        }
+        return !!vinculo && (ficha.vinculo === vinculo || ficha.agendamentoId === vinculo);
+      }) ?? null
+    );
+  }
+
+  fichasAnteriores(clienteId: string, agendamentoId?: string, vinculo?: string): FichaAtendimento[] {
+    const atual = this.fichaDoContexto(clienteId, agendamentoId, vinculo);
+    return this.fichasAtendimento
+      .filter((ficha) => ficha.clienteId === clienteId && ficha.id !== atual?.id)
+      .sort((a, b) => b.data.localeCompare(a.data) || b.id.localeCompare(a.id));
+  }
+
+  ultimaFichaAtendimento(clienteId: string, ignorarId?: string): FichaAtendimento | null {
+    return this.fichasAnteriores(clienteId).find((ficha) => ficha.id !== ignorarId) ?? null;
+  }
+
+  salvarFichaAtendimento(dados: FichaAtendimentoCadastro, senhaAdmin?: string): ResultadoOperacao {
+    const cliente = this.clientes.find((item) => item.id === dados.clienteId);
+    if (!cliente) {
+      return { ok: false, mensagem: 'Cliente não encontrada.' };
+    }
+    if (!dataIsoValida(dados.data)) {
+      return { ok: false, mensagem: 'Informe a data do atendimento.' };
+    }
+    const procedimentos = dados.procedimentos.filter((item) =>
+      (PROCEDIMENTOS_ATENDIMENTO as readonly string[]).includes(item),
+    );
+    const progressiva: ProgressivaAtendimento =
+      dados.progressiva === 'com' || dados.progressiva === 'sem' || dados.progressiva === 'nao' ? dados.progressiva : '';
+    const registro: FichaAtendimento = {
+      id: dados.id ?? this.novoId('fa'),
+      clienteId: cliente.id,
+      agendamentoId: dados.agendamentoId || undefined,
+      atendimentoId: dados.atendimentoId || undefined,
+      vinculo: dados.vinculo || undefined,
+      data: dados.data,
+      status: dados.status === 'finalizada' ? 'finalizada' : 'rascunho',
+      procedimentos,
+      cor: dados.cor.trim(),
+      progressiva,
+      alergia: dados.alergia.trim(),
+      observacoes: dados.observacoes?.trim() ?? '',
+    };
+
+    if (dados.id) {
+      const index = this.fichasAtendimento.findIndex((item) => item.id === dados.id);
+      if (index < 0) {
+        return { ok: false, mensagem: 'Ficha não encontrada.' };
+      }
+      const atual = this.fichasAtendimento[index];
+      if (atual.clienteId !== cliente.id) {
+        return { ok: false, mensagem: 'Esta ficha é de outra cliente.' };
+      }
+      if (atual.status === 'finalizada' && atual.data !== dataIso() && !this.senhaConfere(senhaAdmin)) {
+        return { ok: false, mensagem: 'Ficha de outro dia só a administração reabre.' };
+      }
+      registro.id = atual.id;
+      registro.atendimentoId = dados.atendimentoId || atual.atendimentoId;
+      registro.agendamentoId = dados.agendamentoId || atual.agendamentoId;
+      registro.vinculo = dados.vinculo || atual.vinculo;
+      this.fichasAtendimento[index] = registro;
+    } else {
+      this.fichasAtendimento.push(registro);
+    }
+
+    this.definirAlergia(cliente, registro.alergia);
+    const verbo = registro.status === 'finalizada' ? 'Ficha finalizada.' : 'Rascunho da ficha salvo.';
+    return { ok: true, mensagem: verbo, id: registro.id };
+  }
+
+  assumirVinculo(vinculo: string, agendamentoId: string): void {
+    if (!vinculo || vinculo === agendamentoId) {
+      return;
+    }
+    for (const ficha of this.fichasAtendimento) {
+      if (ficha.vinculo === vinculo) {
+        ficha.agendamentoId = agendamentoId;
+        ficha.vinculo = undefined;
+      }
+    }
+  }
+
+  /** Quando o atendimento fecha, a ficha passa a aparecer no histórico da cliente. */
+  publicarFichaDoAgendamento(agendamentoId: string): void {
+    const anamnese = this.fichasAtendimento.find(
+      (ficha) => ficha.agendamentoId === agendamentoId || ficha.vinculo === agendamentoId,
+    );
+    if (!anamnese) {
+      return;
+    }
+    anamnese.agendamentoId = agendamentoId;
+    anamnese.vinculo = undefined;
+    const existente = this.fichas.find((ficha) => ficha.agendamentoId === agendamentoId);
+    if (existente) {
+      anamnese.atendimentoId = existente.id;
+      return;
+    }
+    const agendamento = this.agendamentos.find((item) => item.id === agendamentoId);
+    if (!agendamento?.clienteId) {
+      return;
+    }
+    const criada = this.salvarFicha({
+      clienteId: agendamento.clienteId,
+      agendamentoId,
+      data: agendamento.data,
+      servico: agendamento.servico,
+      profissional: agendamento.profissional,
+      produtos: [],
+      valor: agendamento.preco,
+    });
+    if (criada.id) {
+      anamnese.atendimentoId = criada.id;
+    }
+  }
+
+  publicarFichaAvulsa(
+    vinculo: string,
+    dados: { clienteId: string; servico: string; profissional: string; valor: number; data: string },
+  ): void {
+    const anamnese = this.fichasAtendimento.find((ficha) => ficha.vinculo === vinculo && ficha.clienteId === dados.clienteId);
+    if (!anamnese) {
+      return;
+    }
+    const criada = this.salvarFicha({
+      clienteId: dados.clienteId,
+      data: dados.data,
+      servico: dados.servico,
+      profissional: dados.profissional,
+      produtos: [],
+      valor: dados.valor,
+    });
+    if (!criada.id) {
+      return;
+    }
+    anamnese.atendimentoId = criada.id;
+    anamnese.vinculo = undefined;
+    anamnese.data = dados.data;
+  }
+
+  private definirAlergia(cliente: Cliente, alergia: string): void {
+    const texto = alergia.trim();
+    cliente.anamnese = { ...cliente.anamnese, alergias: texto };
+    const semAlergia = cliente.tags.filter((tag) => tag.toLowerCase() !== 'alergia');
+    cliente.tags = texto ? [...semAlergia, 'Alergia'] : semAlergia;
   }
 
   private normalizarHora(valor: string): string {
@@ -3111,6 +3397,7 @@ export class SalaoEstadoService {
         profissionais: this.profissionais,
         clientes: this.clientes,
         fichas: this.fichas,
+        fichasAtendimento: this.fichasAtendimento,
         servicos: this.servicos,
         produtos: this.produtos,
         agendamentos: this.agendamentos,
@@ -3209,8 +3496,13 @@ export class SalaoEstadoService {
       fichas.map((ficha) => ({
         ...ficha,
         produtos: (ficha.produtos ?? []).map((produto) => ({ ...produto })),
-        fotos: (ficha.fotos ?? []).map((foto) => ({ ...foto })),
+        fotos: [],
       })),
+    );
+    const fichasAtendimento = this.comoLista<FichaAtendimento>(dados['fichasAtendimento']) ?? [];
+    this.substituir(
+      this.fichasAtendimento,
+      fichasAtendimento.map((ficha) => this.normalizarFichaAtendimento(ficha)),
     );
     this.substituir(
       this.servicos,
@@ -3328,6 +3620,30 @@ export class SalaoEstadoService {
     return FORMAS_PAGAMENTO.every((nome) => formas.some((forma) => forma.forma === nome));
   }
 
+  private normalizarFichaAtendimento(bruto: FichaAtendimento): FichaAtendimento {
+    const procedimentos = Array.isArray(bruto.procedimentos)
+      ? bruto.procedimentos.filter((item): item is ProcedimentoAtendimento =>
+          (PROCEDIMENTOS_ATENDIMENTO as readonly string[]).includes(item),
+        )
+      : [];
+    const progressiva: ProgressivaAtendimento =
+      bruto.progressiva === 'com' || bruto.progressiva === 'sem' || bruto.progressiva === 'nao' ? bruto.progressiva : '';
+    return {
+      id: typeof bruto.id === 'string' ? bruto.id : this.novoId('fa'),
+      clienteId: typeof bruto.clienteId === 'string' ? bruto.clienteId : '',
+      agendamentoId: typeof bruto.agendamentoId === 'string' ? bruto.agendamentoId : undefined,
+      atendimentoId: typeof bruto.atendimentoId === 'string' ? bruto.atendimentoId : undefined,
+      vinculo: typeof bruto.vinculo === 'string' ? bruto.vinculo : undefined,
+      data: typeof bruto.data === 'string' ? bruto.data : dataIso(),
+      status: bruto.status === 'finalizada' ? 'finalizada' : 'rascunho',
+      procedimentos,
+      cor: typeof bruto.cor === 'string' ? bruto.cor : '',
+      progressiva,
+      alergia: typeof bruto.alergia === 'string' ? bruto.alergia : '',
+      observacoes: typeof bruto.observacoes === 'string' ? bruto.observacoes : '',
+    };
+  }
+
   private comoLista<T>(valor: unknown): T[] | null {
     return Array.isArray(valor) ? (valor as T[]) : null;
   }
@@ -3341,6 +3657,7 @@ export class SalaoEstadoService {
       nascimento: typeof bruto.nascimento === 'string' ? bruto.nascimento : '',
       email: typeof bruto.email === 'string' ? bruto.email : '',
       observacoes: typeof bruto.observacoes === 'string' ? bruto.observacoes : '',
+      observacoesSaude: typeof bruto.observacoesSaude === 'string' ? bruto.observacoesSaude : '',
       consentimentoSaude: !!bruto.consentimentoSaude,
       tags: Array.isArray(bruto.tags) ? bruto.tags.filter((tag) => typeof tag === 'string') : [],
       ativo: bruto.ativo !== false,
