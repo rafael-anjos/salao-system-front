@@ -5,11 +5,7 @@
         <h1>{{ atual.nome }}</h1>
         <div class="header-btn">
           <button class="secundario" type="button" (click)="voltarLista()">Voltar à lista</button>
-          <button class="notification-btn" type="button" aria-label="Notificações">
-            <img class="img-padrao" src="notification-green.svg" alt="">
-            <img class="img-hover" src="notification.svg" alt="">
-            <img class="img-active" src="notification-green.svg" alt="">
-          </button>
+          <app-notificacoes />
           <button class="secundario" type="button" [disabled]="!atual.telefone" (click)="abrirWhatsapp(atual)">WhatsApp</button>
           <button class="secundario" type="button" (click)="agendar(atual)">Novo agendamento</button>
           <button class="agendamento-btn" type="button" (click)="abrirEdicao(atual)">Editar</button>
@@ -203,11 +199,7 @@
       <header>
         <h1>Clientes</h1>
         <div class="header-btn">
-          <button class="notification-btn" type="button" aria-label="Notificações">
-            <img class="img-padrao" src="notification-green.svg" alt="">
-            <img class="img-hover" src="notification.svg" alt="">
-            <img class="img-active" src="notification-green.svg" alt="">
-          </button>
+          <app-notificacoes />
           <button class="agendamento-btn" type="button" (click)="abrirCadastro()">+ Novo cliente</button>
         </div>
       </header>

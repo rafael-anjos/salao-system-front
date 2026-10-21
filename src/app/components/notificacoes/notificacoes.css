@@ -1,0 +1,296 @@
+:host {
+    --ink: #1c3112;
+    --muted: #5a6854;
+    --line: color-mix(in srgb, #1c3112 16%, white);
+    display: inline-flex;
+    align-items: center;
+    font-family: 'Montserrat', sans-serif;
+}
+
+.notification-btn {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid var(--ink);
+    background-color: white;
+    cursor: pointer;
+    height: 35px;
+    width: 35px;
+    border-radius: 100%;
+    transition: background-color 180ms ease-out, border-color 180ms ease-out;
+}
+
+.notification-btn img {
+    height: 20px;
+    width: 20px;
+}
+
+.notification-btn .img-hover,
+.notification-btn .img-active {
+    display: none;
+}
+
+.notification-btn:hover:not(:active) .img-padrao {
+    display: none;
+}
+
+.notification-btn:hover:not(:active) .img-hover {
+    display: inline-block;
+}
+
+.notification-btn:active .img-padrao,
+.notification-btn:active .img-hover {
+    display: none;
+}
+
+.notification-btn:active .img-active {
+    display: inline-block;
+}
+
+.notification-btn:hover {
+    background-color: var(--ink);
+    border-color: var(--ink);
+}
+
+.notification-btn:active {
+    background-color: white;
+    border: 1px solid var(--ink);
+}
+
+.notification-btn:focus-visible,
+.abas button:focus-visible,
+.lista button:focus-visible,
+.foot-btn button:focus-visible,
+.field input:focus {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+}
+
+.selo {
+    position: absolute;
+    top: 0;
+    right: 0;
+    min-width: 0.95rem;
+    height: 0.95rem;
+    padding: 0 0.2rem;
+    border-radius: 999px;
+    background: var(--ink);
+    color: white;
+    font-size: 0.5625rem;
+    font-weight: 600;
+    line-height: 0.95rem;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.overlay {
+    position: fixed;
+    inset: 0;
+    background: color-mix(in srgb, #1c3112 28%, transparent);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1.25rem;
+    overflow: auto;
+}
+
+.sheet {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: min(28rem, 100%);
+    padding: 1.5rem 1.5rem 1.25rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px color-mix(in srgb, #1c3112 18%, transparent);
+    color: var(--ink);
+    margin: auto;
+}
+
+.titulo h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+.titulo p {
+    margin-top: 0.3rem;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: var(--muted);
+}
+
+.abas {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.abas button {
+    font: inherit;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--ink);
+    background: white;
+    border: 1px solid var(--ink);
+    border-radius: 999px;
+    padding: 0.4rem 0.85rem;
+    cursor: pointer;
+}
+
+.abas button.ativo {
+    background: var(--ink);
+    color: white;
+}
+
+.row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.field input {
+    width: 100%;
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: var(--ink);
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    outline: none;
+    padding: 0.65rem 0.75rem;
+    transition: border-color 160ms ease-out, box-shadow 160ms ease-out;
+}
+
+.field input:hover {
+    border-color: color-mix(in srgb, #1c3112 40%, white);
+}
+
+.field input:focus {
+    border-color: var(--ink);
+    box-shadow: 0 0 0 3px color-mix(in srgb, #1c3112 12%, transparent);
+    outline: none;
+}
+
+.lista {
+    list-style: none;
+    max-height: 18rem;
+    overflow: auto;
+    scrollbar-color: color-mix(in srgb, #1c3112 28%, white) transparent;
+}
+
+.lista li + li {
+    border-top: 1px solid var(--line);
+}
+
+.lista article,
+.lista button {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.2rem;
+    width: 100%;
+    padding: 0.75rem 0;
+    background: transparent;
+    border: 0;
+    text-align: left;
+    color: inherit;
+    font: inherit;
+}
+
+.lista button {
+    cursor: pointer;
+}
+
+.lista button:hover strong {
+    text-decoration: underline;
+    text-underline-offset: 0.18em;
+}
+
+.lista strong {
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.lista p,
+.lista span {
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: var(--muted);
+}
+
+.lista time {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.vazio,
+.erro {
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+}
+
+.vazio {
+    color: var(--muted);
+}
+
+.erro {
+    color: #9b1c2c;
+}
+
+.foot-btn {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 0.25rem;
+}
+
+.foot-btn button {
+    flex: 1;
+    height: 2.5rem;
+    border-radius: 8px;
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
+.cancel {
+    background-color: white;
+    color: var(--ink);
+    border: 1px solid color-mix(in srgb, #1c3112 28%, white);
+    transition: border-color 160ms ease-out, color 160ms ease-out;
+}
+
+.cancel:hover {
+    color: #9b1c2c;
+    border-color: #9b1c2c;
+}
+
+.cancel:active {
+    background-color: #9b1c2c;
+    color: white;
+}
+
+::selection {
+    background: color-mix(in srgb, #1c3112 18%, white);
+}
+
+@media (max-width: 520px) {
+    .row {
+        grid-template-columns: 1fr;
+    }
+}

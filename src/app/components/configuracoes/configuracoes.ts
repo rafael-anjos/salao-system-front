@@ -13,6 +13,7 @@ import {
   UsuarioSalao,
   nomeDia as rotuloDia,
 } from '../../core/salao-estado.service';
+import { Notificacoes } from '../notificacoes/notificacoes';
 
 type Aba = 'salao' | 'horarios' | 'bloqueios' | 'senha' | 'usuarios' | 'categorias' | 'formas' | 'taxas' | 'desconto' | 'backup';
 type Painel =
@@ -28,7 +29,7 @@ type Painel =
 
 @Component({
   selector: 'app-configuracoes',
-  imports: [FormsModule, DecimalPipe],
+  imports: [FormsModule, DecimalPipe, Notificacoes],
   templateUrl: './configuracoes.html',
   styleUrl: './configuracoes.css',
 })

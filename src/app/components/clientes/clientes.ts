@@ -18,13 +18,14 @@ import {
   TIPOS_QUIMICA,
   TipoQuimica,
 } from '../../core/salao-estado.service';
+import { Notificacoes } from '../notificacoes/notificacoes';
 
 type FiltroCliente = 'todos' | 'aniversario' | 'retorno-30' | 'retorno-60' | 'retorno-90' | 'inativos';
 type AbaPerfil = 'resumo' | 'anamnese' | 'atendimentos';
 
 @Component({
   selector: 'app-clientes',
-  imports: [FormsModule, CurrencyPipe],
+  imports: [FormsModule, CurrencyPipe, Notificacoes],
   templateUrl: './clientes.html',
   styleUrl: './clientes.css',
 })

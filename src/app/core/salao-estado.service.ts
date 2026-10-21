@@ -501,6 +501,14 @@ export interface Sangria {
   data: string;
 }
 
+export interface Notificacao {
+  id: string;
+  titulo: string;
+  texto: string;
+  data: string;
+  lida: boolean;
+}
+
 export interface NovaConta {
   nome: string;
   valor: number;
@@ -1029,11 +1037,13 @@ export class SalaoEstadoService {
   readonly contas: ContaContrato[] = [];
   readonly lancamentosConta: ContaLancamento[] = [];
   readonly sangrias: Sangria[] = [];
+  readonly notificacoes: Notificacao[] = [];
 
   private sequencia = 0;
 
   constructor() {
     this.semearDemonstracao();
+    this.semearNotificacoes();
   }
 
   get caixaAberto(): boolean {
@@ -1747,6 +1757,28 @@ export class SalaoEstadoService {
     );
   }
 
+  listarNotificacoes(lida: boolean, inicio = '', fim = ''): Notificacao[] {
+    return this.notificacoes
+      .filter((item) => item.lida === lida)
+      .filter((item) => !inicio || item.data >= inicio)
+      .filter((item) => !fim || item.data <= fim)
+      .map((item) => ({ ...item }))
+      .sort((a, b) => b.data.localeCompare(a.data) || a.titulo.localeCompare(b.titulo, 'pt-BR'));
+  }
+
+  quantidadeNaoLidas(): number {
+    return this.notificacoes.filter((item) => !item.lida).length;
+  }
+
+  marcarComoLida(id: string): ResultadoOperacao {
+    const notificacao = this.notificacoes.find((item) => item.id === id);
+    if (!notificacao) {
+      return { ok: false, mensagem: 'Notificação não encontrada.' };
+    }
+    notificacao.lida = true;
+    return { ok: true, mensagem: 'Notificação marcada como lida.' };
+  }
+
   criarConta(dados: NovaConta): ResultadoOperacao {
     const nome = dados.nome.trim();
     const valor = arredondar(Number(dados.valor));
@@ -2289,6 +2321,84 @@ export class SalaoEstadoService {
     }
 
     this.semearClientesForaDoGiro();
+  }
+
+  private semearNotificacoes(): void {
+    const hoje = dataIso();
+    const ontem = somarDias(hoje, -1);
+    const semana = somarDias(hoje, -6);
+
+    for (const produto of this.produtos.filter((item) => item.status === 'critico' || item.status === 'baixo')) {
+      this.notificacoes.push({
+        id: this.novoId('ntf'),
+        titulo: 'Estoque baixo',
+        texto: `${produto.nome} está com ${produto.estoqueAtual} de ${produto.estoqueMinimo}.`,
+        data: hoje,
+        lida: false,
+      });
+    }
+
+    for (const conta of this.contasDoMes(competenciaDe(hoje)).filter((item) => item.vencida)) {
+      this.notificacoes.push({
+        id: this.novoId('ntf'),
+        titulo: 'Conta vencida',
+        texto: `${conta.nome} venceu e ainda não foi marcada como paga.`,
+        data: conta.vencimento,
+        lida: false,
+      });
+    }
+
+    if (!this.caixaAberto) {
+      this.notificacoes.push({
+        id: this.novoId('ntf'),
+        titulo: 'Caixa fechado',
+        texto: 'O caixa ainda não foi aberto hoje.',
+        data: hoje,
+        lida: false,
+      });
+    }
+
+    const abertos = this.agendamentos.filter(
+      (item) =>
+        item.data === hoje &&
+        (item.status === 'Confirmado' || item.status === 'Aguardando' || item.status === 'Em andamento'),
+    );
+    if (abertos.length === 1) {
+      this.notificacoes.push({
+        id: this.novoId('ntf'),
+        titulo: 'Agenda do dia',
+        texto: '1 horário ainda em aberto hoje.',
+        data: hoje,
+        lida: false,
+      });
+    } else if (abertos.length > 1) {
+      this.notificacoes.push({
+        id: this.novoId('ntf'),
+        titulo: 'Agenda do dia',
+        texto: `${abertos.length} horários ainda em aberto hoje.`,
+        data: hoje,
+        lida: false,
+      });
+    }
+
+    this.notificacoes.push({
+      id: this.novoId('ntf'),
+      titulo: 'Caixa do dia anterior',
+      texto: 'O caixa de ontem foi fechado.',
+      data: ontem,
+      lida: true,
+    });
+
+    const mascara = this.produtos.find((item) => item.id === 'prd-mascara');
+    if (mascara) {
+      this.notificacoes.push({
+        id: this.novoId('ntf'),
+        titulo: 'Estoque baixo',
+        texto: `${mascara.nome} ficou abaixo do mínimo.`,
+        data: semana,
+        lida: true,
+      });
+    }
   }
 
   private semearClientesForaDoGiro(): void {

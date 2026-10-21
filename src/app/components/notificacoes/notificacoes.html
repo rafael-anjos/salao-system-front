@@ -1,0 +1,92 @@
+<button
+    class="notification-btn"
+    type="button"
+    [attr.aria-label]="naoLidas ? 'Notificações, ' + naoLidas + ' não lidas' : 'Notificações'"
+    [attr.aria-expanded]="aberto"
+    aria-haspopup="dialog"
+    (click)="abrir()">
+    <img class="img-padrao" src="notification-green.svg" alt="">
+    <img class="img-hover" src="notification.svg" alt="">
+    <img class="img-active" src="notification-green.svg" alt="">
+    @if (naoLidas) {
+        <span class="selo">{{ naoLidas }}</span>
+    }
+</button>
+
+@if (aberto) {
+    <div class="overlay" (click)="fechar()">
+        <div
+            class="sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="notificacoes-titulo"
+            (click)="$event.stopPropagation()">
+            <header class="titulo">
+                <h2 id="notificacoes-titulo">Notificações</h2>
+                <p>O que ainda não foi visto e o que já foi lido. Recorte por data quando precisar.</p>
+            </header>
+
+            <div class="abas" role="tablist" aria-label="Situação">
+                <button
+                    type="button"
+                    role="tab"
+                    [class.ativo]="aba === 'nao-lidas'"
+                    [attr.aria-selected]="aba === 'nao-lidas'"
+                    (click)="mudarAba('nao-lidas')">
+                    Não lidas
+                </button>
+                <button
+                    type="button"
+                    role="tab"
+                    [class.ativo]="aba === 'lidas'"
+                    [attr.aria-selected]="aba === 'lidas'"
+                    (click)="mudarAba('lidas')">
+                    Lidas
+                </button>
+            </div>
+
+            <div class="row">
+                <label class="field">
+                    Data inicial
+                    <input type="date" name="inicio" [(ngModel)]="inicio" (ngModelChange)="filtrar()">
+                </label>
+                <label class="field">
+                    Data final
+                    <input type="date" name="fim" [(ngModel)]="fim" (ngModelChange)="filtrar()">
+                </label>
+            </div>
+
+            @if (erro) {
+                <p class="erro" role="alert">{{ erro }}</p>
+            }
+
+            @if (!erro && visiveis.length === 0) {
+                <p class="vazio">{{ rotuloVazio }}</p>
+            } @else if (!erro) {
+                <ul class="lista">
+                    @for (item of visiveis; track item.id) {
+                        <li>
+                            @if (item.lida) {
+                                <article>
+                                    <strong>{{ item.titulo }}</strong>
+                                    <p>{{ item.texto }}</p>
+                                    <time [attr.datetime]="item.data">{{ formatar(item.data) }}</time>
+                                </article>
+                            } @else {
+                                <button type="button" (click)="marcar(item)">
+                                    <strong>{{ item.titulo }}</strong>
+                                    <span>{{ item.texto }}</span>
+                                    <time [attr.datetime]="item.data">{{ formatar(item.data) }}</time>
+                                </button>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+
+            <div class="foot-btn">
+                <button type="button" class="cancel" (click)="fechar()">Fechar</button>
+            </div>
+        </div>
+    </div>
+}

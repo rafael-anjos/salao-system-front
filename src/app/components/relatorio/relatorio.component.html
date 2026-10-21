@@ -12,11 +12,7 @@
         <button class="btn-sub" type="button" [class.ativo]="periodo === 'personalizado'" (click)="mudarPeriodo('personalizado')">Personalizado</button>
       </div>
       <button class="btn-imprimir" type="button" (click)="imprimir()" [disabled]="!periodoValido">Exportar PDF / Imprimir</button>
-      <button class="notification-btn" type="button" aria-label="Notificações">
-        <img class="img-padrao" src="notification-green.svg" alt="">
-        <img class="img-hover" src="notification.svg" alt="">
-        <img class="img-active" src="notification-green.svg" alt="">
-      </button>
+      <app-notificacoes />
     </div>
   </header>
 

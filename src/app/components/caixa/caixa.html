@@ -9,11 +9,7 @@
         <span class="sr-only">{{ placeholderBusca }}</span>
         <input type="search" [placeholder]="placeholderBusca" [(ngModel)]="termoCabecalho" name="buscaCabecalho">
       </label>
-      <button class="notification-btn" type="button" aria-label="Notificações">
-        <img class="img-padrao" src="notification-green.svg" alt="">
-        <img class="img-hover" src="notification.svg" alt="">
-        <img class="img-active" src="notification-green.svg" alt="">
-      </button>
+      <app-notificacoes />
     </div>
   </header>
 

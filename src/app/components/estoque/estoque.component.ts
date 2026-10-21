@@ -7,6 +7,7 @@ import {
   StatusEstoque,
   UsoProduto,
 } from '../../core/salao-estado.service';
+import { Notificacoes } from '../notificacoes/notificacoes';
 
 type AbaEstoque = 'produtos' | 'categorias';
 type FiltroUso = 'todos' | UsoProduto;
@@ -24,7 +25,7 @@ interface CategoriaEstoque {
 @Component({
   selector: 'app-estoque',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, Notificacoes],
   templateUrl: './estoque.component.html',
   styleUrls: ['./estoque.component.css'],
 })
