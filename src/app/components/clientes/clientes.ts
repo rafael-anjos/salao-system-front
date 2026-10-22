@@ -11,21 +11,24 @@ import {
   CondicaoCabelo,
   COUROS_CABELUDOS,
   dataIso,
+  FichaAtendimento,
   FichaVisita,
   linkWhatsapp,
+  resumoFichaAtendimento,
   SalaoEstadoService,
   TIPOS_CABELO,
   TIPOS_QUIMICA,
   TipoQuimica,
 } from '../../core/salao-estado.service';
 import { Notificacoes } from '../notificacoes/notificacoes';
+import { FichaAtendimentoPainel } from '../ficha-atendimento/ficha-atendimento';
 
-type FiltroCliente = 'todos' | 'aniversario' | 'retorno-30' | 'retorno-60' | 'retorno-90' | 'inativos';
+type FiltroCliente = 'todos' | 'alergia' | 'aniversario' | 'retorno-30' | 'retorno-60' | 'retorno-90' | 'inativos';
 type AbaPerfil = 'resumo' | 'anamnese' | 'atendimentos';
 
 @Component({
   selector: 'app-clientes',
-  imports: [FormsModule, CurrencyPipe, Notificacoes],
+  imports: [FormsModule, CurrencyPipe, FichaAtendimentoPainel, Notificacoes],
   templateUrl: './clientes.html',
   styleUrl: './clientes.css',
 })
@@ -37,6 +40,7 @@ export class Clientes implements OnInit, OnDestroy {
 
   readonly filtros: { id: FiltroCliente; nome: string }[] = [
     { id: 'todos', nome: 'Todos' },
+    { id: 'alergia', nome: 'Com alergia' },
     { id: 'aniversario', nome: 'Aniversariantes do mês' },
     { id: 'retorno-30', nome: 'Sem retorno há 30 dias' },
     { id: 'retorno-60', nome: 'Sem retorno há 60 dias' },
@@ -63,12 +67,21 @@ export class Clientes implements OnInit, OnDestroy {
   tagsTexto = '';
   consentimento = false;
   inativa = false;
+  senhaAdmin = '';
   erroCadastro = '';
 
   anamnese: AnamneseCapilar = anamneseVazia();
   consentimentoAnamnese = false;
   erroAnamnese = '';
   avisoAnamnese = '';
+
+  alergiaTem = false;
+  alergiaTexto = '';
+  observacoesSaude = '';
+  erroResumo = '';
+  avisoResumo = '';
+
+  fichaLeituraId = '';
 
   mostrarFicha = false;
   erroFicha = '';
@@ -83,8 +96,12 @@ export class Clientes implements OnInit, OnDestroy {
     this.assinatura = this.rota.paramMap.subscribe((params) => {
       this.clienteId = params.get('id');
       this.aba = 'resumo';
+      this.erroResumo = '';
+      this.avisoResumo = '';
       this.erroAnamnese = '';
       this.avisoAnamnese = '';
+      this.fichaLeituraId = '';
+      this.copiarResumo();
       this.copiarAnamnese();
     });
   }
@@ -122,6 +139,9 @@ export class Clientes implements OnInit, OnDestroy {
             return false;
           }
         }
+        if (this.filtro === 'alergia') {
+          return !!cliente.anamnese.alergias.trim();
+        }
         if (this.filtro === 'inativos') {
           return !cliente.ativo;
         }
@@ -146,6 +166,17 @@ export class Clientes implements OnInit, OnDestroy {
     return this.editandoId ? 'Editar cliente' : 'Novo cliente';
   }
 
+  get pedeSenhaInativa(): boolean {
+    if (!this.inativa && !this.editandoId) {
+      return false;
+    }
+    const atual = this.estado.clientes.find((cliente) => cliente.id === this.editandoId);
+    if (!atual) {
+      return this.inativa;
+    }
+    return this.inativa !== !atual.ativo;
+  }
+
   abrirCadastro(): void {
     this.editandoId = '';
     this.nome = '';
@@ -156,6 +187,7 @@ export class Clientes implements OnInit, OnDestroy {
     this.tagsTexto = '';
     this.consentimento = false;
     this.inativa = false;
+    this.senhaAdmin = '';
     this.erroCadastro = '';
     this.mostrarCadastro = true;
   }
@@ -170,6 +202,7 @@ export class Clientes implements OnInit, OnDestroy {
     this.tagsTexto = cliente.tags.join(', ');
     this.consentimento = cliente.consentimentoSaude;
     this.inativa = !cliente.ativo;
+    this.senhaAdmin = '';
     this.erroCadastro = '';
     this.mostrarCadastro = true;
   }
@@ -189,6 +222,7 @@ export class Clientes implements OnInit, OnDestroy {
       tags: this.tagsTexto.split(',').map((tag) => tag.trim()).filter(Boolean),
       consentimentoSaude: this.consentimento,
       ativo: !this.inativa,
+      senhaAdmin: this.senhaAdmin,
     });
     if (!resultado.ok) {
       this.erroCadastro = resultado.mensagem;
@@ -239,6 +273,31 @@ export class Clientes implements OnInit, OnDestroy {
     return `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
   }
 
+  salvarResumo(): void {
+    if (!this.cliente) {
+      return;
+    }
+    const alergia = this.alergiaTem ? this.alergiaTexto.trim() : '';
+    if (this.alergiaTem && !alergia) {
+      this.erroResumo = 'Escreva qual é a alergia.';
+      this.avisoResumo = '';
+      return;
+    }
+    const resultado = this.estado.salvarResumoCliente(this.cliente.id, {
+      alergia,
+      observacoesSaude: this.observacoesSaude,
+    });
+    if (!resultado.ok) {
+      this.erroResumo = resultado.mensagem;
+      this.avisoResumo = '';
+      return;
+    }
+    this.erroResumo = '';
+    this.avisoResumo = resultado.mensagem;
+    this.copiarResumo();
+    this.copiarAnamnese();
+  }
+
   salvarAnamnese(): void {
     if (!this.cliente) {
       return;
@@ -252,6 +311,21 @@ export class Clientes implements OnInit, OnDestroy {
     this.erroAnamnese = '';
     this.avisoAnamnese = resultado.mensagem;
     this.copiarAnamnese();
+    this.copiarResumo();
+  }
+
+  anamneseDe(visita: FichaVisita): FichaAtendimento | null {
+    return this.estado.fichaDoAtendimento(visita);
+  }
+
+  resumoAnamnese(visita: FichaVisita): string {
+    const ficha = this.anamneseDe(visita);
+    return ficha ? resumoFichaAtendimento(ficha) : '';
+  }
+
+  verFicha(visita: FichaVisita): void {
+    const ficha = this.anamneseDe(visita);
+    this.fichaLeituraId = ficha?.id ?? '';
   }
 
   quimicaAtiva(tipo: TipoQuimica): boolean {
@@ -334,6 +408,10 @@ export class Clientes implements OnInit, OnDestroy {
 
   @HostListener('document:keydown.escape')
   fecharPorTecla(): void {
+    if (this.fichaLeituraId) {
+      this.fichaLeituraId = '';
+      return;
+    }
     if (this.mostrarFicha) {
       this.fecharFicha();
       return;
@@ -341,6 +419,16 @@ export class Clientes implements OnInit, OnDestroy {
     if (this.mostrarCadastro) {
       this.fecharCadastro();
     }
+  }
+
+  private copiarResumo(): void {
+    const cliente = this.cliente;
+    if (!cliente) {
+      return;
+    }
+    this.alergiaTexto = cliente.anamnese.alergias;
+    this.alergiaTem = !!this.alergiaTexto.trim();
+    this.observacoesSaude = cliente.observacoesSaude;
   }
 
   private copiarAnamnese(): void {
@@ -362,5 +450,4 @@ export class Clientes implements OnInit, OnDestroy {
     hoje.setHours(12, 0, 0, 0);
     return Math.floor((hoje.getTime() - visita.getTime()) / 86_400_000);
   }
-
 }
