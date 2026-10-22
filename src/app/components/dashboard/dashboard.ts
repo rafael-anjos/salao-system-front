@@ -8,10 +8,11 @@ import {
   SalaoEstadoService,
   StatusAgendamento,
 } from '../../core/salao-estado.service';
+import { Notificacoes } from '../notificacoes/notificacoes';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterLink, CurrencyPipe],
+  imports: [RouterLink, CurrencyPipe, Notificacoes],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })

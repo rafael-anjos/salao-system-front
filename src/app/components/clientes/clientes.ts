@@ -20,6 +20,7 @@ import {
   TIPOS_QUIMICA,
   TipoQuimica,
 } from '../../core/salao-estado.service';
+import { Notificacoes } from '../notificacoes/notificacoes';
 import { FichaAtendimentoPainel } from '../ficha-atendimento/ficha-atendimento';
 
 type FiltroCliente = 'todos' | 'alergia' | 'aniversario' | 'retorno-30' | 'retorno-60' | 'retorno-90' | 'inativos';
@@ -27,7 +28,7 @@ type AbaPerfil = 'resumo' | 'anamnese' | 'atendimentos';
 
 @Component({
   selector: 'app-clientes',
-  imports: [FormsModule, CurrencyPipe, FichaAtendimentoPainel],
+  imports: [FormsModule, CurrencyPipe, FichaAtendimentoPainel, Notificacoes],
   templateUrl: './clientes.html',
   styleUrl: './clientes.css',
 })

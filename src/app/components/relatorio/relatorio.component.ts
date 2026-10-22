@@ -18,6 +18,7 @@ import {
   variacaoPeriodo,
   vencimentoNoMes,
 } from '../../core/salao-estado.service';
+import { Notificacoes } from '../notificacoes/notificacoes';
 
 type Periodo = 'hoje' | 'semana' | 'mes' | 'personalizado';
 
@@ -37,7 +38,7 @@ interface LinhaProfissional {
 
 @Component({
   selector: 'app-relatorio',
-  imports: [FormsModule, CurrencyPipe, DecimalPipe, RouterLink],
+  imports: [FormsModule, CurrencyPipe, DecimalPipe, RouterLink, Notificacoes],
   templateUrl: './relatorio.component.html',
   styleUrl: './relatorio.component.css',
 })

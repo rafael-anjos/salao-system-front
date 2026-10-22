@@ -1,13 +1,14 @@
 import { Component, HostListener, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Profissional, SalaoEstadoService } from '../../core/salao-estado.service';
+import { Notificacoes } from '../notificacoes/notificacoes';
 
 type ListaProfissionais = 'ativas' | 'inativas';
 type Painel = 'formulario' | 'status' | null;
 
 @Component({
   selector: 'app-profissionais',
-  imports: [FormsModule],
+  imports: [FormsModule, Notificacoes],
   templateUrl: './profissionais.html',
   styleUrl: './profissionais.css',
 })

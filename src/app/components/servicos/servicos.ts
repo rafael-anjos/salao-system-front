@@ -2,13 +2,14 @@ import { CurrencyPipe } from '@angular/common';
 import { Component, HostListener, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SalaoEstadoService, Servico } from '../../core/salao-estado.service';
+import { Notificacoes } from '../notificacoes/notificacoes';
 
 type ListaServicos = 'ativos' | 'inativos';
 type Painel = 'formulario' | 'status' | null;
 
 @Component({
   selector: 'app-servicos',
-  imports: [FormsModule, CurrencyPipe],
+  imports: [FormsModule, CurrencyPipe, Notificacoes],
   templateUrl: './servicos.html',
   styleUrl: './servicos.css',
 })

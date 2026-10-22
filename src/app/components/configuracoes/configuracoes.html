@@ -3,11 +3,7 @@
     <header>
       <h1>Configurações</h1>
       <div class="header-btn">
-        <button class="notification-btn" type="button" aria-label="Notificações">
-          <img class="img-padrao" src="notification-green.svg" alt="">
-          <img class="img-hover" src="notification.svg" alt="">
-          <img class="img-active" src="notification-green.svg" alt="">
-        </button>
+        <app-notificacoes />
         @if (aba === 'salao') {
           <button class="agendamento-btn" type="button" (click)="salvarSalao()">Salvar dados</button>
         }

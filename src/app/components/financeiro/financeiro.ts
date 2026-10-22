@@ -17,6 +17,7 @@ import {
   variacaoPeriodo,
   vencimentoNoMes,
 } from '../../core/salao-estado.service';
+import { Notificacoes } from '../notificacoes/notificacoes';
 
 type AbaFinanceiro = 'resumo' | 'contas' | 'sangrias' | 'receitas' | 'comparativo';
 type Periodo = 'hoje' | 'semana' | 'mes' | 'personalizado';
@@ -25,7 +26,7 @@ type Variacao = VariacaoPeriodo;
 
 @Component({
   selector: 'app-financeiro',
-  imports: [FormsModule, CurrencyPipe, DecimalPipe],
+  imports: [FormsModule, CurrencyPipe, DecimalPipe, Notificacoes],
   templateUrl: './financeiro.html',
   styleUrl: './financeiro.css',
 })

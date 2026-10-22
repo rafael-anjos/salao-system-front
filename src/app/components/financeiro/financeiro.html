@@ -11,11 +11,7 @@
         <button class="btn-sub" type="button" [class.ativo]="periodo === 'mes'" (click)="mudarPeriodo('mes')">Mês</button>
         <button class="btn-sub" type="button" [class.ativo]="periodo === 'personalizado'" (click)="mudarPeriodo('personalizado')">Personalizado</button>
       </div>
-      <button class="notification-btn" type="button" aria-label="Notificações">
-        <img class="img-padrao" src="notification-green.svg" alt="">
-        <img class="img-hover" src="notification.svg" alt="">
-        <img class="img-active" src="notification-green.svg" alt="">
-      </button>
+      <app-notificacoes />
     </div>
   </header>
 

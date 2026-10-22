@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { Component, HostListener, inject, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { AgendamentoDia, dataIso, rotuloStatusAgendamento, SalaoEstadoService, StatusAgendamento } from '../../core/salao-estado.service';
+import { Notificacoes } from '../notificacoes/notificacoes';
 import { Calendario } from './calendario/calendario';
 import { NovoAgendamento } from './novo-agendamento/novo-agendamento';
 
@@ -33,7 +34,7 @@ const PASSO_MINUTOS = 15;
 
 @Component({
   selector: 'app-agenda-component',
-  imports: [Calendario, NovoAgendamento, DatePipe],
+  imports: [Calendario, NovoAgendamento, DatePipe, Notificacoes],
   templateUrl: './agenda.html',
   styleUrl: './agenda.css',
 })

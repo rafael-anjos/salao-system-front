@@ -2,6 +2,7 @@ import { CurrencyPipe } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { BuscaCliente } from '../clientes/busca-cliente/busca-cliente';
+import { Notificacoes } from '../notificacoes/notificacoes';
 import { ContextoFicha } from '../ficha-atendimento/contexto-ficha';
 import {
   AgendamentoDia,
@@ -61,7 +62,7 @@ interface RascunhoAtendimento {
 
 @Component({
   selector: 'app-caixa',
-  imports: [FormsModule, CurrencyPipe, BuscaCliente, ContextoFicha],
+  imports: [FormsModule, CurrencyPipe, BuscaCliente, ContextoFicha, Notificacoes],
   templateUrl: './caixa.html',
   styleUrl: './caixa.css',
 })
