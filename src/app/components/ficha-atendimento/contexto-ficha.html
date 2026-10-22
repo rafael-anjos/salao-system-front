@@ -1,0 +1,38 @@
+@if (clienteId) {
+  <div class="contexto">
+    @if (alergia) {
+      <p class="alerta"><span>Alergia</span>{{ alergia }}</p>
+    }
+    <div class="atalhos">
+      @if (anteriores.length > 0) {
+        <button class="link" type="button" (click)="abrirAnteriores()">Fichas anteriores ({{ anteriores.length }})</button>
+      }
+      <button class="acao" type="button" (click)="abrirFicha()">Preencher ficha</button>
+    </div>
+  </div>
+}
+
+@if (mostrarAnteriores) {
+  <app-fichas-anteriores
+    [clienteId]="clienteId"
+    [agendamentoId]="agendamentoId"
+    [vinculo]="vinculo"
+    (fechar)="mostrarAnteriores = false"
+    (copiar)="abrirFicha($event)">
+  </app-fichas-anteriores>
+}
+
+@if (mostrarFicha) {
+  <app-ficha-atendimento
+    [clienteId]="clienteId"
+    [fichaId]="fichaId"
+    [agendamentoId]="agendamentoId"
+    [vinculo]="vinculo"
+    [data]="data"
+    [somenteLeitura]="somenteLeitura"
+    [permitirReabrir]="true"
+    [copia]="copia"
+    (fechar)="fecharFicha()"
+    (salva)="fichaId = $event">
+  </app-ficha-atendimento>
+}

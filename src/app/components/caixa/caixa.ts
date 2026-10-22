@@ -2,6 +2,7 @@ import { CurrencyPipe } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { BuscaCliente } from '../clientes/busca-cliente/busca-cliente';
+import { ContextoFicha } from '../ficha-atendimento/contexto-ficha';
 import {
   AgendamentoDia,
   arredondar,
@@ -14,6 +15,7 @@ import {
   PagamentoRegistrado,
   rotuloStatusAgendamento,
   SalaoEstadoService,
+  servicoPedeFicha,
   TipoMovimento,
 } from '../../core/salao-estado.service';
 
@@ -59,7 +61,7 @@ interface RascunhoAtendimento {
 
 @Component({
   selector: 'app-caixa',
-  imports: [FormsModule, CurrencyPipe, BuscaCliente],
+  imports: [FormsModule, CurrencyPipe, BuscaCliente, ContextoFicha],
   templateUrl: './caixa.html',
   styleUrl: './caixa.css',
 })
@@ -111,6 +113,11 @@ export class Caixa {
   relTipo: 'todos' | TipoMovimento = 'todos';
 
   rascunho: RascunhoAtendimento | null = null;
+  vinculoVenda = `venda-${Date.now()}`;
+  pedidoFichaVenda = 0;
+  pedidoFichaAtendimento = 0;
+  lembrete: 'venda' | 'atendimento' | null = null;
+  private ignorarLembrete = false;
 
   get placeholderBusca(): string {
     if (this.aba === 'historico') {
@@ -422,6 +429,12 @@ export class Caixa {
     if (this.processando) {
       return;
     }
+    const nomes = this.linhas.filter((linha) => linha.tipo === 'servico').map((linha) => linha.nome);
+    if (!this.ignorarLembrete && this.faltaFicha(nomes, this.clienteId, { vinculo: this.vinculoVenda })) {
+      this.lembrete = 'venda';
+      return;
+    }
+    this.ignorarLembrete = false;
     const itens = this.paraPedido(this.linhas);
     const desconto = Number(this.desconto ?? 0);
     const pagamentos = this.montarPagamentos(this.totalVenda, this.forma, this.parcelas, this.dividir, this.forma2, this.valor2);
@@ -436,6 +449,14 @@ export class Caixa {
 
     this.processando = true;
     const copia = this.linhas.map((linha) => ({ ...linha }));
+    const valorVenda = this.totalVenda;
+    const servicoVenda = copia
+      .filter((linha) => linha.tipo === 'servico')
+      .map((linha) => linha.nome)
+      .join(', ');
+    const profissionalVenda = this.estado.profissionais.find((item) => item.id === this.profissionalId)?.nome ?? '';
+    const clienteVenda = this.clienteId;
+    const vinculoVenda = this.vinculoVenda;
     this.linhas = [];
     const resultado = this.estado.registrarVenda({
       profissionalId: this.profissionalId,
@@ -457,8 +478,18 @@ export class Caixa {
     this.dividir = false;
     this.valor2 = null;
     this.termoItem = '';
+    if (clienteVenda) {
+      this.estado.publicarFichaAvulsa(vinculoVenda, {
+        clienteId: clienteVenda,
+        servico: servicoVenda || 'Serviço',
+        profissional: profissionalVenda,
+        valor: valorVenda,
+        data: dataIso(),
+      });
+    }
     this.clienteId = '';
     this.clienteNome = '';
+    this.vinculoVenda = `venda-${Date.now()}`;
     this.publicar('ok', `${resultado.mensagem} ${resultado.id}.`);
   }
 
@@ -570,6 +601,13 @@ export class Caixa {
     if (!this.rascunho || this.processando) {
       return;
     }
+    const nomes = this.rascunho.servicos.filter((item) => item.confirmar).map((item) => item.nome);
+    const clienteId = this.estado.agendamentos.find((item) => item.id === this.rascunho?.agendamentoId)?.clienteId ?? '';
+    if (!this.ignorarLembrete && this.faltaFicha(nomes, clienteId, { agendamentoId: this.rascunho.agendamentoId })) {
+      this.lembrete = 'atendimento';
+      return;
+    }
+    this.ignorarLembrete = false;
     const avisoDesconto = this.mensagemDesconto(this.rascunho.desconto, this.subtotalAtendimento);
     if (avisoDesconto) {
       this.publicar('erro', avisoDesconto);
@@ -625,13 +663,52 @@ export class Caixa {
         valor: valorFicha,
       });
       if (!ficha.ok) {
+        this.estado.publicarFichaDoAgendamento(fichaRascunho.agendamentoId);
         this.publicar('erro', `Venda registrada. A ficha não foi salva: ${ficha.mensagem}`);
         return;
       }
+      this.estado.publicarFichaDoAgendamento(fichaRascunho.agendamentoId);
       this.publicar('ok', `${resultado.mensagem} ${resultado.id}. Ficha técnica registrada.`);
       return;
     }
+    this.estado.publicarFichaDoAgendamento(fichaRascunho.agendamentoId);
     this.publicar('ok', `${resultado.mensagem} ${resultado.id}.`);
+  }
+
+  get clienteDoAtendimento(): string {
+    return this.estado.agendamentos.find((item) => item.id === this.rascunho?.agendamentoId)?.clienteId ?? '';
+  }
+
+  get dataDoAtendimento(): string {
+    return this.estado.agendamentos.find((item) => item.id === this.rascunho?.agendamentoId)?.data ?? this.hojeIso;
+  }
+
+  preencherDoLembrete(): void {
+    const alvo = this.lembrete;
+    this.lembrete = null;
+    if (alvo === 'venda') {
+      this.pedidoFichaVenda += 1;
+      return;
+    }
+    this.pedidoFichaAtendimento += 1;
+  }
+
+  seguirSemFicha(): void {
+    const alvo = this.lembrete;
+    this.lembrete = null;
+    this.ignorarLembrete = true;
+    if (alvo === 'venda') {
+      this.finalizarVenda();
+      return;
+    }
+    this.confirmarAtendimento();
+  }
+
+  private faltaFicha(nomes: string[], clienteId: string, ref: { agendamentoId?: string; vinculo?: string }): boolean {
+    if (!clienteId || !nomes.some((nome) => servicoPedeFicha(nome))) {
+      return false;
+    }
+    return !this.estado.fichaDoContexto(clienteId, ref.agendamentoId, ref.vinculo);
   }
 
   resumoDoCaixa(caixaId: string) {

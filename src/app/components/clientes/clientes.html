@@ -27,7 +27,7 @@
             </ul>
           }
           @if (atual.anamnese.alergias) {
-            <p class="alerta" role="alert">Alergia: {{ atual.anamnese.alergias }}</p>
+            <p class="alerta">{{ atual.anamnese.alergias }}</p>
           }
         </div>
 
@@ -54,6 +54,40 @@
 
         @if (aba === 'resumo' && resumo; as dados) {
           <section class="painel" aria-label="Resumo">
+            <form class="resumo-fixo" (ngSubmit)="salvarResumo()">
+              <fieldset>
+                <legend>Alergia</legend>
+                <div class="checks">
+                  <label class="check">
+                    <input type="radio" name="alergiaResumo" [value]="false" [(ngModel)]="alergiaTem">
+                    Não
+                  </label>
+                  <label class="check">
+                    <input type="radio" name="alergiaResumo" [value]="true" [(ngModel)]="alergiaTem">
+                    Sim
+                  </label>
+                </div>
+                @if (alergiaTem) {
+                  <label class="field">
+                    Qual alergia
+                    <textarea name="alergiaTexto" rows="2" [(ngModel)]="alergiaTexto" placeholder="O que não pode usar"></textarea>
+                  </label>
+                }
+              </fieldset>
+              <label class="field">
+                Observações de saúde
+                <textarea name="saude" rows="3" [(ngModel)]="observacoesSaude" placeholder="Gestante, medicamento, o que precisar lembrar"></textarea>
+              </label>
+              @if (erroResumo) {
+                <p class="erro" role="alert">{{ erroResumo }}</p>
+              }
+              @if (avisoResumo) {
+                <p class="ok" role="status">{{ avisoResumo }}</p>
+              }
+              <div class="foot-inline">
+                <button class="agendamento-btn" type="submit">Salvar resumo</button>
+              </div>
+            </form>
             <dl class="ficha-dados">
               <div><dt>Telefone</dt><dd>{{ atual.telefone || 'Não informado' }}</dd></div>
               <div><dt>Nascimento</dt><dd>{{ atual.nascimento ? formatarDia(atual.nascimento) : 'Não informado' }}</dd></div>
@@ -178,11 +212,20 @@
                   <strong>{{ ficha.valor | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}</strong>
                 </header>
                 <p>{{ ficha.profissional }}</p>
+                @if (resumoAnamnese(ficha); as resumo) {
+                  <p class="resumo-ficha">{{ resumo }}</p>
+                }
+                @if (anamneseDe(ficha)?.status === 'rascunho') {
+                  <p class="retorno">Rascunho</p>
+                }
                 @if (ficha.observacoes) {
                   <p>{{ ficha.observacoes }}</p>
                 }
                 @if (ficha.retorno) {
                   <p class="retorno">{{ ficha.retorno }}</p>
+                }
+                @if (anamneseDe(ficha)) {
+                  <button class="btn-acao" type="button" (click)="verFicha(ficha)">Ver ficha</button>
                 }
               </article>
             } @empty {
@@ -308,7 +351,7 @@
           </div>
           <label class="field">
             Tags
-            <input type="text" name="tags" [(ngModel)]="tagsTexto" placeholder="VIP">
+            <input type="text" name="tags" [(ngModel)]="tagsTexto" placeholder="Separe por vírgula">
           </label>
           <label class="field">
             Observações gerais
@@ -322,6 +365,12 @@
             <input type="checkbox" name="inativa" [(ngModel)]="inativa">
             Cliente inativa
           </label>
+          @if (pedeSenhaInativa) {
+            <label class="field">
+              Senha da administração
+              <input type="password" name="senhaAdmin" [(ngModel)]="senhaAdmin" autocomplete="off">
+            </label>
+          }
           @if (erroCadastro) {
             <p class="erro" role="alert">{{ erroCadastro }}</p>
           }
@@ -380,5 +429,15 @@
         </form>
       </div>
     </div>
+  }
+
+  @if (fichaLeituraId && cliente) {
+    <app-ficha-atendimento
+      [clienteId]="cliente.id"
+      [fichaId]="fichaLeituraId"
+      [somenteLeitura]="true"
+      [permitirReabrir]="true"
+      (fechar)="fichaLeituraId = ''">
+    </app-ficha-atendimento>
   }
 </div>

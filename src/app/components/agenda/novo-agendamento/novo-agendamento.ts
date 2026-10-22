@@ -1,11 +1,12 @@
 import { Component, EventEmitter, HostListener, inject, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { BuscaCliente } from '../../clientes/busca-cliente/busca-cliente';
+import { ContextoFicha } from '../../ficha-atendimento/contexto-ficha';
 import { AgendamentoDia, Profissional, SalaoEstadoService, Servico } from '../../../core/salao-estado.service';
 
 @Component({
   selector: 'app-novo-agendamento',
-  imports: [FormsModule, BuscaCliente],
+  imports: [FormsModule, BuscaCliente, ContextoFicha],
   templateUrl: './novo-agendamento.html',
   styleUrl: './novo-agendamento.css',
 })
@@ -27,8 +28,10 @@ export class NovoAgendamento implements OnInit {
   hora = '';
   observacao = '';
   erro = '';
+  vinculoFicha = '';
 
   ngOnInit() {
+    this.vinculoFicha = this.agendamento?.id ?? `tmp-${Date.now()}`;
     if (this.agendamento) {
       this.clienteNome =
         !this.agendamento.clienteId && this.agendamento.cliente === 'Serviço avulso' ? '' : this.agendamento.cliente;
@@ -118,6 +121,10 @@ export class NovoAgendamento implements OnInit {
     if (!resultado.ok) {
       this.erro = resultado.mensagem;
       return;
+    }
+
+    if (resultado.id && this.vinculoFicha !== resultado.id) {
+      this.estado.assumirVinculo(this.vinculoFicha, resultado.id);
     }
 
     this.salvar.emit();

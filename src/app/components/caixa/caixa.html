@@ -182,6 +182,15 @@
             </div>
           </div>
 
+          @if (clienteId && linhasServico.length > 0) {
+            <app-contexto-ficha
+              [clienteId]="clienteId"
+              [vinculo]="vinculoVenda"
+              [data]="hojeIso"
+              [abrirPedido]="pedidoFichaVenda">
+            </app-contexto-ficha>
+          }
+
           <div class="row">
             <label class="field">
               Desconto (R$)
@@ -747,11 +756,17 @@
         }
 
         @if (atendimento.temCliente) {
+          <app-contexto-ficha
+            [clienteId]="clienteDoAtendimento"
+            [agendamentoId]="atendimento.agendamentoId"
+            [data]="dataDoAtendimento"
+            [abrirPedido]="pedidoFichaAtendimento">
+          </app-contexto-ficha>
           <fieldset class="servicos">
-            <legend>Ficha do atendimento</legend>
+            <legend>Histórico da cliente</legend>
             <label class="check">
               <input type="checkbox" name="registrarFicha" [(ngModel)]="atendimento.registrarFicha">
-              Guardar este atendimento na ficha da cliente
+              Guardar este atendimento no histórico da cliente
             </label>
             @if (atendimento.registrarFicha) {
               <label class="field">
@@ -776,6 +791,21 @@
             Confirmar venda
           </button>
         </footer>
+      </div>
+    </div>
+  }
+
+  @if (lembrete) {
+    <div class="overlay lembrete" (click)="lembrete = null">
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="titulo-lembrete" (click)="$event.stopPropagation()">
+        <header class="titulo">
+          <h2 id="titulo-lembrete">Ficha do atendimento</h2>
+          <p>Este atendimento está sem ficha. Preencher agora?</p>
+        </header>
+        <div class="foot-btn">
+          <button class="secundario" type="button" (click)="seguirSemFicha()">Seguir sem ficha</button>
+          <button class="primario" type="button" (click)="preencherDoLembrete()">Preencher agora</button>
+        </div>
       </div>
     </div>
   }

@@ -1,0 +1,108 @@
+<div class="overlay" (click)="fechar.emit()">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="titulo-ficha-atendimento" (click)="$event.stopPropagation()">
+    <header class="titulo">
+      <h2 id="titulo-ficha-atendimento">Ficha do atendimento</h2>
+      <p>{{ tituloEstado }}</p>
+    </header>
+
+    <div class="corpo" [attr.inert]="travada ? '' : null">
+      @if (!travada && temAnterior) {
+        <button class="link" type="button" (click)="copiarUltima()">Copiar da última ficha</button>
+      }
+
+      <fieldset>
+        <legend>Procedimento</legend>
+        <div class="checks">
+          @for (tipo of procedimentos; track tipo) {
+            <label class="check">
+              <input type="checkbox" [name]="'proc-' + tipo" [ngModel]="ativo(tipo)" [ngModelOptions]="{standalone: true}" (ngModelChange)="alternar(tipo, $event)">
+              {{ tipo }}
+            </label>
+          }
+        </div>
+      </fieldset>
+
+      <label class="field">
+        Qual cor?
+        <input type="text" name="corFicha" [(ngModel)]="cor" [ngModelOptions]="{standalone: true}" placeholder="Marca, tom, oxidante">
+      </label>
+
+      <fieldset>
+        <legend>Progressiva no cabelo</legend>
+        <div class="checks">
+          <label class="check">
+            <input type="radio" name="progressivaFicha" value="nao" [(ngModel)]="progressiva" [ngModelOptions]="{standalone: true}">
+            Não
+          </label>
+          <label class="check">
+            <input type="radio" name="progressivaFicha" value="com" [(ngModel)]="progressiva" [ngModelOptions]="{standalone: true}">
+            Com formol
+          </label>
+          <label class="check">
+            <input type="radio" name="progressivaFicha" value="sem" [(ngModel)]="progressiva" [ngModelOptions]="{standalone: true}">
+            Sem formol
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Alergia</legend>
+        <div class="checks">
+          <label class="check">
+            <input type="radio" name="temAlergiaFicha" [value]="false" [(ngModel)]="temAlergia" [ngModelOptions]="{standalone: true}">
+            Não
+          </label>
+          <label class="check">
+            <input type="radio" name="temAlergiaFicha" [value]="true" [(ngModel)]="temAlergia" [ngModelOptions]="{standalone: true}">
+            Sim
+          </label>
+        </div>
+        @if (temAlergia) {
+          <label class="field">
+            Qual?
+            <textarea name="alergiaFicha" rows="2" [(ngModel)]="alergia" [ngModelOptions]="{standalone: true}" placeholder="O que não pode usar"></textarea>
+          </label>
+        }
+      </fieldset>
+
+      <label class="field">
+        Observações
+        <textarea name="obsFichaAtendimento" rows="3" [(ngModel)]="observacoes" [ngModelOptions]="{standalone: true}" placeholder="O que mudou neste atendimento"></textarea>
+      </label>
+
+      @if (erro) {
+        <p class="erro" role="alert">{{ erro }}</p>
+      }
+      @if (aviso) {
+        <p class="ok" role="status">{{ aviso }}</p>
+      }
+    </div>
+
+    @if (pedindoSenha) {
+      <label class="field senha">
+        Senha da administração
+        <input type="password" name="senhaReabrir" [(ngModel)]="senhaAdmin" [ngModelOptions]="{standalone: true}" autocomplete="off">
+      </label>
+      @if (erroSenha) {
+        <p class="erro" role="alert">{{ erroSenha }}</p>
+      }
+    }
+
+    <div class="foot-btn">
+      <button class="cancel" type="button" (click)="fechar.emit()">Fechar</button>
+      @if (podeReabrir && !pedindoSenha) {
+        <button class="save" type="button" (click)="pedirSenha()">Reabrir ficha</button>
+      }
+      @if (pedindoSenha) {
+        <button class="save" type="button" (click)="confirmarSenha()">Confirmar senha</button>
+      }
+      @if (!travada && atual?.status !== 'finalizada') {
+        <button class="cancel" type="button" (click)="salvar('rascunho')">Salvar rascunho</button>
+        <button class="save" type="button" (click)="salvar('finalizada')">Finalizar</button>
+      }
+      @if (!travada && atual?.status === 'finalizada') {
+        <button class="save" type="button" (click)="salvar('finalizada')">Salvar</button>
+      }
+    </div>
+  </div>
+</div>

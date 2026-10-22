@@ -47,3 +47,18 @@
     height: 25px;
     width: 25px;
 }
+
+.grupo {
+    margin: 0.35rem 7px 0.15rem;
+    color: rgb(255 255 255 / 62%);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.grupo.separado {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgb(255 255 255 / 28%);
+}

@@ -26,6 +26,15 @@
                 (clienteChange)="definirCliente($event)">
             </app-busca-cliente>
 
+            @if (clienteId) {
+                <app-contexto-ficha
+                    [clienteId]="clienteId"
+                    [agendamentoId]="agendamento?.id || ''"
+                    [vinculo]="agendamento?.id ? '' : vinculoFicha"
+                    [data]="data">
+                </app-contexto-ficha>
+            }
+
             <label class="field">
                 Serviço a fazer
                 <select name="servico" [(ngModel)]="servicoId" [disabled]="somenteLeitura" required>
