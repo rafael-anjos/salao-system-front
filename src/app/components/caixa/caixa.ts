@@ -485,6 +485,7 @@ export class Caixa {
         profissional: profissionalVenda,
         valor: valorVenda,
         data: dataIso(),
+        vendaId: resultado.id,
       });
     }
     this.clienteId = '';
@@ -648,31 +649,25 @@ export class Caixa {
       return;
     }
     this.rascunho = null;
-    if (fichaPedida) {
-      const agendamento = this.estado.agendamentos.find((item) => item.id === fichaRascunho.agendamentoId);
-      const ficha = this.estado.salvarFicha({
-        clienteId: agendamento?.clienteId ?? '',
-        agendamentoId: fichaRascunho.agendamentoId,
-        data: agendamento?.data ?? dataIso(),
-        servico: agendamento?.servico ?? fichaRascunho.servicos.filter((item) => item.confirmar).map((item) => item.nome).join(', '),
-        profissional: fichaRascunho.profissional,
-        produtos: [],
-        observacoes: fichaRascunho.observacaoFicha,
-        retorno: fichaRascunho.retornoFicha,
-        fotos: [],
-        valor: valorFicha,
-      });
-      if (!ficha.ok) {
-        this.estado.publicarFichaDoAgendamento(fichaRascunho.agendamentoId);
-        this.publicar('erro', `Venda registrada. A ficha não foi salva: ${ficha.mensagem}`);
-        return;
-      }
-      this.estado.publicarFichaDoAgendamento(fichaRascunho.agendamentoId);
-      this.publicar('ok', `${resultado.mensagem} ${resultado.id}. Ficha técnica registrada.`);
+    const agendamento = this.estado.agendamentos.find((item) => item.id === fichaRascunho.agendamentoId);
+    const servicosConfirmados = fichaRascunho.servicos
+      .filter((item) => item.confirmar)
+      .map((item) => item.nome)
+      .join(', ');
+    const publicada = this.estado.publicarFichaDoAgendamento(fichaRascunho.agendamentoId, {
+      servico: servicosConfirmados || agendamento?.servico,
+      profissional: fichaRascunho.profissional,
+      valor: valorFicha,
+      observacoes: fichaPedida ? fichaRascunho.observacaoFicha : undefined,
+      retorno: fichaPedida ? fichaRascunho.retornoFicha : undefined,
+      registrarVisita: fichaPedida,
+    });
+    if (publicada && !publicada.ok) {
+      this.publicar('erro', `Venda registrada. A ficha não foi salva: ${publicada.mensagem}`);
       return;
     }
-    this.estado.publicarFichaDoAgendamento(fichaRascunho.agendamentoId);
-    this.publicar('ok', `${resultado.mensagem} ${resultado.id}.`);
+    const historico = publicada?.ok ? ' Ficha registrada no histórico.' : '';
+    this.publicar('ok', `${resultado.mensagem} ${resultado.id}.${historico}`);
   }
 
   get clienteDoAtendimento(): string {

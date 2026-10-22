@@ -294,6 +294,7 @@ export class Clientes implements OnInit, OnDestroy {
     this.erroResumo = '';
     this.avisoResumo = resultado.mensagem;
     this.copiarResumo();
+    this.copiarAnamnese();
   }
 
   salvarAnamnese(): void {

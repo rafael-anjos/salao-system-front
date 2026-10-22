@@ -155,6 +155,8 @@ export interface FichaVisita {
   retorno: string;
   fotos: FotoVisita[];
   valor: number;
+  /** Venda que originou esta visita. O valor já entra no total gasto pela venda. */
+  vendaId?: string;
 }
 
 export interface FichaVisitaCadastro {
@@ -169,6 +171,7 @@ export interface FichaVisitaCadastro {
   retorno?: string;
   fotos?: FotoVisita[];
   valor?: number;
+  vendaId?: string;
 }
 
 export interface ResumoCliente {
@@ -218,6 +221,15 @@ export function anamneseVazia(): AnamneseCapilar {
 
 export function montarCliente(dados: Pick<Cliente, 'id' | 'nome'> & Partial<Omit<Cliente, 'id' | 'nome'>>): Cliente {
   const anamnese = dados.anamnese;
+  const fichaFixa: AnamneseCapilar = {
+    ...anamneseVazia(),
+    ...anamnese,
+    quimica: anamnese?.quimica ? anamnese.quimica.map((item) => ({ ...item })) : [],
+    condicoes: anamnese?.condicoes ? [...anamnese.condicoes] : [],
+  };
+  const saudeInformada = typeof dados.observacoesSaude === 'string' ? dados.observacoesSaude.trim() : '';
+  const saude = saudeInformada || fichaFixa.observacoesSaude.trim();
+  fichaFixa.observacoesSaude = saude;
   return {
     telefone: '',
     nascimento: '',
@@ -228,13 +240,8 @@ export function montarCliente(dados: Pick<Cliente, 'id' | 'nome'> & Partial<Omit
     ativo: true,
     ...dados,
     tags: dados.tags ? [...dados.tags] : [],
-    observacoesSaude: typeof dados.observacoesSaude === 'string' ? dados.observacoesSaude : '',
-    anamnese: {
-      ...anamneseVazia(),
-      ...anamnese,
-      quimica: anamnese?.quimica ? anamnese.quimica.map((item) => ({ ...item })) : [],
-      condicoes: anamnese?.condicoes ? [...anamnese.condicoes] : [],
-    },
+    observacoesSaude: saude,
+    anamnese: fichaFixa,
   };
 }
 
@@ -1562,6 +1569,7 @@ export class SalaoEstadoService {
       atual.profissionalId = profissional.id;
       atual.preco = servico.preco;
       atual.observacao = observacao || undefined;
+      this.acompanharFicha([atual.id], clienteId, dados.data);
       return { ok: true, mensagem: 'Agendamento atualizado.', id: atual.id };
     }
 
@@ -1626,6 +1634,7 @@ export class SalaoEstadoService {
       return { ok: false, mensagem: 'Este atendimento já foi finalizado.' };
     }
     this.agendamentos.splice(index, 1);
+    this.acompanharFicha([atual.id], '');
     return { ok: true, mensagem: 'Agendamento excluído.', id };
   }
 
@@ -2571,6 +2580,7 @@ export class SalaoEstadoService {
       return { ok: false, mensagem: 'Marque o consentimento para guardar dados de saúde.' };
     }
     cliente.consentimentoSaude = consentimento || cliente.consentimentoSaude;
+    cliente.observacoesSaude = saude;
     cliente.anamnese = {
       ...anamneseVazia(),
       ...anamnese,
@@ -2603,11 +2613,14 @@ export class SalaoEstadoService {
   resumoCliente(clienteId: string): ResumoCliente {
     const concluidos = this.agendamentos.filter((item) => item.clienteId === clienteId && item.status === 'Concluído');
     const manuais = this.fichas.filter((ficha) => ficha.clienteId === clienteId && !ficha.agendamentoId);
+    const manuaisSemVenda = manuais.filter((ficha) => !ficha.vendaId);
     const vendas = this.movimentacoes.filter((item) => item.tipo === 'venda' && item.clienteId === clienteId);
     const comVenda = new Set(vendas.map((item) => item.agendamentoId).filter((id): id is string => !!id));
     const semVenda = concluidos.filter((item) => !item.vendaId && !comVenda.has(item.id));
     const totalGasto = arredondar(
-      somar(vendas.map((item) => item.valor)) + somar(semVenda.map((item) => item.preco)) + somar(manuais.map((item) => item.valor)),
+      somar(vendas.map((item) => item.valor)) +
+        somar(semVenda.map((item) => item.preco)) +
+        somar(manuaisSemVenda.map((item) => item.valor)),
     );
     const datas = [...concluidos.map((item) => item.data), ...manuais.map((item) => item.data)].sort();
     const totalVisitas = concluidos.length + manuais.length;
@@ -2676,6 +2689,7 @@ export class SalaoEstadoService {
       retorno: dados.retorno?.trim() ?? '',
       fotos: [],
       valor,
+      vendaId: dados.vendaId || (dados.id ? this.fichas.find((item) => item.id === dados.id)?.vendaId : undefined),
     };
     if (dados.id) {
       const index = this.fichas.findIndex((item) => item.id === dados.id);
@@ -2699,7 +2713,9 @@ export class SalaoEstadoService {
       return { ok: false, mensagem: 'Cliente não encontrada.' };
     }
     this.definirAlergia(cliente, dados.alergia);
-    cliente.observacoesSaude = dados.observacoesSaude.trim();
+    const saude = dados.observacoesSaude.trim();
+    cliente.observacoesSaude = saude;
+    cliente.anamnese = { ...cliente.anamnese, observacoesSaude: saude };
     return { ok: true, mensagem: 'Resumo atualizado.', id: cliente.id };
   }
 
@@ -2789,7 +2805,12 @@ export class SalaoEstadoService {
       this.fichasAtendimento.push(registro);
     }
 
-    this.definirAlergia(cliente, registro.alergia);
+    const temFichaMaisNova = this.fichasAtendimento.some(
+      (outra) => outra.clienteId === cliente.id && outra.id !== registro.id && outra.data > registro.data,
+    );
+    if (!temFichaMaisNova) {
+      this.definirAlergia(cliente, registro.alergia);
+    }
     const verbo = registro.status === 'finalizada' ? 'Ficha finalizada.' : 'Rascunho da ficha salvo.';
     return { ok: true, mensagem: verbo, id: registro.id };
   }
@@ -2798,50 +2819,116 @@ export class SalaoEstadoService {
     if (!vinculo || vinculo === agendamentoId) {
       return;
     }
+    const agendamento = this.agendamentos.find((item) => item.id === agendamentoId);
     for (const ficha of this.fichasAtendimento) {
-      if (ficha.vinculo === vinculo) {
-        ficha.agendamentoId = agendamentoId;
-        ficha.vinculo = undefined;
+      if (ficha.vinculo !== vinculo) {
+        continue;
+      }
+      ficha.agendamentoId = agendamentoId;
+      ficha.vinculo = undefined;
+      if (!agendamento?.clienteId || ficha.atendimentoId) {
+        continue;
+      }
+      ficha.clienteId = agendamento.clienteId;
+      ficha.data = agendamento.data;
+    }
+  }
+
+  /**
+   * A ficha do serviço acompanha a cliente e a data do agendamento enquanto ainda não entrou no histórico.
+   * Sem cliente, o rascunho é descartado.
+   */
+  acompanharFicha(chaves: string[], clienteId: string, data?: string): void {
+    const refs = chaves.filter(Boolean);
+    if (!refs.length) {
+      return;
+    }
+    for (let indice = this.fichasAtendimento.length - 1; indice >= 0; indice -= 1) {
+      const ficha = this.fichasAtendimento[indice];
+      const ligada = refs.some((chave) => ficha.agendamentoId === chave || ficha.vinculo === chave);
+      if (!ligada || ficha.atendimentoId) {
+        continue;
+      }
+      if (!clienteId) {
+        this.fichasAtendimento.splice(indice, 1);
+        continue;
+      }
+      ficha.clienteId = clienteId;
+      if (data) {
+        ficha.data = data;
       }
     }
   }
 
-  /** Quando o atendimento fecha, a ficha passa a aparecer no histórico da cliente. */
-  publicarFichaDoAgendamento(agendamentoId: string): void {
-    const anamnese = this.fichasAtendimento.find(
+  /**
+   * Fecha o atendimento: a ficha do serviço vira uma visita no histórico.
+   * Sem ficha de serviço, só grava visita quando o caixa pede o retorno.
+   */
+  publicarFichaDoAgendamento(
+    agendamentoId: string,
+    extra?: {
+      servico?: string;
+      profissional?: string;
+      valor?: number;
+      observacoes?: string;
+      retorno?: string;
+      registrarVisita?: boolean;
+    },
+  ): ResultadoOperacao | null {
+    const fichaServico = this.fichasAtendimento.find(
       (ficha) => ficha.agendamentoId === agendamentoId || ficha.vinculo === agendamentoId,
     );
-    if (!anamnese) {
-      return;
+    const agendamento = this.agendamentos.find((item) => item.id === agendamentoId);
+    if (!agendamento?.clienteId || (!fichaServico && !extra?.registrarVisita)) {
+      return null;
     }
-    anamnese.agendamentoId = agendamentoId;
-    anamnese.vinculo = undefined;
+    if (fichaServico) {
+      fichaServico.agendamentoId = agendamentoId;
+      fichaServico.vinculo = undefined;
+      fichaServico.clienteId = agendamento.clienteId;
+    }
+
+    const servico = extra?.servico?.trim() || agendamento.servico;
+    const profissional = extra?.profissional?.trim() || agendamento.profissional;
+    const valor = extra?.valor ?? agendamento.preco;
     const existente = this.fichas.find((ficha) => ficha.agendamentoId === agendamentoId);
     if (existente) {
-      anamnese.atendimentoId = existente.id;
-      return;
+      existente.servico = servico;
+      existente.profissional = profissional;
+      existente.valor = arredondar(Number(valor) || 0);
+      existente.data = agendamento.data;
+      if (extra?.observacoes !== undefined) {
+        existente.observacoes = extra.observacoes.trim();
+      }
+      if (extra?.retorno !== undefined) {
+        existente.retorno = extra.retorno.trim();
+      }
+      if (fichaServico) {
+        fichaServico.atendimentoId = existente.id;
+      }
+      return { ok: true, mensagem: 'Ficha do atendimento atualizada.', id: existente.id };
     }
-    const agendamento = this.agendamentos.find((item) => item.id === agendamentoId);
-    if (!agendamento?.clienteId) {
-      return;
-    }
+
     const criada = this.salvarFicha({
       clienteId: agendamento.clienteId,
       agendamentoId,
       data: agendamento.data,
-      servico: agendamento.servico,
-      profissional: agendamento.profissional,
+      servico,
+      profissional,
       produtos: [],
-      valor: agendamento.preco,
+      observacoes: extra?.observacoes,
+      retorno: extra?.retorno,
+      valor,
     });
-    if (criada.id) {
-      anamnese.atendimentoId = criada.id;
+    if (criada.id && fichaServico) {
+      fichaServico.atendimentoId = criada.id;
     }
+    return criada;
   }
 
   publicarFichaAvulsa(
     vinculo: string,
-    dados: { clienteId: string; servico: string; profissional: string; valor: number; data: string },
+    dados: { clienteId: string; servico: string; profissional: string; valor: number; data: string; vendaId?: string },
   ): void {
     const anamnese = this.fichasAtendimento.find((ficha) => ficha.vinculo === vinculo && ficha.clienteId === dados.clienteId);
     if (!anamnese) {
@@ -2854,6 +2941,7 @@ export class SalaoEstadoService {
       profissional: dados.profissional,
       produtos: [],
       valor: dados.valor,
+      vendaId: dados.vendaId,
     });
     if (!criada.id) {
       return;

@@ -69,6 +69,9 @@ export class NovoAgendamento implements OnInit {
   }
 
   definirCliente(evento: { id: string; nome: string }): void {
+    if (evento.id && evento.id !== this.clienteId) {
+      this.estado.acompanharFicha([this.vinculoFicha, this.agendamento?.id ?? ''], evento.id, this.data);
+    }
     this.clienteId = evento.id;
     this.clienteNome = evento.nome;
   }
