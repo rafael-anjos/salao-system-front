@@ -47,6 +47,7 @@ main > header h1 {
 }
 
 .header-btn,
+.header-acoes,
 .acoes,
 .foot-btn,
 .foot-inline,
@@ -54,6 +55,22 @@ main > header h1 {
     display: flex;
     align-items: center;
     gap: 0.75rem;
+}
+
+.header-btn {
+    align-items: flex-start;
+}
+
+.header-btn app-notificacoes {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    min-height: 2.375rem;
+}
+
+.header-acoes {
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 .agendamento-btn,
@@ -103,7 +120,8 @@ main > header h1 {
 }
 
 .secundario:disabled,
-.btn-acao:disabled {
+.btn-acao:disabled,
+.save:disabled {
     cursor: not-allowed;
     opacity: 0.45;
 }
@@ -595,7 +613,13 @@ legend {
     }
 
     .header-btn {
-        flex-wrap: wrap;
+        width: 100%;
+        flex-wrap: nowrap;
+    }
+
+    .header-acoes {
+        flex: 1;
+        justify-content: flex-start;
     }
 
     .ficha-dados,

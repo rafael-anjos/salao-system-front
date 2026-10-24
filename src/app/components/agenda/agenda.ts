@@ -203,17 +203,17 @@ export class AgendaComponent implements OnInit, OnDestroy {
     };
   }
 
-  definirStatus(status: 'Aguardando' | 'Confirmado') {
+  async definirStatus(status: 'Aguardando' | 'Confirmado') {
     const item = this.menu?.item;
     this.menu = null;
     if (!item) {
       return;
     }
-    const resultado = this.estado.alterarStatusAgendamento(item.id, status);
+    const resultado = await this.estado.alterarStatusAgendamento(item.id, status);
     this.aviso = resultado.ok ? '' : resultado.mensagem;
   }
 
-  excluirSelecionado() {
+  async excluirSelecionado() {
     const item = this.menu?.item;
     this.menu = null;
     if (!item) {
@@ -222,7 +222,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
     if (this.movendo?.id === item.id) {
       this.cancelarMovimento();
     }
-    const resultado = this.estado.excluirAgendamento(item.id);
+    const resultado = await this.estado.excluirAgendamento(item.id);
     this.aviso = resultado.ok ? '' : resultado.mensagem;
   }
 
@@ -412,7 +412,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
     this.fecharMenuNoClique = false;
   }
 
-  private confirmarMovimento(data: string, hora: string) {
+  private async confirmarMovimento(data: string, hora: string) {
     const item = this.movendo;
     if (!item) {
       return;
@@ -421,7 +421,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
       this.cancelarMovimento();
       return;
     }
-    const resultado = this.estado.moverAgendamento(item.id, data, hora);
+    const resultado = await this.estado.moverAgendamento(item.id, data, hora);
     if (!resultado.ok) {
       this.aviso = resultado.mensagem;
       return;

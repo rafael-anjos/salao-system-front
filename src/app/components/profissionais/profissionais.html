@@ -53,6 +53,10 @@
           name="buscaProfissional">
       </div>
 
+      @if (erroAcao) {
+        <p class="erro" role="alert">{{ erroAcao }}</p>
+      }
+
       <div class="container-tabela">
         <table class="tabela">
           <thead>
@@ -72,7 +76,11 @@
                 <td>
                   <div class="acoes">
                     <button class="btn-acao" type="button" (click)="abrirEdicao(profissional)">Editar</button>
-                    <button class="btn-acao" type="button" (click)="abrirStatus(profissional)">
+                    <button
+                      class="btn-acao"
+                      type="button"
+                      [disabled]="processandoId === profissional.id"
+                      (click)="alternarStatus(profissional)">
                       {{ profissional.ativo ? 'Desativar' : 'Reativar' }}
                     </button>
                   </div>
@@ -105,47 +113,29 @@
         (click)="$event.stopPropagation()">
         <header class="titulo">
           <h2 id="profissional-titulo">{{ tituloPainel }}</h2>
-          @if (painel === 'formulario') {
-            <p>Nome e telefone. O histórico de atendimentos permanece ligado a esta profissional.</p>
-          } @else if (alvo?.ativo) {
-            <p>{{ alvo?.nome }} sai da lista de ativas. Os atendimentos já registrados continuam no histórico.</p>
-          } @else {
-            <p>{{ alvo?.nome }} volta para a lista de profissionais ativas.</p>
-          }
+          <p>Nome e telefone. O histórico de atendimentos permanece ligado a esta profissional.</p>
         </header>
 
-        @if (painel === 'formulario') {
-          <form (ngSubmit)="salvar()">
-            <label class="field">
-              Nome
-              <input type="text" name="nome" [(ngModel)]="nome" placeholder="Nome da profissional" required>
-            </label>
+        <form (ngSubmit)="salvar()">
+          <label class="field">
+            Nome
+            <input type="text" name="nome" [(ngModel)]="nome" placeholder="Nome da profissional" required>
+          </label>
 
-            <label class="field">
-              Telefone
-              <input type="tel" name="telefone" [(ngModel)]="telefone" placeholder="(11) 90000-0000" required>
-            </label>
+          <label class="field">
+            Telefone
+            <input type="tel" name="telefone" [(ngModel)]="telefone" placeholder="(11) 90000-0000" required>
+          </label>
 
-            @if (erro) {
-              <p class="erro" role="alert">{{ erro }}</p>
-            }
-
-            <div class="foot-btn">
-              <button class="cancel" type="button" (click)="fecharPainel()">Cancelar</button>
-              <button class="save" type="submit">Salvar</button>
-            </div>
-          </form>
-        } @else {
           @if (erro) {
             <p class="erro" role="alert">{{ erro }}</p>
           }
+
           <div class="foot-btn">
             <button class="cancel" type="button" (click)="fecharPainel()">Cancelar</button>
-            <button class="save" type="button" (click)="confirmarStatus()">
-              {{ alvo?.ativo ? 'Desativar' : 'Reativar' }}
-            </button>
+            <button class="save" type="submit">Salvar</button>
           </div>
-        }
+        </form>
       </div>
     </div>
   }

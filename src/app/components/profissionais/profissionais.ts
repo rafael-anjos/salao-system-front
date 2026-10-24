@@ -1,10 +1,10 @@
-import { Component, HostListener, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Profissional, SalaoEstadoService } from '../../core/salao-estado.service';
 import { Notificacoes } from '../notificacoes/notificacoes';
 
 type ListaProfissionais = 'ativas' | 'inativas';
-type Painel = 'formulario' | 'status' | null;
+type Painel = 'formulario' | null;
 
 @Component({
   selector: 'app-profissionais',
@@ -14,6 +14,7 @@ type Painel = 'formulario' | 'status' | null;
 })
 export class Profissionais {
   private readonly estado = inject(SalaoEstadoService);
+  private readonly cd = inject(ChangeDetectorRef);
 
   lista: ListaProfissionais = 'ativas';
   termoBusca = '';
@@ -23,6 +24,8 @@ export class Profissionais {
   nome = '';
   telefone = '';
   erro = '';
+  erroAcao = '';
+  processandoId = '';
 
   get ativas(): Profissional[] {
     return this.estado.listarProfissionais(true);
@@ -58,9 +61,6 @@ export class Profissionais {
   }
 
   get tituloPainel(): string {
-    if (this.painel === 'status') {
-      return this.alvo?.ativo ? 'Desativar profissional' : 'Reativar profissional';
-    }
     return this.editandoId ? 'Editar profissional' : 'Nova profissional';
   }
 
@@ -91,10 +91,18 @@ export class Profissionais {
     this.painel = 'formulario';
   }
 
-  abrirStatus(profissional: Profissional): void {
-    this.alvo = profissional;
-    this.erro = '';
-    this.painel = 'status';
+  async alternarStatus(profissional: Profissional): Promise<void> {
+    if (this.processandoId) {
+      return;
+    }
+    this.erroAcao = '';
+    this.processandoId = profissional.id;
+    const resultado = await this.estado.definirProfissionalAtivo(profissional.id, !profissional.ativo);
+    this.processandoId = '';
+    if (!resultado.ok) {
+      this.erroAcao = resultado.mensagem;
+    }
+    this.cd.detectChanges();
   }
 
   fecharPainel(): void {
@@ -103,8 +111,8 @@ export class Profissionais {
     this.alvo = null;
   }
 
-  salvar(): void {
-    const resultado = this.estado.salvarProfissional({
+  async salvar(): Promise<void> {
+    const resultado = await this.estado.salvarProfissional({
       id: this.editandoId ?? undefined,
       nome: this.nome,
       telefone: this.telefone,
@@ -119,20 +127,7 @@ export class Profissionais {
       this.lista = 'ativas';
     }
     this.fecharPainel();
-  }
-
-  confirmarStatus(): void {
-    if (!this.alvo) {
-      return;
-    }
-
-    const resultado = this.estado.definirProfissionalAtivo(this.alvo.id, !this.alvo.ativo);
-    if (!resultado.ok) {
-      this.erro = resultado.mensagem;
-      return;
-    }
-
-    this.fecharPainel();
+    this.cd.detectChanges();
   }
 
   @HostListener('document:keydown.escape')

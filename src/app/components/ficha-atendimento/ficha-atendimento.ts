@@ -117,7 +117,7 @@ export class FichaAtendimentoPainel implements OnChanges {
     this.aplicar(ultima);
   }
 
-  salvar(status: 'rascunho' | 'finalizada'): void {
+  async salvar(status: 'rascunho' | 'finalizada'): Promise<void> {
     if (this.travada) {
       return;
     }
@@ -137,7 +137,7 @@ export class FichaAtendimentoPainel implements OnChanges {
       this.aviso = '';
       return;
     }
-    const resultado = this.estado.salvarFichaAtendimento(
+    const resultado = await this.estado.salvarFichaAtendimento(
       {
         id: this.fichaId || undefined,
         clienteId: this.clienteId,
@@ -173,8 +173,8 @@ export class FichaAtendimentoPainel implements OnChanges {
   }
 
   confirmarSenha(): void {
-    if (!this.estado.senhaConfere(this.senhaAdmin)) {
-      this.erroSenha = 'Senha incorreta.';
+    if (!this.senhaAdmin.trim()) {
+      this.erroSenha = 'Informe a senha da administração.';
       return;
     }
     this.reaberta = true;

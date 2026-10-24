@@ -214,8 +214,8 @@ export class Configuracoes {
     this.aviso = '';
   }
 
-  salvarSalao(): void {
-    const resultado = this.estado.salvarDadosSalao({
+  async salvarSalao(): Promise<void> {
+    const resultado = await this.estado.salvarDadosSalao({
       nome: this.nomeSalao,
       telefone: this.telefoneSalao,
       endereco: this.enderecoSalao,
@@ -230,8 +230,8 @@ export class Configuracoes {
     }
   }
 
-  salvarDesconto(): void {
-    const resultado = this.estado.salvarDescontoMaximo(this.descontoMaximo);
+  async salvarDesconto(): Promise<void> {
+    const resultado = await this.estado.salvarDescontoMaximo(this.descontoMaximo);
     this.erro = resultado.ok ? '' : resultado.mensagem;
     this.aviso = resultado.ok ? resultado.mensagem : '';
     if (resultado.ok) {
@@ -239,8 +239,8 @@ export class Configuracoes {
     }
   }
 
-  salvarHorarios(): void {
-    const resultado = this.estado.salvarHorarios(this.horarios);
+  async salvarHorarios(): Promise<void> {
+    const resultado = await this.estado.salvarHorarios(this.horarios);
     this.erro = resultado.ok ? '' : resultado.mensagem;
     this.aviso = resultado.ok ? resultado.mensagem : '';
     if (resultado.ok) {
@@ -288,8 +288,8 @@ export class Configuracoes {
     this.categoriaAlvo = null;
   }
 
-  salvarBloqueio(): void {
-    const resultado = this.estado.salvarBloqueio({
+  async salvarBloqueio(): Promise<void> {
+    const resultado = await this.estado.salvarBloqueio({
       id: this.editandoId ?? undefined,
       dataInicio: this.dataInicio,
       dataFim: this.dataFim || this.dataInicio,
@@ -308,11 +308,11 @@ export class Configuracoes {
     this.fecharPainel();
   }
 
-  confirmarRemocao(): void {
+  async confirmarRemocao(): Promise<void> {
     if (!this.alvo) {
       return;
     }
-    const resultado = this.estado.removerBloqueio(this.alvo.id);
+    const resultado = await this.estado.removerBloqueio(this.alvo.id);
     if (!resultado.ok) {
       this.erro = resultado.mensagem;
       return;
@@ -361,8 +361,8 @@ export class Configuracoes {
     this.acessosMarcados = this.acessosMarcados.filter((acesso) => acesso !== id);
   }
 
-  salvarUsuario(): void {
-    const resultado = this.estado.cadastrarOperador({
+  async salvarUsuario(): Promise<void> {
+    const resultado = await this.estado.cadastrarOperador({
       nome: this.nomeUsuario,
       acessos: this.acessosMarcados,
     });
@@ -374,11 +374,11 @@ export class Configuracoes {
     this.fecharPainel();
   }
 
-  salvarAcessos(): void {
+  async salvarAcessos(): Promise<void> {
     if (!this.usuarioAlvo) {
       return;
     }
-    const resultado = this.estado.definirAcessos(this.usuarioAlvo.id, this.acessosMarcados);
+    const resultado = await this.estado.definirAcessos(this.usuarioAlvo.id, this.acessosMarcados);
     if (!resultado.ok) {
       this.erro = resultado.mensagem;
       return;
@@ -387,11 +387,11 @@ export class Configuracoes {
     this.fecharPainel();
   }
 
-  confirmarStatusUsuario(): void {
+  async confirmarStatusUsuario(): Promise<void> {
     if (!this.usuarioAlvo) {
       return;
     }
-    const resultado = this.estado.definirUsuarioAtivo(this.usuarioAlvo.id, !this.usuarioAlvo.ativo);
+    const resultado = await this.estado.definirUsuarioAtivo(this.usuarioAlvo.id, !this.usuarioAlvo.ativo);
     if (!resultado.ok) {
       this.erro = resultado.mensagem;
       return;
@@ -450,8 +450,8 @@ export class Configuracoes {
     this.painel = 'remover-categoria';
   }
 
-  salvarCategoria(): void {
-    const resultado = this.estado.salvarCategoria({
+  async salvarCategoria(): Promise<void> {
+    const resultado = await this.estado.salvarCategoria({
       id: this.categoriaAlvo?.id,
       nome: this.nomeCategoria,
       tipo: this.tipoCategoria,
@@ -464,11 +464,11 @@ export class Configuracoes {
     this.fecharPainel();
   }
 
-  confirmarRemocaoCategoria(): void {
+  async confirmarRemocaoCategoria(): Promise<void> {
     if (!this.categoriaAlvo) {
       return;
     }
-    const resultado = this.estado.removerCategoria(this.categoriaAlvo.id);
+    const resultado = await this.estado.removerCategoria(this.categoriaAlvo.id);
     if (!resultado.ok) {
       this.erro = resultado.mensagem;
       return;
@@ -486,8 +486,8 @@ export class Configuracoes {
     this.aviso = '';
   }
 
-  salvarFormas(): void {
-    const resultado = this.estado.salvarFormas(this.formasEdicao);
+  async salvarFormas(): Promise<void> {
+    const resultado = await this.estado.salvarFormas(this.formasEdicao);
     this.erro = resultado.ok ? '' : resultado.mensagem;
     this.aviso = resultado.ok ? resultado.mensagem : '';
     if (resultado.ok) {
@@ -495,8 +495,8 @@ export class Configuracoes {
     }
   }
 
-  salvarTaxas(): void {
-    const resultado = this.estado.salvarTaxas(this.formasEdicao);
+  async salvarTaxas(): Promise<void> {
+    const resultado = await this.estado.salvarTaxas(this.formasEdicao);
     this.erro = resultado.ok ? '' : resultado.mensagem;
     this.aviso = resultado.ok ? resultado.mensagem : '';
     if (resultado.ok) {
@@ -512,8 +512,8 @@ export class Configuracoes {
     return Math.round(taxa * 100) / 100;
   }
 
-  exportarBackup(): void {
-    const conteudo = this.estado.exportarDados();
+  async exportarBackup(): Promise<void> {
+    const conteudo = await this.estado.exportarDados();
     const url = URL.createObjectURL(new Blob([conteudo], { type: 'application/json' }));
     const link = document.createElement('a');
     const dia = new Date().toISOString().slice(0, 10);
@@ -541,8 +541,8 @@ export class Configuracoes {
     leitor.readAsText(arquivo);
   }
 
-  confirmarRestauracao(): void {
-    const resultado = this.estado.restaurarDados(this.textoBackup);
+  async confirmarRestauracao(): Promise<void> {
+    const resultado = await this.estado.restaurarDados(this.textoBackup);
     if (!resultado.ok) {
       this.erro = resultado.mensagem;
       return;
@@ -559,8 +559,8 @@ export class Configuracoes {
     this.fecharPainel();
   }
 
-  alterarSenha(): void {
-    const resultado = this.estado.alterarSenha({
+  async alterarSenha(): Promise<void> {
+    const resultado = await this.estado.alterarSenha({
       atual: this.senhaAtual,
       nova: this.senhaNova,
       confirmacao: this.senhaConfirmacao,

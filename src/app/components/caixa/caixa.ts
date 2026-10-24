@@ -359,12 +359,12 @@ export class Caixa {
     }
   }
 
-  abrirCaixa(): void {
+  async abrirCaixa(): Promise<void> {
     if (this.saldoInicial === null || this.saldoInicial === undefined) {
       this.publicar('erro', 'Informe o saldo inicial.');
       return;
     }
-    const resultado = this.estado.abrirCaixa(Number(this.saldoInicial));
+    const resultado = await this.estado.abrirCaixa(Number(this.saldoInicial));
     this.publicar(resultado.ok ? 'ok' : 'erro', resultado.mensagem);
     if (resultado.ok && resultado.id) {
       this.caixaSelecionadoId = resultado.id;
@@ -426,7 +426,7 @@ export class Caixa {
     linha.quantidade = quantidade;
   }
 
-  finalizarVenda(): void {
+  async finalizarVenda(): Promise<void> {
     if (this.processando) {
       return;
     }
@@ -459,7 +459,7 @@ export class Caixa {
     const clienteVenda = this.clienteId;
     const vinculoVenda = this.vinculoVenda;
     this.linhas = [];
-    const resultado = this.estado.registrarVenda({
+    const resultado = await this.estado.registrarVenda({
       profissionalId: this.profissionalId,
       clienteId: this.clienteId || null,
       clienteNome: this.clienteId ? undefined : this.clienteNome,
@@ -480,7 +480,7 @@ export class Caixa {
     this.valor2 = null;
     this.termoItem = '';
     if (clienteVenda) {
-      this.estado.publicarFichaAvulsa(vinculoVenda, {
+      await this.estado.publicarFichaAvulsa(vinculoVenda, {
         clienteId: clienteVenda,
         servico: servicoVenda || 'Serviço',
         profissional: profissionalVenda,
@@ -512,7 +512,7 @@ export class Caixa {
     this.formaMovimento = 'Dinheiro';
   }
 
-  confirmarMovimento(): void {
+  async confirmarMovimento(): Promise<void> {
     if (this.processando) {
       return;
     }
@@ -521,7 +521,7 @@ export class Caixa {
       return;
     }
     this.processando = true;
-    const resultado = this.estado.registrarMovimento({
+    const resultado = await this.estado.registrarMovimento({
       tipo: this.tipoMovimento,
       valor: Number(this.valorMovimento),
       descricao: this.descricaoMovimento,
@@ -543,7 +543,7 @@ export class Caixa {
     this.mostrarFechamento = true;
   }
 
-  confirmarFechamento(): void {
+  async confirmarFechamento(): Promise<void> {
     if (this.processando) {
       return;
     }
@@ -552,7 +552,7 @@ export class Caixa {
       return;
     }
     this.processando = true;
-    const resultado = this.estado.fecharCaixa(Number(this.valorContado));
+    const resultado = await this.estado.fecharCaixa(Number(this.valorContado));
     this.processando = false;
     this.publicar(resultado.ok ? 'ok' : 'erro', resultado.mensagem);
     if (resultado.ok) {
@@ -599,7 +599,7 @@ export class Caixa {
     };
   }
 
-  confirmarAtendimento(): void {
+  async confirmarAtendimento(): Promise<void> {
     if (!this.rascunho || this.processando) {
       return;
     }
@@ -635,7 +635,7 @@ export class Caixa {
     const fichaRascunho = { ...this.rascunho };
     const valorFicha = this.totalAtendimento;
     this.processando = true;
-    const resultado = this.estado.registrarVenda({
+    const resultado = await this.estado.registrarVenda({
       profissionalId: this.rascunho.profissionalId,
       clienteId: this.estado.agendamentos.find((item) => item.id === this.rascunho?.agendamentoId)?.clienteId ?? null,
       itens: [...servicos, ...produtos],
@@ -655,7 +655,7 @@ export class Caixa {
       .filter((item) => item.confirmar)
       .map((item) => item.nome)
       .join(', ');
-    const publicada = this.estado.publicarFichaDoAgendamento(fichaRascunho.agendamentoId, {
+    const publicada = await this.estado.publicarFichaDoAgendamento(fichaRascunho.agendamentoId, {
       servico: servicosConfirmados || agendamento?.servico,
       profissional: fichaRascunho.profissional,
       valor: valorFicha,

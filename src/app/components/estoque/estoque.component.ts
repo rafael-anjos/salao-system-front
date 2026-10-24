@@ -212,8 +212,8 @@ export class EstoqueComponent {
     this.categoriaAlvo = null;
   }
 
-  salvarProduto(): void {
-    const resultado = this.estado.salvarProduto({
+  async salvarProduto(): Promise<void> {
+    const resultado = await this.estado.salvarProduto({
       id: this.editandoProdutoId ?? undefined,
       nome: this.nome,
       categoria: this.categoria,
@@ -234,12 +234,12 @@ export class EstoqueComponent {
     this.fecharPainel();
   }
 
-  confirmarMovimento(): void {
+  async confirmarMovimento(): Promise<void> {
     if (!this.produtoAlvo) {
       return;
     }
 
-    const resultado = this.estado.movimentarProduto(
+    const resultado = await this.estado.movimentarProduto(
       this.produtoAlvo.id,
       this.movimentoTipo,
       Number(this.quantidade),
@@ -252,12 +252,12 @@ export class EstoqueComponent {
     this.fecharPainel();
   }
 
-  confirmarExclusao(): void {
+  async confirmarExclusao(): Promise<void> {
     if (!this.produtoAlvo) {
       return;
     }
 
-    const resultado = this.estado.removerProduto(this.produtoAlvo.id);
+    const resultado = await this.estado.removerProduto(this.produtoAlvo.id);
     if (!resultado.ok) {
       this.erro = resultado.mensagem;
       return;
@@ -266,8 +266,8 @@ export class EstoqueComponent {
     this.fecharPainel();
   }
 
-  salvarCategoria(): void {
-    const resultado = this.estado.salvarCategoria({
+  async salvarCategoria(): Promise<void> {
+    const resultado = await this.estado.salvarCategoria({
       id: this.editandoCategoriaId ?? undefined,
       nome: this.nomeCategoria,
       tipo: 'estoque',
@@ -281,12 +281,12 @@ export class EstoqueComponent {
     this.fecharPainel();
   }
 
-  confirmarExclusaoCategoria(): void {
+  async confirmarExclusaoCategoria(): Promise<void> {
     if (!this.categoriaAlvo) {
       return;
     }
 
-    const resultado = this.estado.removerCategoria(this.categoriaAlvo.id);
+    const resultado = await this.estado.removerCategoria(this.categoriaAlvo.id);
     if (!resultado.ok) {
       this.erro = resultado.mensagem;
       return;

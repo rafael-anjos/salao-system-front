@@ -1,3 +1,4 @@
+import { provideHttpClient } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { NovoAgendamento } from './novo-agendamento';
@@ -9,6 +10,7 @@ describe('NovoAgendamento', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [NovoAgendamento],
+      providers: [provideHttpClient()],
     }).compileComponents();
 
     fixture = TestBed.createComponent(NovoAgendamento);

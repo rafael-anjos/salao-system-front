@@ -1,5 +1,5 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import { Component, HostListener, inject } from '@angular/core';
+import { Component, HostListener, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   competenciaDe,
@@ -30,7 +30,7 @@ type Variacao = VariacaoPeriodo;
   templateUrl: './financeiro.html',
   styleUrl: './financeiro.css',
 })
-export class Financeiro {
+export class Financeiro implements OnInit {
   readonly estado = inject(SalaoEstadoService);
   readonly hoje = new Date();
   readonly hojeIso = dataIso(this.hoje);
@@ -60,6 +60,10 @@ export class Financeiro {
   mensagem = '';
   mensagemTipo: 'ok' | 'erro' = 'ok';
   processando = false;
+
+  ngOnInit(): void {
+    void this.estado.garantirLancamentos(this.mesContas);
+  }
 
   @HostListener('document:keydown.escape')
   fecharPeloTeclado(): void {
@@ -203,6 +207,7 @@ export class Financeiro {
   mudarPeriodo(periodo: Periodo): void {
     this.periodo = periodo;
     this.mensagem = '';
+    void this.estado.garantirLancamentos(this.mesContas);
   }
 
   abrirConta(): void {
@@ -217,12 +222,12 @@ export class Financeiro {
     this.statusConta = 'pendente';
   }
 
-  salvarConta(): void {
+  async salvarConta(): Promise<void> {
     if (this.processando) {
       return;
     }
     this.processando = true;
-    const resultado = this.estado.criarConta({
+    const resultado = await this.estado.criarConta({
       nome: this.nomeConta,
       valor: Number(this.valorConta),
       tipo: this.tipoConta,
@@ -241,12 +246,12 @@ export class Financeiro {
     this.publicar('ok', resultado.mensagem);
   }
 
-  pagar(conta: ContaVisivel): void {
+  async pagar(conta: ContaVisivel): Promise<void> {
     if (this.processando) {
       return;
     }
     this.processando = true;
-    const resultado = this.estado.marcarContaPaga(conta.lancamentoId);
+    const resultado = await this.estado.marcarContaPaga(conta.lancamentoId);
     this.processando = false;
     this.publicar(resultado.ok ? 'ok' : 'erro', resultado.mensagem);
   }
@@ -255,8 +260,8 @@ export class Financeiro {
     this.confirmandoId = conta.contratoId;
   }
 
-  encerrar(conta: ContaVisivel): void {
-    const resultado = this.estado.encerrarContaFixa(conta.contratoId);
+  async encerrar(conta: ContaVisivel): Promise<void> {
+    const resultado = await this.estado.encerrarContaFixa(conta.contratoId);
     this.confirmandoId = null;
     this.publicar(resultado.ok ? 'ok' : 'erro', resultado.mensagem);
   }
@@ -269,12 +274,12 @@ export class Financeiro {
     this.dataSangria = this.hojeIso;
   }
 
-  salvarSangria(): void {
+  async salvarSangria(): Promise<void> {
     if (this.processando) {
       return;
     }
     this.processando = true;
-    const resultado = this.estado.registrarSangria({
+    const resultado = await this.estado.registrarSangria({
       descricao: this.descricaoSangria,
       valor: Number(this.valorSangria),
       data: this.dataSangria,

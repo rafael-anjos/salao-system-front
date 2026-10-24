@@ -70,7 +70,7 @@ export class NovoAgendamento implements OnInit {
 
   definirCliente(evento: { id: string; nome: string }): void {
     if (evento.id && evento.id !== this.clienteId) {
-      this.estado.acompanharFicha([this.vinculoFicha, this.agendamento?.id ?? ''], evento.id, this.data);
+      void this.estado.acompanharFicha([this.vinculoFicha, this.agendamento?.id ?? ''], evento.id, this.data);
     }
     this.clienteId = evento.id;
     this.clienteNome = evento.nome;
@@ -104,13 +104,13 @@ export class NovoAgendamento implements OnInit {
     this.cancelar.emit();
   }
 
-  onSalvar() {
+  async onSalvar() {
     if (this.somenteLeitura) {
       this.onCancelar();
       return;
     }
 
-    const resultado = this.estado.salvarAgendamento({
+    const resultado = await this.estado.salvarAgendamento({
       id: this.agendamento?.id,
       clienteNome: this.clienteNome,
       clienteId: this.clienteId || undefined,
@@ -127,7 +127,7 @@ export class NovoAgendamento implements OnInit {
     }
 
     if (resultado.id && this.vinculoFicha !== resultado.id) {
-      this.estado.assumirVinculo(this.vinculoFicha, resultado.id);
+      await this.estado.assumirVinculo(this.vinculoFicha, resultado.id);
     }
 
     this.salvar.emit();

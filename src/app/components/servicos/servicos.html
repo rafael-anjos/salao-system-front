@@ -53,6 +53,10 @@
           name="buscaServico">
       </div>
 
+      @if (erroAcao) {
+        <p class="erro" role="alert">{{ erroAcao }}</p>
+      }
+
       <div class="container-tabela">
         <table class="tabela">
           <thead>
@@ -74,7 +78,11 @@
                 <td>
                   <div class="acoes">
                     <button class="btn-acao" type="button" (click)="abrirEdicao(servico)">Editar</button>
-                    <button class="btn-acao" type="button" (click)="abrirStatus(servico)">
+                    <button
+                      class="btn-acao"
+                      type="button"
+                      [disabled]="processandoId === servico.id"
+                      (click)="alternarStatus(servico)">
                       {{ servico.ativo ? 'Desativar' : 'Reativar' }}
                     </button>
                   </div>
@@ -107,58 +115,40 @@
         (click)="$event.stopPropagation()">
         <header class="titulo">
           <h2 id="servico-titulo">{{ tituloPainel }}</h2>
-          @if (painel === 'formulario') {
-            <p>Nome, descrição, preço de venda e duração em minutos.</p>
-          } @else if (alvo?.ativo) {
-            <p>{{ alvo?.nome }} sai da lista de ativos e deixa de aparecer nas vendas.</p>
-          } @else {
-            <p>{{ alvo?.nome }} volta para a lista de serviços ativos.</p>
-          }
+          <p>Nome, descrição, preço de venda e duração em minutos.</p>
         </header>
 
-        @if (painel === 'formulario') {
-          <form (ngSubmit)="salvar()">
+        <form (ngSubmit)="salvar()">
+          <label class="field">
+            Nome
+            <input type="text" name="nome" [(ngModel)]="nome" placeholder="Nome do serviço" required>
+          </label>
+
+          <label class="field">
+            Descrição
+            <textarea name="descricao" rows="3" [(ngModel)]="descricao" placeholder="O que está incluso" required></textarea>
+          </label>
+
+          <div class="row">
             <label class="field">
-              Nome
-              <input type="text" name="nome" [(ngModel)]="nome" placeholder="Nome do serviço" required>
+              Preço de venda
+              <input type="number" name="preco" min="0.01" step="0.01" [(ngModel)]="preco" placeholder="0,00" required>
             </label>
-
             <label class="field">
-              Descrição
-              <textarea name="descricao" rows="3" [(ngModel)]="descricao" placeholder="O que está incluso" required></textarea>
+              Duração (minutos)
+              <input type="number" name="duracao" min="1" step="1" [(ngModel)]="duracaoMinutos" placeholder="60" required>
             </label>
+          </div>
 
-            <div class="row">
-              <label class="field">
-                Preço de venda
-                <input type="number" name="preco" min="0.01" step="0.01" [(ngModel)]="preco" placeholder="0,00" required>
-              </label>
-              <label class="field">
-                Duração (minutos)
-                <input type="number" name="duracao" min="1" step="1" [(ngModel)]="duracaoMinutos" placeholder="60" required>
-              </label>
-            </div>
-
-            @if (erro) {
-              <p class="erro" role="alert">{{ erro }}</p>
-            }
-
-            <div class="foot-btn">
-              <button class="cancel" type="button" (click)="fecharPainel()">Cancelar</button>
-              <button class="save" type="submit">Salvar</button>
-            </div>
-          </form>
-        } @else {
           @if (erro) {
             <p class="erro" role="alert">{{ erro }}</p>
           }
+
           <div class="foot-btn">
             <button class="cancel" type="button" (click)="fecharPainel()">Cancelar</button>
-            <button class="save" type="button" (click)="confirmarStatus()">
-              {{ alvo?.ativo ? 'Desativar' : 'Reativar' }}
-            </button>
+            <button class="save" type="submit">Salvar</button>
           </div>
-        }
+        </form>
       </div>
     </div>
   }

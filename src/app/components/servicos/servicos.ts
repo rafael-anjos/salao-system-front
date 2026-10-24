@@ -1,11 +1,11 @@
 import { CurrencyPipe } from '@angular/common';
-import { Component, HostListener, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SalaoEstadoService, Servico } from '../../core/salao-estado.service';
 import { Notificacoes } from '../notificacoes/notificacoes';
 
 type ListaServicos = 'ativos' | 'inativos';
-type Painel = 'formulario' | 'status' | null;
+type Painel = 'formulario' | null;
 
 @Component({
   selector: 'app-servicos',
@@ -15,6 +15,7 @@ type Painel = 'formulario' | 'status' | null;
 })
 export class Servicos {
   private readonly estado = inject(SalaoEstadoService);
+  private readonly cd = inject(ChangeDetectorRef);
 
   lista: ListaServicos = 'ativos';
   termoBusca = '';
@@ -26,6 +27,8 @@ export class Servicos {
   preco: number | null = null;
   duracaoMinutos: number | null = null;
   erro = '';
+  erroAcao = '';
+  processandoId = '';
 
   get ativos(): Servico[] {
     return this.estado.listarServicos(true);
@@ -69,9 +72,6 @@ export class Servicos {
   }
 
   get tituloPainel(): string {
-    if (this.painel === 'status') {
-      return this.alvo?.ativo ? 'Desativar serviço' : 'Reativar serviço';
-    }
     return this.editandoId ? 'Editar serviço' : 'Novo serviço';
   }
 
@@ -102,10 +102,18 @@ export class Servicos {
     this.painel = 'formulario';
   }
 
-  abrirStatus(servico: Servico): void {
-    this.alvo = servico;
-    this.erro = '';
-    this.painel = 'status';
+  async alternarStatus(servico: Servico): Promise<void> {
+    if (this.processandoId) {
+      return;
+    }
+    this.erroAcao = '';
+    this.processandoId = servico.id;
+    const resultado = await this.estado.definirServicoAtivo(servico.id, !servico.ativo);
+    this.processandoId = '';
+    if (!resultado.ok) {
+      this.erroAcao = resultado.mensagem;
+    }
+    this.cd.detectChanges();
   }
 
   fecharPainel(): void {
@@ -114,8 +122,8 @@ export class Servicos {
     this.alvo = null;
   }
 
-  salvar(): void {
-    const resultado = this.estado.salvarServico({
+  async salvar(): Promise<void> {
+    const resultado = await this.estado.salvarServico({
       id: this.editandoId ?? undefined,
       nome: this.nome,
       descricao: this.descricao,
@@ -132,20 +140,7 @@ export class Servicos {
       this.lista = 'ativos';
     }
     this.fecharPainel();
-  }
-
-  confirmarStatus(): void {
-    if (!this.alvo) {
-      return;
-    }
-
-    const resultado = this.estado.definirServicoAtivo(this.alvo.id, !this.alvo.ativo);
-    if (!resultado.ok) {
-      this.erro = resultado.mensagem;
-      return;
-    }
-
-    this.fecharPainel();
+    this.cd.detectChanges();
   }
 
   @HostListener('document:keydown.escape')

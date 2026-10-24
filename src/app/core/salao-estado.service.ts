@@ -1,4 +1,7 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import { anamneseParaApi, mapearAgendamento, mapearBloqueio, mapearCaixa, mapearCategoria, mapearCliente, mapearConta, mapearDadosSalao, mapearFichaAtendimento, mapearFichaVisita, mapearForma, mapearHorario, mapearMovimentacao, mapearNotificacao, mapearProduto, mapearProfissional, mapearSangria, mapearServico, mapearUsuario } from './api/api.mappers';
+import { SalaoApiService } from './api/salao-api.service';
+import { idNumero, idNumeroObrigatorio, mensagemApi, numeroDe } from './api/api.util';
 
 /**
  * Estado compartilhado da sessão.
@@ -717,6 +720,12 @@ function dataIsoValida(valor: string): boolean {
 
 @Injectable({ providedIn: 'root' })
 export class SalaoEstadoService {
+  private readonly api = inject(SalaoApiService);
+  private carga: Promise<void> | null = null;
+  private readonly contasMes = new Map<string, ContaVisivel[]>();
+  private readonly fichasPorCliente = new Set<string>();
+  carregado = false;
+
   dadosSalao: DadosSalao = {
     nome: 'Eula Moraes Studio',
     telefone: '',
@@ -724,8 +733,8 @@ export class SalaoEstadoService {
   };
   /** Porcentagem máxima do subtotal que o caixa pode descontar. 100 permite até o total. */
   descontoMaximoPercentual = 100;
-  readonly usuarioAtualId = 'usr-paula';
-  readonly usuarioAtual = 'Paula';
+  usuarioAtualId = '';
+  usuarioAtual = '';
   readonly formas: FormaConfigurada[] = [
     { forma: 'Dinheiro', ativa: true, taxaPercentual: 0, maxParcelas: 1 },
     { forma: 'Pix', ativa: true, taxaPercentual: 0, maxParcelas: 1 },
@@ -799,6 +808,163 @@ export class SalaoEstadoService {
 
   private sequencia = 0;
 
+  definirUsuario(usuario: string, nome: string): void {
+    this.usuarioAtual = nome.trim() || usuario.trim();
+    const login = usuario.trim().toLowerCase();
+    const conta = this.usuarios.find((item) => {
+      const identificador = (item.usuario ?? item.nome).trim().toLowerCase();
+      return identificador === login || item.nome.trim().toLowerCase() === this.usuarioAtual.toLowerCase();
+    });
+    this.usuarioAtualId = conta?.id ?? this.usuarioAtualId;
+  }
+
+  limparSessao(): void {
+    this.carregado = false;
+    this.carga = null;
+    this.contasMes.clear();
+    this.fichasPorCliente.clear();
+  }
+
+  async garantirCarregado(): Promise<void> {
+    if (this.carregado) {
+      return;
+    }
+    await this.carregar();
+  }
+
+  async carregar(): Promise<void> {
+    if (!this.api.disponivel) {
+      this.carregado = true;
+      return;
+    }
+    if (this.carga) {
+      return this.carga;
+    }
+    this.carga = this.puxarCadastros()
+      .then(() => {
+        this.carregado = true;
+      })
+      .finally(() => {
+        this.carga = null;
+      });
+    return this.carga;
+  }
+
+  async garantirFichas(clienteId: string): Promise<void> {
+    if (!clienteId || this.fichasPorCliente.has(clienteId) || !this.api.disponivel) {
+      return;
+    }
+    const id = idNumero(clienteId);
+    if (id == null) {
+      return;
+    }
+    const [visitas, atendimentos] = await Promise.all([
+      this.api.fichasVisita(id),
+      this.api.fichasAtendimento(id),
+    ]);
+    this.fichas.push(...visitas.map(mapearFichaVisita).filter((ficha) => !this.fichas.some((atual) => atual.id === ficha.id)));
+    this.fichasAtendimento.push(
+      ...atendimentos
+        .map(mapearFichaAtendimento)
+        .filter((ficha) => !this.fichasAtendimento.some((atual) => atual.id === ficha.id)),
+    );
+    this.fichasPorCliente.add(clienteId);
+  }
+
+  async garantirLancamentos(competencia: string): Promise<void> {
+    if (!/^\d{4}-\d{2}$/.test(competencia)) {
+      return;
+    }
+    if (!this.api.disponivel) {
+      this.gerarLancamentosLocais(competencia);
+      return;
+    }
+    const contas = (await this.api.contas(competencia)).map(mapearConta);
+    this.contasMes.set(competencia, contas);
+  }
+
+  private async puxarCadastros(): Promise<void> {
+    const hoje = dataIso();
+    const inicioSangria = somarDias(hoje, -400);
+    const [
+      salao,
+      horarios,
+      formas,
+      usuarios,
+      profissionais,
+      servicos,
+      clientes,
+      produtos,
+      categorias,
+      agendamentos,
+      caixas,
+      bloqueios,
+      notificacoes,
+      sangrias,
+    ] = await Promise.all([
+      this.api.dadosSalao(),
+      this.api.horarios(),
+      this.api.formas(),
+      this.api.usuarios(),
+      this.api.profissionais(false),
+      this.api.servicos(false),
+      this.api.clientes(),
+      this.api.produtos(),
+      this.api.categorias(),
+      this.api.agendamentos(),
+      this.api.caixas(),
+      this.api.bloqueios(),
+      this.api.notificacoes(),
+      this.api.sangrias(inicioSangria, hoje),
+    ]);
+
+    this.dadosSalao = mapearDadosSalao(salao);
+    this.descontoMaximoPercentual = numeroDe(salao.descontoMaximoPercentual, this.descontoMaximoPercentual);
+    this.substituir(this.horarios, horarios.map(mapearHorario));
+    const formasMapeadas = formas.map(mapearForma).filter((item): item is FormaConfigurada => !!item);
+    if (formasMapeadas.length) {
+      this.substituir(this.formas, formasMapeadas);
+    }
+    this.substituir(this.usuarios, usuarios.map(mapearUsuario));
+    this.substituir(this.profissionais, profissionais.map(mapearProfissional));
+    this.substituir(this.servicos, servicos.map(mapearServico));
+    this.substituir(this.clientes, clientes.map(mapearCliente));
+    this.substituir(this.produtos, produtos.map(mapearProduto));
+    this.substituir(this.categorias, categorias.map(mapearCategoria));
+    this.substituir(this.agendamentos, agendamentos.map(mapearAgendamento));
+    this.substituir(this.caixas, caixas.map(mapearCaixa));
+    this.substituir(this.bloqueios, bloqueios.map(mapearBloqueio));
+    this.substituir(this.notificacoes, notificacoes.map(mapearNotificacao));
+    this.substituir(this.sangrias, sangrias.map(mapearSangria));
+    this.definirUsuario(
+      this.usuarios.find((item) => item.id === this.usuarioAtualId)?.usuario ?? this.usuarioAtual,
+      this.usuarioAtual,
+    );
+
+    const movimentos = await Promise.all(this.caixas.map((caixa) => this.api.movimentosDoCaixa(idNumeroObrigatorio(caixa.id))));
+    this.substituir(
+      this.movimentacoes,
+      movimentos.flat().map((item) => mapearMovimentacao(item, this.usuarioAtual)),
+    );
+  }
+
+  private falha(erro: unknown, padrao?: string): ResultadoOperacao {
+    return { ok: false, mensagem: mensagemApi(erro, padrao ?? 'Não foi possível concluir.') };
+  }
+
+  private upsert<T extends { id: string }>(lista: T[], item: T): void {
+    const indice = lista.findIndex((atual) => atual.id === item.id);
+    if (indice < 0) {
+      lista.push(item);
+      return;
+    }
+    lista[indice] = item;
+  }
+
+  private idProfissionalAtual(): number | undefined {
+    return idNumero(this.usuarioAtualId) ?? idNumero(this.profissionais.find((item) => item.nome === this.usuarioAtual)?.id);
+  }
+
   get caixaAberto(): boolean {
     return this.caixas.some((caixa) => caixa.status === 'aberto');
   }
@@ -807,7 +973,7 @@ export class SalaoEstadoService {
     return this.caixas.find((caixa) => caixa.status === 'aberto');
   }
 
-  abrirCaixa(saldoInicial: number): ResultadoOperacao {
+  async abrirCaixa(saldoInicial: number): Promise<ResultadoOperacao> {
     if (this.caixaAberto) {
       return { ok: false, mensagem: 'Já existe um caixa aberto.' };
     }
@@ -817,18 +983,16 @@ export class SalaoEstadoService {
       return { ok: false, mensagem: 'Informe um saldo inicial válido.' };
     }
 
-    const caixa: CaixaRegistro = {
-      id: this.novoId('C'),
-      abertoEm: new Date().toISOString(),
-      responsavelAbertura: this.usuarioAtual,
-      saldoInicial: saldo,
-      status: 'aberto',
-    };
-    this.caixas.push(caixa);
-    return { ok: true, mensagem: 'Caixa aberto.', id: caixa.id };
+    try {
+      const caixa = mapearCaixa(await this.api.abrirCaixa(saldo, this.idProfissionalAtual()));
+      this.upsert(this.caixas, caixa);
+      return { ok: true, mensagem: 'Caixa aberto.', id: caixa.id };
+    } catch (erro) {
+      return this.falha(erro);
+    }
   }
 
-  fecharCaixa(valorContado: number): ResultadoOperacao {
+  async fecharCaixa(valorContado: number): Promise<ResultadoOperacao> {
     const caixa = this.caixaAbertoAtual;
     if (!caixa) {
       return { ok: false, mensagem: 'Não há caixa aberto para fechar.' };
@@ -839,21 +1003,21 @@ export class SalaoEstadoService {
       return { ok: false, mensagem: 'Informe o valor contado em dinheiro.' };
     }
 
-    const resumo = this.resumoCaixa(caixa.id);
-    caixa.status = 'fechado';
-    caixa.fechadoEm = new Date().toISOString();
-    caixa.responsavelFechamento = this.usuarioAtual;
-    caixa.valorContado = contado;
-    caixa.diferencaDinheiro = arredondar(contado - resumo.esperadoDinheiro);
-    return { ok: true, mensagem: 'Caixa fechado.', id: caixa.id };
+    try {
+      const fechado = mapearCaixa(await this.api.fecharCaixa(idNumeroObrigatorio(caixa.id), contado));
+      this.upsert(this.caixas, fechado);
+      return { ok: true, mensagem: 'Caixa fechado.', id: fechado.id };
+    } catch (erro) {
+      return this.falha(erro);
+    }
   }
 
-  registrarMovimento(dados: {
+  async registrarMovimento(dados: {
     tipo: 'entrada' | 'saida';
     valor: number;
     descricao: string;
     forma: FormaPagamento;
-  }): ResultadoOperacao {
+  }): Promise<ResultadoOperacao> {
     const caixa = this.caixaAbertoAtual;
     if (!caixa) {
       return { ok: false, mensagem: 'Abra o caixa para registrar a movimentação.' };
@@ -881,23 +1045,24 @@ export class SalaoEstadoService {
       }
     }
 
-    const movimento: Movimentacao = {
-      id: this.novoId('M'),
-      caixaId: caixa.id,
-      dataHora: new Date().toISOString(),
-      tipo: dados.tipo,
-      descricao,
-      itens: [],
-      pagamentos: [{ forma: dados.forma, valor }],
-      valor,
-      desconto: 0,
-      responsavel: this.usuarioAtual,
-    };
-    this.movimentacoes.push(movimento);
-    return { ok: true, mensagem: 'Movimentação registrada.', id: movimento.id };
+    try {
+      const movimento = mapearMovimentacao(
+        await this.api.registrarMovimento({
+          tipo: dados.tipo,
+          valor,
+          descricao,
+          forma: dados.forma,
+        }),
+        this.usuarioAtual,
+      );
+      this.upsert(this.movimentacoes, movimento);
+      return { ok: true, mensagem: 'Movimentação registrada.', id: movimento.id };
+    } catch (erro) {
+      return this.falha(erro);
+    }
   }
 
-  registrarVenda(pedido: PedidoVenda): ResultadoOperacao {
+  async registrarVenda(pedido: PedidoVenda): Promise<ResultadoOperacao> {
     const caixa = this.caixaAbertoAtual;
     if (!caixa) {
       return { ok: false, mensagem: 'Abra o caixa para registrar a venda.' };
@@ -1024,43 +1189,45 @@ export class SalaoEstadoService {
       return { ok: false, mensagem: 'A soma dos pagamentos deve ser igual ao total.' };
     }
 
-    for (const item of itens) {
-      if (item.tipo !== 'produto') {
-        continue;
+    try {
+      const venda = mapearMovimentacao(
+        await this.api.registrarVenda({
+          profissionalId: idNumeroObrigatorio(profissional.id),
+          clienteId: idNumero(cliente?.id) ?? null,
+          clienteNome: nomeAvulso || undefined,
+          itens: itens.map((item) => ({
+            tipo: item.tipo,
+            id: idNumeroObrigatorio(item.id),
+            quantidade: item.quantidade,
+          })),
+          desconto,
+          pagamentos: pagamentos.map((pagamento) => ({
+            forma: pagamento.forma,
+            valor: pagamento.valor,
+            parcelas: pagamento.parcelas,
+          })),
+          agendamentoId: idNumero(agendamento?.id) ?? null,
+        }),
+        this.usuarioAtual,
+      );
+      this.upsert(this.movimentacoes, venda);
+      if (agendamento) {
+        agendamento.status = 'Concluído';
+        agendamento.vendaId = venda.id;
       }
-      const produto = this.produtos.find((cadastro) => cadastro.id === item.id);
-      if (!produto) {
-        continue;
-      }
-      produto.estoqueAtual -= item.quantidade;
-      this.atualizarStatus(produto);
+      this.produtos
+        .filter((produto) => itens.some((item) => item.tipo === 'produto' && item.id === produto.id))
+        .forEach((produto) => {
+          const item = itens.find((linha) => linha.tipo === 'produto' && linha.id === produto.id);
+          if (item) {
+            produto.estoqueAtual -= item.quantidade;
+            this.atualizarStatus(produto);
+          }
+        });
+      return { ok: true, mensagem: 'Venda registrada.', id: venda.id };
+    } catch (erro) {
+      return this.falha(erro);
     }
-
-    const venda: Movimentacao = {
-      id: this.novoId('V'),
-      caixaId: caixa.id,
-      dataHora: new Date().toISOString(),
-      tipo: 'venda',
-      descricao: itens.map((item) => item.nome).join(', '),
-      cliente: cliente?.nome ?? (nomeAvulso || undefined),
-      clienteId: cliente?.id,
-      profissional: profissional.nome,
-      profissionalId: profissional.id,
-      itens,
-      pagamentos,
-      valor: total,
-      desconto,
-      responsavel: this.usuarioAtual,
-      agendamentoId: agendamento?.id,
-    };
-    this.movimentacoes.push(venda);
-
-    if (agendamento) {
-      agendamento.status = 'Concluído';
-      agendamento.vendaId = venda.id;
-    }
-
-    return { ok: true, mensagem: 'Venda registrada.', id: venda.id };
   }
 
   resumoCaixa(caixaId: string): ResumoCaixa {
@@ -1164,7 +1331,7 @@ export class SalaoEstadoService {
     );
   }
 
-  salvarAgendamento(dados: AgendamentoCadastro): ResultadoOperacao {
+  async salvarAgendamento(dados: AgendamentoCadastro): Promise<ResultadoOperacao> {
     const clienteNome = dados.clienteNome.trim();
     const hora = this.normalizarHora(dados.hora);
     const observacao = dados.observacao?.trim() ?? '';
@@ -1225,57 +1392,48 @@ export class SalaoEstadoService {
     }
     const nomeAgenda = vinculado?.nome ?? (clienteNome || 'Serviço avulso');
     const clienteId = vinculado?.id ?? '';
-    if (atual) {
-      atual.data = dados.data;
-      atual.hora = hora;
-      atual.cliente = nomeAgenda;
-      atual.clienteId = clienteId;
-      atual.servico = servico.nome;
-      atual.servicoId = servico.id;
-      atual.profissional = profissional.nome;
-      atual.profissionalId = profissional.id;
-      atual.preco = servico.preco;
-      atual.observacao = observacao || undefined;
-      this.acompanharFicha([atual.id], clienteId, dados.data);
-      return { ok: true, mensagem: 'Agendamento atualizado.', id: atual.id };
+    try {
+      const salvo = mapearAgendamento(
+        await this.api.salvarAgendamento(idNumero(dados.id), {
+          id: idNumero(dados.id) ?? null,
+          servicoId: idNumeroObrigatorio(servico.id),
+          data: dados.data,
+          hora,
+          horaInicio: hora,
+          clienteNome: nomeAgenda,
+          nome: nomeAgenda,
+          clienteId: idNumero(clienteId) ?? null,
+          profissionalId: idNumeroObrigatorio(profissional.id),
+          observacao,
+        }),
+      );
+      this.upsert(this.agendamentos, salvo);
+      await this.acompanharFicha([salvo.id], clienteId, dados.data);
+      return { ok: true, mensagem: dados.id ? 'Agendamento atualizado.' : 'Agendamento salvo.', id: salvo.id };
+    } catch (erro) {
+      return this.falha(erro);
     }
-
-    const criado: AgendamentoDia = {
-      id: this.novoId('ag'),
-      data: dados.data,
-      hora,
-      cliente: nomeAgenda,
-      clienteId,
-      servico: servico.nome,
-      servicoId: servico.id,
-      profissional: profissional.nome,
-      profissionalId: profissional.id,
-      status: 'Confirmado',
-      preco: servico.preco,
-      observacao: observacao || undefined,
-    };
-    this.agendamentos.push(criado);
-    return { ok: true, mensagem: 'Agendamento salvo.', id: criado.id };
   }
 
-  moverAgendamento(id: string, data: string, hora: string): ResultadoOperacao {
+  async moverAgendamento(id: string, data: string, hora: string): Promise<ResultadoOperacao> {
     const atual = this.agendamentos.find((item) => item.id === id);
     if (!atual) {
       return { ok: false, mensagem: 'Agendamento não encontrado.' };
     }
-    return this.salvarAgendamento({
-      id: atual.id,
-      clienteNome: atual.cliente,
-      clienteId: atual.clienteId || undefined,
-      servicoId: atual.servicoId,
-      profissionalId: atual.profissionalId,
-      data,
-      hora,
-      observacao: atual.observacao,
-    });
+    const normalizada = this.normalizarHora(hora);
+    if (!normalizada) {
+      return { ok: false, mensagem: 'Informe o horário de início.' };
+    }
+    try {
+      const movido = mapearAgendamento(await this.api.moverAgendamento(idNumeroObrigatorio(id), data, normalizada));
+      this.upsert(this.agendamentos, movido);
+      return { ok: true, mensagem: 'Agendamento atualizado.', id: movido.id };
+    } catch (erro) {
+      return this.falha(erro);
+    }
   }
 
-  alterarStatusAgendamento(id: string, status: 'Aguardando' | 'Confirmado'): ResultadoOperacao {
+  async alterarStatusAgendamento(id: string, status: 'Aguardando' | 'Confirmado'): Promise<ResultadoOperacao> {
     const atual = this.agendamentos.find((item) => item.id === id);
     if (!atual) {
       return { ok: false, mensagem: 'Agendamento não encontrado.' };
@@ -1283,15 +1441,20 @@ export class SalaoEstadoService {
     if (atual.status === 'Concluído' || atual.vendaId) {
       return { ok: false, mensagem: 'Este atendimento já foi finalizado.' };
     }
-    atual.status = status;
-    return {
-      ok: true,
-      mensagem: status === 'Confirmado' ? 'Agendamento confirmado.' : 'Agendamento marcado como pendente.',
-      id: atual.id,
-    };
+    try {
+      const salvo = mapearAgendamento(await this.api.statusAgendamento(idNumeroObrigatorio(id), status));
+      this.upsert(this.agendamentos, salvo);
+      return {
+        ok: true,
+        mensagem: status === 'Confirmado' ? 'Agendamento confirmado.' : 'Agendamento marcado como pendente.',
+        id: salvo.id,
+      };
+    } catch (erro) {
+      return this.falha(erro);
+    }
   }
 
-  excluirAgendamento(id: string): ResultadoOperacao {
+  async excluirAgendamento(id: string): Promise<ResultadoOperacao> {
     const index = this.agendamentos.findIndex((item) => item.id === id);
     if (index < 0) {
       return { ok: false, mensagem: 'Agendamento não encontrado.' };
@@ -1300,9 +1463,14 @@ export class SalaoEstadoService {
     if (atual.status === 'Concluído' || atual.vendaId) {
       return { ok: false, mensagem: 'Este atendimento já foi finalizado.' };
     }
-    this.agendamentos.splice(index, 1);
-    this.acompanharFicha([atual.id], '');
-    return { ok: true, mensagem: 'Agendamento excluído.', id };
+    try {
+      await this.api.excluirAgendamento(idNumeroObrigatorio(id));
+      this.agendamentos.splice(index, 1);
+      await this.acompanharFicha([atual.id], '');
+      return { ok: true, mensagem: 'Agendamento excluído.', id };
+    } catch (erro) {
+      return this.falha(erro);
+    }
   }
 
   listarProfissionais(somenteAtivos = true): Profissional[] {
@@ -1313,7 +1481,7 @@ export class SalaoEstadoService {
     return this.agendamentos.filter((agendamento) => agendamento.profissionalId === id).length;
   }
 
-  salvarProfissional(dados: ProfissionalCadastro): ResultadoOperacao {
+  async salvarProfissional(dados: ProfissionalCadastro): Promise<ResultadoOperacao> {
     const nome = dados.nome.trim();
     const telefone = this.formatarTelefone(dados.telefone);
     const digitos = telefone.replace(/\D/g, '');
@@ -1333,28 +1501,19 @@ export class SalaoEstadoService {
       return { ok: false, mensagem: 'Já existe uma profissional com esse nome.' };
     }
 
-    if (dados.id) {
-      const atual = this.profissionais.find((profissional) => profissional.id === dados.id);
-      if (!atual) {
-        return { ok: false, mensagem: 'Profissional não encontrada.' };
-      }
-      atual.nome = nome;
-      atual.telefone = telefone;
-      this.atualizarNomeNoHistorico(atual.id, nome);
-      return { ok: true, mensagem: 'Profissional atualizada.', id: atual.id };
+    try {
+      const salva = mapearProfissional(
+        await this.api.salvarProfissional(idNumero(dados.id), { nome, telefone }),
+      );
+      this.upsert(this.profissionais, salva);
+      this.atualizarNomeNoHistorico(salva.id, salva.nome);
+      return { ok: true, mensagem: dados.id ? 'Profissional atualizada.' : 'Profissional cadastrada.', id: salva.id };
+    } catch (erro) {
+      return this.falha(erro);
     }
-
-    const criada: Profissional = {
-      id: this.novoId('pro'),
-      nome,
-      telefone,
-      ativo: true,
-    };
-    this.profissionais.push(criada);
-    return { ok: true, mensagem: 'Profissional cadastrada.', id: criada.id };
   }
 
-  definirProfissionalAtivo(id: string, ativo: boolean): ResultadoOperacao {
+  async definirProfissionalAtivo(id: string, ativo: boolean): Promise<ResultadoOperacao> {
     const profissional = this.profissionais.find((item) => item.id === id);
     if (!profissional) {
       return { ok: false, mensagem: 'Profissional não encontrada.' };
@@ -1365,19 +1524,24 @@ export class SalaoEstadoService {
         mensagem: ativo ? 'Esta profissional já está ativa.' : 'Esta profissional já está inativa.',
       };
     }
-    profissional.ativo = ativo;
-    return {
-      ok: true,
-      mensagem: ativo ? 'Profissional reativada.' : 'Profissional desativada.',
-      id: profissional.id,
-    };
+    try {
+      const salva = mapearProfissional(await this.api.definirProfissionalAtivo(idNumeroObrigatorio(id), ativo));
+      this.upsert(this.profissionais, salva);
+      return {
+        ok: true,
+        mensagem: ativo ? 'Profissional reativada.' : 'Profissional desativada.',
+        id: salva.id,
+      };
+    } catch (erro) {
+      return this.falha(erro);
+    }
   }
 
   listarServicos(somenteAtivos = true): Servico[] {
     return this.servicos.filter((servico) => !servico.legado && (!somenteAtivos || servico.ativo));
   }
 
-  salvarServico(dados: ServicoCadastro): ResultadoOperacao {
+  async salvarServico(dados: ServicoCadastro): Promise<ResultadoOperacao> {
     const nome = dados.nome.trim();
     const descricao = dados.descricao.trim();
     const preco = arredondar(Number(dados.preco));
@@ -1404,31 +1568,18 @@ export class SalaoEstadoService {
       return { ok: false, mensagem: 'Já existe um serviço com esse nome.' };
     }
 
-    if (dados.id) {
-      const atual = this.servicos.find((servico) => servico.id === dados.id && !servico.legado);
-      if (!atual) {
-        return { ok: false, mensagem: 'Serviço não encontrado.' };
-      }
-      atual.nome = nome;
-      atual.descricao = descricao;
-      atual.preco = preco;
-      atual.duracaoMinutos = duracao;
-      return { ok: true, mensagem: 'Serviço atualizado.', id: atual.id };
+    try {
+      const salvo = mapearServico(
+        await this.api.salvarServico(idNumero(dados.id), { nome, descricao, preco, duracaoMinutos: duracao }),
+      );
+      this.upsert(this.servicos, salvo);
+      return { ok: true, mensagem: dados.id ? 'Serviço atualizado.' : 'Serviço cadastrado.', id: salvo.id };
+    } catch (erro) {
+      return this.falha(erro);
     }
-
-    const criado: Servico = {
-      id: this.novoId('srv'),
-      nome,
-      descricao,
-      preco,
-      duracaoMinutos: duracao,
-      ativo: true,
-    };
-    this.servicos.push(criado);
-    return { ok: true, mensagem: 'Serviço cadastrado.', id: criado.id };
   }
 
-  definirServicoAtivo(id: string, ativo: boolean): ResultadoOperacao {
+  async definirServicoAtivo(id: string, ativo: boolean): Promise<ResultadoOperacao> {
     const servico = this.servicos.find((item) => item.id === id && !item.legado);
     if (!servico) {
       return { ok: false, mensagem: 'Serviço não encontrado.' };
@@ -1436,15 +1587,20 @@ export class SalaoEstadoService {
     if (servico.ativo === ativo) {
       return { ok: false, mensagem: ativo ? 'Este serviço já está ativo.' : 'Este serviço já está desativado.' };
     }
-    servico.ativo = ativo;
-    return {
-      ok: true,
-      mensagem: ativo ? 'Serviço reativado.' : 'Serviço desativado.',
-      id: servico.id,
-    };
+    try {
+      const salvo = mapearServico(await this.api.definirServicoAtivo(idNumeroObrigatorio(id), ativo));
+      this.upsert(this.servicos, salvo);
+      return {
+        ok: true,
+        mensagem: ativo ? 'Serviço reativado.' : 'Serviço desativado.',
+        id: salvo.id,
+      };
+    } catch (erro) {
+      return this.falha(erro);
+    }
   }
 
-  garantirLancamentos(competencia: string): void {
+  private gerarLancamentosLocais(competencia: string): void {
     if (!/^\d{4}-\d{2}$/.test(competencia)) {
       return;
     }
@@ -1471,7 +1627,11 @@ export class SalaoEstadoService {
   }
 
   contasDoMes(competencia: string): ContaVisivel[] {
-    this.garantirLancamentos(competencia);
+    const cache = this.contasMes.get(competencia);
+    if (cache) {
+      return cache;
+    }
+    this.gerarLancamentosLocais(competencia);
     const hoje = dataIso();
     return this.lancamentosConta
       .filter((item) => item.competencia === competencia)
@@ -1525,16 +1685,21 @@ export class SalaoEstadoService {
     return this.notificacoes.filter((item) => !item.lida).length;
   }
 
-  marcarComoLida(id: string): ResultadoOperacao {
+  async marcarComoLida(id: string): Promise<ResultadoOperacao> {
     const notificacao = this.notificacoes.find((item) => item.id === id);
     if (!notificacao) {
       return { ok: false, mensagem: 'Notificação não encontrada.' };
     }
-    notificacao.lida = true;
-    return { ok: true, mensagem: 'Notificação marcada como lida.' };
+    try {
+      const lida = mapearNotificacao(await this.api.marcarNotificacaoLida(idNumeroObrigatorio(id)));
+      this.upsert(this.notificacoes, lida);
+      return { ok: true, mensagem: 'Notificação marcada como lida.' };
+    } catch (erro) {
+      return this.falha(erro);
+    }
   }
 
-  criarConta(dados: NovaConta): ResultadoOperacao {
+  async criarConta(dados: NovaConta): Promise<ResultadoOperacao> {
     const nome = dados.nome.trim();
     const valor = arredondar(Number(dados.valor));
     if (nome.length < 2) {
@@ -1572,65 +1737,66 @@ export class SalaoEstadoService {
       }
     }
 
-    const contrato: ContaContrato = {
-      id: this.novoId('ctt'),
-      nome,
-      valor,
-      tipo: dados.tipo,
-      diaVencimento: dia,
-      inicioCompetencia: inicio,
-      parcelas,
-    };
-    this.contas.push(contrato);
-    this.garantirLancamentos(inicio);
-
-    if (dados.status === 'pago') {
-      const primeiro = this.lancamentosConta.find(
-        (item) => item.contratoId === contrato.id && item.competencia === inicio,
+    try {
+      const criada = mapearConta(
+        await this.api.criarConta({
+          nome,
+          valor,
+          tipo: dados.tipo,
+          diaVencimento: dia,
+          vencimento: dados.tipo === 'fixa' ? null : dados.vencimento,
+          parcelas,
+          status: dados.status,
+        }),
       );
-      if (primeiro) {
-        primeiro.status = 'pago';
-        primeiro.pagoEm = new Date().toISOString();
-      }
+      await this.garantirLancamentos(inicio);
+      const mensagem =
+        dados.tipo === 'avulsa' && dados.status === 'pago'
+          ? 'Conta avulsa paga. Ela sai da lista e entra nas saídas de hoje.'
+          : 'Conta registrada.';
+      return { ok: true, mensagem, id: criada.contratoId };
+    } catch (erro) {
+      return this.falha(erro);
     }
-
-    const mensagem =
-      dados.tipo === 'avulsa' && dados.status === 'pago'
-        ? 'Conta avulsa paga. Ela sai da lista e entra nas saídas de hoje.'
-        : 'Conta registrada.';
-    return { ok: true, mensagem, id: contrato.id };
   }
 
-  marcarContaPaga(lancamentoId: string): ResultadoOperacao {
-    const lancamento = this.lancamentosConta.find((item) => item.id === lancamentoId);
-    if (!lancamento) {
-      return { ok: false, mensagem: 'Conta não encontrada.' };
-    }
-    if (lancamento.status === 'pago') {
+  async marcarContaPaga(lancamentoId: string): Promise<ResultadoOperacao> {
+    const visivel = [...this.contasMes.values()].flat().find((item) => item.lancamentoId === lancamentoId);
+    if (visivel?.status === 'pago') {
       return { ok: false, mensagem: 'Esta conta já está paga.' };
     }
-    const contrato = this.contas.find((item) => item.id === lancamento.contratoId);
-    lancamento.status = 'pago';
-    lancamento.pagoEm = new Date().toISOString();
-    if (contrato?.tipo === 'avulsa') {
-      return { ok: true, mensagem: 'Conta avulsa paga. Ela sai da lista e entra nas saídas.', id: lancamento.id };
+    try {
+      const paga = mapearConta(await this.api.pagarConta(idNumeroObrigatorio(lancamentoId)));
+      await this.garantirLancamentos(competenciaDe(paga.vencimento));
+      const avulsa = paga.tipo === 'avulsa';
+      return {
+        ok: true,
+        mensagem: avulsa ? 'Conta avulsa paga. Ela sai da lista e entra nas saídas.' : 'Conta marcada como paga.',
+        id: paga.lancamentoId,
+      };
+    } catch (erro) {
+      return this.falha(erro);
     }
-    return { ok: true, mensagem: 'Conta marcada como paga.', id: lancamento.id };
   }
 
-  encerrarContaFixa(contratoId: string): ResultadoOperacao {
-    const contrato = this.contas.find((item) => item.id === contratoId);
-    if (!contrato || contrato.tipo !== 'fixa') {
-      return { ok: false, mensagem: 'Só uma conta fixa pode ser encerrada.' };
+  async encerrarContaFixa(contratoId: string): Promise<ResultadoOperacao> {
+    try {
+      await this.api.encerrarConta(idNumeroObrigatorio(contratoId));
+      for (const [competencia, contas] of this.contasMes) {
+        this.contasMes.set(
+          competencia,
+          contas.map((conta) =>
+            conta.contratoId === contratoId ? { ...conta, podeEncerrar: false } : conta,
+          ),
+        );
+      }
+      return { ok: true, mensagem: 'A conta deixa de se repetir a partir do próximo mês.', id: contratoId };
+    } catch (erro) {
+      return this.falha(erro);
     }
-    if (contrato.canceladaApartir) {
-      return { ok: false, mensagem: 'Esta conta fixa já foi encerrada.' };
-    }
-    contrato.canceladaApartir = deslocarMes(competenciaDe(dataIso()), 1);
-    return { ok: true, mensagem: 'A conta deixa de se repetir a partir do próximo mês.', id: contrato.id };
   }
 
-  registrarSangria(dados: { descricao: string; valor: number; data: string }): ResultadoOperacao {
+  async registrarSangria(dados: { descricao: string; valor: number; data: string }): Promise<ResultadoOperacao> {
     const descricao = dados.descricao.trim();
     const valor = arredondar(Number(dados.valor));
     if (descricao.length < 2) {
@@ -1642,14 +1808,13 @@ export class SalaoEstadoService {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dados.data) || dados.data > dataIso()) {
       return { ok: false, mensagem: 'Informe uma data até hoje.' };
     }
-    const sangria: Sangria = {
-      id: this.novoId('san'),
-      descricao,
-      valor,
-      data: dados.data,
-    };
-    this.sangrias.push(sangria);
-    return { ok: true, mensagem: 'Sangria registrada.', id: sangria.id };
+    try {
+      const sangria = mapearSangria(await this.api.registrarSangria({ descricao, valor, data: dados.data }));
+      this.upsert(this.sangrias, sangria);
+      return { ok: true, mensagem: 'Sangria registrada.', id: sangria.id };
+    } catch (erro) {
+      return this.falha(erro);
+    }
   }
 
   sangriasDoPeriodo(inicio: string, fim: string): Sangria[] {
@@ -1823,7 +1988,7 @@ export class SalaoEstadoService {
     });
   }
 
-  salvarCliente(dados: ClienteCadastro): ResultadoOperacao {
+  async salvarCliente(dados: ClienteCadastro): Promise<ResultadoOperacao> {
     const nome = dados.nome.trim();
     const telefone = this.formatarTelefone(dados.telefone);
     const digitos = telefone.replace(/\D/g, '');
@@ -1873,27 +2038,54 @@ export class SalaoEstadoService {
       if (!atual) {
         return { ok: false, mensagem: 'Cliente não encontrada.' };
       }
-      if (desejaAtivo !== atual.ativo && !this.senhaConfere(dados.senhaAdmin)) {
-        return { ok: false, mensagem: 'Informe a senha da administração para ativar ou desativar a cliente.' };
-      }
       const alergia = atual.anamnese.alergias.trim();
       const semAlergia = registro.tags.filter((tag) => tag.toLowerCase() !== 'alergia');
       registro.tags = alergia ? [...semAlergia, 'Alergia'] : semAlergia;
-      Object.assign(atual, registro);
-      this.atualizarNomeCliente(atual.id, nome);
-      return { ok: true, mensagem: 'Cliente atualizada.', id: atual.id };
     }
 
-    if (!desejaAtivo && !this.senhaConfere(dados.senhaAdmin)) {
-      return { ok: false, mensagem: 'Informe a senha da administração para cadastrar a cliente como inativa.' };
+    try {
+      const salva = mapearCliente(
+        await this.api.salvarCliente(idNumero(dados.id), {
+          ...registro,
+          contato: telefone,
+          senhaAdmin: dados.senhaAdmin,
+        }),
+      );
+      this.upsert(this.clientes, salva);
+      this.atualizarNomeCliente(salva.id, salva.nome);
+      return { ok: true, mensagem: dados.id ? 'Cliente atualizada.' : 'Cliente cadastrada.', id: salva.id };
+    } catch (erro) {
+      return this.falha(erro);
     }
-
-    const criado = montarCliente({ id: this.novoId('cli'), ...registro });
-    this.clientes.push(criado);
-    return { ok: true, mensagem: 'Cliente cadastrada.', id: criado.id };
   }
 
-  salvarAnamnese(clienteId: string, anamnese: AnamneseCapilar, consentimento: boolean): ResultadoOperacao {
+  async definirClienteAtivo(id: string, ativo: boolean, senhaAdmin: string): Promise<ResultadoOperacao> {
+    const cliente = this.clientes.find((item) => item.id === id);
+    if (!cliente) {
+      return { ok: false, mensagem: 'Cliente não encontrada.' };
+    }
+    if (cliente.ativo === ativo) {
+      return { ok: false, mensagem: ativo ? 'Essa cliente já está ativa.' : 'Essa cliente já está inativa.' };
+    }
+    if (!senhaAdmin.trim()) {
+      return { ok: false, mensagem: 'Informe a senha de administradora para alterar o cadastro.' };
+    }
+    return this.salvarCliente({
+      id: cliente.id,
+      nome: cliente.nome,
+      telefone: cliente.telefone,
+      nascimento: cliente.nascimento,
+      email: cliente.email,
+      instagram: cliente.instagram,
+      observacoes: cliente.observacoes,
+      tags: cliente.tags,
+      consentimentoSaude: cliente.consentimentoSaude,
+      ativo,
+      senhaAdmin,
+    });
+  }
+
+  async salvarAnamnese(clienteId: string, anamnese: AnamneseCapilar, consentimento: boolean): Promise<ResultadoOperacao> {
     const cliente = this.clientes.find((item) => item.id === clienteId);
     if (!cliente) {
       return { ok: false, mensagem: 'Cliente não encontrada.' };
@@ -1904,25 +2096,15 @@ export class SalaoEstadoService {
     if (pedeSaude && !consentimento) {
       return { ok: false, mensagem: 'Marque o consentimento para guardar dados de saúde.' };
     }
-    cliente.consentimentoSaude = consentimento || cliente.consentimentoSaude;
-    cliente.observacoesSaude = saude;
-    cliente.anamnese = {
-      ...anamneseVazia(),
-      ...anamnese,
-      alergias,
-      observacoesSaude: saude,
-      cuidadosCasa: anamnese.cuidadosCasa.trim(),
-      preferencias: anamnese.preferencias.trim(),
-      comprimento: anamnese.comprimento.trim(),
-      testeMechaData: anamnese.testeMechaData.trim(),
-      quimica: anamnese.quimica
-        .filter((item) => TIPOS_QUIMICA.includes(item.tipo))
-        .map((item) => ({ tipo: item.tipo, dataAproximada: item.dataAproximada.trim() })),
-      condicoes: anamnese.condicoes.filter((item) => CONDICOES_CABELO.includes(item)),
-    };
-    const semAlergia = cliente.tags.filter((tag) => tag.toLowerCase() !== 'alergia');
-    cliente.tags = alergias ? [...semAlergia, 'Alergia'] : semAlergia;
-    return { ok: true, mensagem: 'Ficha de anamnese salva.', id: cliente.id };
+    try {
+      const salva = mapearCliente(
+        await this.api.salvarAnamnese(idNumeroObrigatorio(clienteId), anamneseParaApi(anamnese, consentimento)),
+      );
+      this.upsert(this.clientes, salva);
+      return { ok: true, mensagem: 'Ficha de anamnese salva.', id: salva.id };
+    } catch (erro) {
+      return this.falha(erro);
+    }
   }
 
   fichasDaCliente(clienteId: string): FichaVisita[] {
@@ -1971,7 +2153,7 @@ export class SalaoEstadoService {
     };
   }
 
-  salvarFicha(dados: FichaVisitaCadastro): ResultadoOperacao {
+  async salvarFicha(dados: FichaVisitaCadastro): Promise<ResultadoOperacao> {
     const cliente = this.clientes.find((item) => item.id === dados.clienteId);
     if (!cliente) {
       return { ok: false, mensagem: 'Cliente não encontrada.' };
@@ -2002,46 +2184,55 @@ export class SalaoEstadoService {
       return { ok: false, mensagem: 'Informe o valor cobrado.' };
     }
 
-    const ficha: FichaVisita = {
-      id: dados.id ?? this.novoId('fv'),
-      clienteId: cliente.id,
-      agendamentoId: dados.agendamentoId,
-      data: dados.data,
-      servico,
-      profissional,
-      produtos,
-      observacoes: dados.observacoes?.trim() ?? '',
-      retorno: dados.retorno?.trim() ?? '',
-      fotos: [],
-      valor,
-      vendaId: dados.vendaId || (dados.id ? this.fichas.find((item) => item.id === dados.id)?.vendaId : undefined),
-    };
-    if (dados.id) {
-      const index = this.fichas.findIndex((item) => item.id === dados.id);
-      if (index < 0) {
-        return { ok: false, mensagem: 'Atendimento não encontrado.' };
-      }
-      this.fichas[index] = ficha;
-      return { ok: true, mensagem: 'Ficha do atendimento atualizada.', id: ficha.id };
+    try {
+      const ficha = mapearFichaVisita(
+        await this.api.salvarFichaVisita(idNumeroObrigatorio(cliente.id), {
+          id: idNumero(dados.id) ?? null,
+          clienteId: idNumeroObrigatorio(cliente.id),
+          agendamentoId: idNumero(dados.agendamentoId) ?? null,
+          data: dados.data,
+          servico,
+          profissional,
+          produtos,
+          observacoes: dados.observacoes?.trim() ?? '',
+          retorno: dados.retorno?.trim() ?? '',
+          fotos: (dados.fotos ?? []).map((foto) => ({ momento: foto.momento, dados: foto.dados })),
+          valor,
+          vendaId: idNumero(dados.vendaId) ?? null,
+        }),
+      );
+      this.upsert(this.fichas, ficha);
+      return {
+        ok: true,
+        mensagem: dados.id ? 'Ficha do atendimento atualizada.' : 'Ficha do atendimento registrada.',
+        id: ficha.id,
+      };
+    } catch (erro) {
+      return this.falha(erro);
     }
-    this.fichas.push(ficha);
-    return { ok: true, mensagem: 'Ficha do atendimento registrada.', id: ficha.id };
   }
 
   senhaConfere(senha: string | undefined | null): boolean {
     return typeof senha === 'string' && senha.length > 0 && senha === this.senha;
   }
 
-  salvarResumoCliente(clienteId: string, dados: { alergia: string; observacoesSaude: string }): ResultadoOperacao {
+  async salvarResumoCliente(clienteId: string, dados: { alergia: string; observacoesSaude: string }): Promise<ResultadoOperacao> {
     const cliente = this.clientes.find((item) => item.id === clienteId);
     if (!cliente) {
       return { ok: false, mensagem: 'Cliente não encontrada.' };
     }
-    this.definirAlergia(cliente, dados.alergia);
-    const saude = dados.observacoesSaude.trim();
-    cliente.observacoesSaude = saude;
-    cliente.anamnese = { ...cliente.anamnese, observacoesSaude: saude };
-    return { ok: true, mensagem: 'Resumo atualizado.', id: cliente.id };
+    try {
+      const salva = mapearCliente(
+        await this.api.salvarResumoCliente(idNumeroObrigatorio(clienteId), {
+          alergia: dados.alergia,
+          observacoesSaude: dados.observacoesSaude,
+        }),
+      );
+      this.upsert(this.clientes, salva);
+      return { ok: true, mensagem: 'Resumo atualizado.', id: salva.id };
+    } catch (erro) {
+      return this.falha(erro);
+    }
   }
 
   fichaDoAtendimento(visita: FichaVisita): FichaAtendimento | null {
@@ -2081,7 +2272,7 @@ export class SalaoEstadoService {
     return this.fichasAnteriores(clienteId).find((ficha) => ficha.id !== ignorarId) ?? null;
   }
 
-  salvarFichaAtendimento(dados: FichaAtendimentoCadastro, senhaAdmin?: string): ResultadoOperacao {
+  async salvarFichaAtendimento(dados: FichaAtendimentoCadastro, senhaAdmin?: string): Promise<ResultadoOperacao> {
     const cliente = this.clientes.find((item) => item.id === dados.clienteId);
     if (!cliente) {
       return { ok: false, mensagem: 'Cliente não encontrada.' };
@@ -2125,26 +2316,50 @@ export class SalaoEstadoService {
       registro.atendimentoId = dados.atendimentoId || atual.atendimentoId;
       registro.agendamentoId = dados.agendamentoId || atual.agendamentoId;
       registro.vinculo = dados.vinculo || atual.vinculo;
-      this.fichasAtendimento[index] = registro;
-    } else {
-      this.fichasAtendimento.push(registro);
     }
 
-    const temFichaMaisNova = this.fichasAtendimento.some(
-      (outra) => outra.clienteId === cliente.id && outra.id !== registro.id && outra.data > registro.data,
-    );
-    if (!temFichaMaisNova) {
-      this.definirAlergia(cliente, registro.alergia);
+    try {
+      const salva = mapearFichaAtendimento(
+        await this.api.salvarFichaAtendimento(idNumeroObrigatorio(cliente.id), {
+          id: idNumero(registro.id) ?? null,
+          clienteId: idNumeroObrigatorio(cliente.id),
+          agendamentoId: idNumero(registro.agendamentoId) ?? null,
+          atendimentoId: idNumero(registro.atendimentoId) ?? null,
+          vinculo: registro.vinculo,
+          data: registro.data,
+          status: registro.status,
+          procedimentos: registro.procedimentos,
+          cor: registro.cor,
+          progressiva: registro.progressiva,
+          alergia: registro.alergia,
+          observacoes: registro.observacoes,
+          senhaAdmin,
+        }),
+      );
+      this.upsert(this.fichasAtendimento, salva);
+      const temFichaMaisNova = this.fichasAtendimento.some(
+        (outra) => outra.clienteId === cliente.id && outra.id !== salva.id && outra.data > salva.data,
+      );
+      if (!temFichaMaisNova) {
+        this.definirAlergia(cliente, salva.alergia);
+      }
+      const verbo = salva.status === 'finalizada' ? 'Ficha finalizada.' : 'Rascunho da ficha salvo.';
+      return { ok: true, mensagem: verbo, id: salva.id };
+    } catch (erro) {
+      return this.falha(erro);
     }
-    const verbo = registro.status === 'finalizada' ? 'Ficha finalizada.' : 'Rascunho da ficha salvo.';
-    return { ok: true, mensagem: verbo, id: registro.id };
   }
 
-  assumirVinculo(vinculo: string, agendamentoId: string): void {
+  async assumirVinculo(vinculo: string, agendamentoId: string): Promise<void> {
     if (!vinculo || vinculo === agendamentoId) {
       return;
     }
     const agendamento = this.agendamentos.find((item) => item.id === agendamentoId);
+    try {
+      await this.api.assumirVinculo(idNumeroObrigatorio(agendamentoId), vinculo);
+    } catch {
+      // o cache local ainda acompanha a ficha
+    }
     for (const ficha of this.fichasAtendimento) {
       if (ficha.vinculo !== vinculo) {
         continue;
@@ -2163,7 +2378,7 @@ export class SalaoEstadoService {
    * A ficha do serviço acompanha a cliente e a data do agendamento enquanto ainda não entrou no histórico.
    * Sem cliente, o rascunho é descartado.
    */
-  acompanharFicha(chaves: string[], clienteId: string, data?: string): void {
+  async acompanharFicha(chaves: string[], clienteId: string, data?: string): Promise<void> {
     const refs = chaves.filter(Boolean);
     if (!refs.length) {
       return;
@@ -2189,7 +2404,7 @@ export class SalaoEstadoService {
    * Fecha o atendimento: a ficha do serviço vira uma visita no histórico.
    * Sem ficha de serviço, só grava visita quando o caixa pede o retorno.
    */
-  publicarFichaDoAgendamento(
+  async publicarFichaDoAgendamento(
     agendamentoId: string,
     extra?: {
       servico?: string;
@@ -2199,7 +2414,7 @@ export class SalaoEstadoService {
       retorno?: string;
       registrarVisita?: boolean;
     },
-  ): ResultadoOperacao | null {
+  ): Promise<ResultadoOperacao | null> {
     const fichaServico = this.fichasAtendimento.find(
       (ficha) => ficha.agendamentoId === agendamentoId || ficha.vinculo === agendamentoId,
     );
@@ -2234,7 +2449,7 @@ export class SalaoEstadoService {
       return { ok: true, mensagem: 'Ficha do atendimento atualizada.', id: existente.id };
     }
 
-    const criada = this.salvarFicha({
+    const criada = await this.salvarFicha({
       clienteId: agendamento.clienteId,
       agendamentoId,
       data: agendamento.data,
@@ -2251,15 +2466,15 @@ export class SalaoEstadoService {
     return criada;
   }
 
-  publicarFichaAvulsa(
+  async publicarFichaAvulsa(
     vinculo: string,
     dados: { clienteId: string; servico: string; profissional: string; valor: number; data: string; vendaId?: string },
-  ): void {
+  ): Promise<void> {
     const anamnese = this.fichasAtendimento.find((ficha) => ficha.vinculo === vinculo && ficha.clienteId === dados.clienteId);
     if (!anamnese) {
       return;
     }
-    const criada = this.salvarFicha({
+    const criada = await this.salvarFicha({
       clienteId: dados.clienteId,
       data: dados.data,
       servico: dados.servico,
@@ -2368,7 +2583,7 @@ export class SalaoEstadoService {
     return { ...this.dadosSalao };
   }
 
-  salvarDadosSalao(dados: DadosSalao): ResultadoOperacao {
+  async salvarDadosSalao(dados: DadosSalao): Promise<ResultadoOperacao> {
     const nome = dados.nome.trim();
     const endereco = dados.endereco.trim();
     const digitos = dados.telefone.replace(/\D/g, '');
@@ -2381,21 +2596,33 @@ export class SalaoEstadoService {
     if (endereco.length < 5) {
       return { ok: false, mensagem: 'Informe o endereço do salão.' };
     }
-    this.dadosSalao = {
-      nome,
-      telefone: this.formatarTelefone(dados.telefone),
-      endereco,
-    };
-    return { ok: true, mensagem: 'Dados do salão salvos.' };
+    try {
+      const salvo = mapearDadosSalao(
+        await this.api.salvarDadosSalao({
+          nome,
+          telefone: this.formatarTelefone(dados.telefone),
+          endereco,
+        }),
+      );
+      this.dadosSalao = salvo;
+      return { ok: true, mensagem: 'Dados do salão salvos.' };
+    } catch (erro) {
+      return this.falha(erro);
+    }
   }
 
-  salvarDescontoMaximo(percentual: number): ResultadoOperacao {
+  async salvarDescontoMaximo(percentual: number): Promise<ResultadoOperacao> {
     const valor = Number(percentual);
     if (!Number.isFinite(valor) || valor < 0 || valor > 100) {
       return { ok: false, mensagem: 'Informe um desconto máximo entre 0 e 100%.' };
     }
-    this.descontoMaximoPercentual = arredondar(valor);
-    return { ok: true, mensagem: 'Desconto máximo salvo.' };
+    try {
+      const salvo = await this.api.salvarDesconto(arredondar(valor));
+      this.descontoMaximoPercentual = numeroDe(salvo.descontoMaximoPercentual, arredondar(valor));
+      return { ok: true, mensagem: 'Desconto máximo salvo.' };
+    } catch (erro) {
+      return this.falha(erro);
+    }
   }
 
   tetoDesconto(subtotal: number): number {
@@ -2448,7 +2675,7 @@ export class SalaoEstadoService {
     return this.horarios.find((item) => item.dia === new Date(ano, mes - 1, dia).getDay());
   }
 
-  salvarHorarios(horarios: HorarioFuncionamento[]): ResultadoOperacao {
+  async salvarHorarios(horarios: HorarioFuncionamento[]): Promise<ResultadoOperacao> {
     const dias = new Set(horarios.map((horario) => horario.dia));
     if (dias.size !== DIAS_SEMANA.length || DIAS_SEMANA.some((dia) => !dias.has(dia.dia))) {
       return { ok: false, mensagem: 'Informe o horário de todos os dias da semana.' };
@@ -2469,15 +2696,19 @@ export class SalaoEstadoService {
       });
     }
 
-    this.substituir(this.horarios, normalizados);
-    return { ok: true, mensagem: 'Horários salvos.' };
+    try {
+      this.substituir(this.horarios, (await this.api.salvarHorarios(normalizados)).map(mapearHorario));
+      return { ok: true, mensagem: 'Horários salvos.' };
+    } catch (erro) {
+      return this.falha(erro);
+    }
   }
 
   listarBloqueios(): BloqueioAgenda[] {
     return [...this.bloqueios].sort((a, b) => a.dataInicio.localeCompare(b.dataInicio) || a.id.localeCompare(b.id));
   }
 
-  salvarBloqueio(dados: BloqueioCadastro): ResultadoOperacao {
+  async salvarBloqueio(dados: BloqueioCadastro): Promise<ResultadoOperacao> {
     const motivo = dados.motivo.trim();
     if (!motivo) {
       return { ok: false, mensagem: 'Informe o motivo do bloqueio.' };
@@ -2499,43 +2730,45 @@ export class SalaoEstadoService {
       }
     }
 
-    const registro: BloqueioAgenda = {
-      id: dados.id ?? this.novoId('blq'),
-      dataInicio: dados.dataInicio,
-      dataFim: dados.dataFim,
-      horaInicio,
-      horaFim,
-      diaInteiro: dados.diaInteiro,
-      motivo,
-    };
-
-    if (dados.id) {
-      const indice = this.bloqueios.findIndex((item) => item.id === dados.id);
-      if (indice < 0) {
-        return { ok: false, mensagem: 'Bloqueio não encontrado.' };
-      }
-      this.bloqueios[indice] = registro;
-      return { ok: true, mensagem: 'Bloqueio atualizado.', id: registro.id };
+    try {
+      const registro = mapearBloqueio(
+        await this.api.bloquear({
+          id: idNumero(dados.id) ?? null,
+          data: dados.dataInicio,
+          dataInicio: dados.dataInicio,
+          dataFim: dados.dataFim,
+          horaInicio: horaInicio || null,
+          horaFim: horaFim || null,
+          diaInteiro: dados.diaInteiro,
+          motivo,
+        }),
+      );
+      this.upsert(this.bloqueios, registro);
+      return { ok: true, mensagem: dados.id ? 'Bloqueio atualizado.' : 'Bloqueio salvo.', id: registro.id };
+    } catch (erro) {
+      return this.falha(erro);
     }
-
-    this.bloqueios.push(registro);
-    return { ok: true, mensagem: 'Bloqueio salvo.', id: registro.id };
   }
 
-  removerBloqueio(id: string): ResultadoOperacao {
+  async removerBloqueio(id: string): Promise<ResultadoOperacao> {
     const indice = this.bloqueios.findIndex((item) => item.id === id);
     if (indice < 0) {
       return { ok: false, mensagem: 'Bloqueio não encontrado.' };
     }
-    this.bloqueios.splice(indice, 1);
-    return { ok: true, mensagem: 'Bloqueio removido.' };
+    try {
+      await this.api.removerBloqueio(idNumeroObrigatorio(id));
+      this.bloqueios.splice(indice, 1);
+      return { ok: true, mensagem: 'Bloqueio removido.' };
+    } catch (erro) {
+      return this.falha(erro);
+    }
   }
 
   listarUsuarios(): UsuarioSalao[] {
     return this.usuarios.map((usuario) => ({ ...usuario, acessos: [...usuario.acessos] }));
   }
 
-  cadastrarOperador(dados: UsuarioOperadorCadastro): ResultadoOperacao {
+  async cadastrarOperador(dados: UsuarioOperadorCadastro): Promise<ResultadoOperacao> {
     const nome = dados.nome.trim();
     if (nome.length < 2) {
       return { ok: false, mensagem: 'Informe o nome da funcionária.' };
@@ -2547,18 +2780,16 @@ export class SalaoEstadoService {
     if (!acessos?.length) {
       return { ok: false, mensagem: 'Escolha ao menos uma tela.' };
     }
-    const usuario: UsuarioSalao = {
-      id: this.novoId('usr'),
-      nome,
-      perfil: 'OPERADOR',
-      ativo: true,
-      acessos,
-    };
-    this.usuarios.push(usuario);
-    return { ok: true, mensagem: 'Funcionária cadastrada.', id: usuario.id };
+    try {
+      const usuario = mapearUsuario(await this.api.cadastrarOperador({ nome, acessos }));
+      this.upsert(this.usuarios, usuario);
+      return { ok: true, mensagem: 'Funcionária cadastrada.', id: usuario.id };
+    } catch (erro) {
+      return this.falha(erro);
+    }
   }
 
-  definirAcessos(id: string, acessosInformados: ModuloAcesso[]): ResultadoOperacao {
+  async definirAcessos(id: string, acessosInformados: ModuloAcesso[]): Promise<ResultadoOperacao> {
     const usuario = this.usuarios.find((item) => item.id === id);
     if (!usuario) {
       return { ok: false, mensagem: 'Usuário não encontrado.' };
@@ -2570,11 +2801,16 @@ export class SalaoEstadoService {
     if (!acessos?.length) {
       return { ok: false, mensagem: 'Escolha ao menos uma tela.' };
     }
-    usuario.acessos = acessos;
-    return { ok: true, mensagem: 'Acessos atualizados.' };
+    try {
+      const salvo = mapearUsuario(await this.api.definirAcessos(idNumeroObrigatorio(id), acessos));
+      this.upsert(this.usuarios, salvo);
+      return { ok: true, mensagem: 'Acessos atualizados.' };
+    } catch (erro) {
+      return this.falha(erro);
+    }
   }
 
-  definirUsuarioAtivo(id: string, ativo: boolean): ResultadoOperacao {
+  async definirUsuarioAtivo(id: string, ativo: boolean): Promise<ResultadoOperacao> {
     const usuario = this.usuarios.find((item) => item.id === id);
     if (!usuario) {
       return { ok: false, mensagem: 'Usuário não encontrado.' };
@@ -2582,11 +2818,16 @@ export class SalaoEstadoService {
     if (usuario.perfil === 'ADMIN') {
       return { ok: false, mensagem: 'A conta da administradora não pode ser desativada.' };
     }
-    usuario.ativo = ativo;
-    return { ok: true, mensagem: ativo ? 'Funcionária reativada.' : 'Funcionária desativada.' };
+    try {
+      const salvo = mapearUsuario(await this.api.definirUsuarioAtivo(idNumeroObrigatorio(id), ativo));
+      this.upsert(this.usuarios, salvo);
+      return { ok: true, mensagem: ativo ? 'Funcionária reativada.' : 'Funcionária desativada.' };
+    } catch (erro) {
+      return this.falha(erro);
+    }
   }
 
-  salvarProduto(dados: ProdutoCadastro): ResultadoOperacao {
+  async salvarProduto(dados: ProdutoCadastro): Promise<ResultadoOperacao> {
     const nome = dados.nome.trim();
     const codigoBarras = dados.codigoBarras.trim();
     const unidade = dados.unidade.trim();
@@ -2640,43 +2881,31 @@ export class SalaoEstadoService {
       }
     }
 
-    if (dados.id) {
-      const atual = this.produtos.find((produto) => produto.id === dados.id);
-      if (!atual) {
-        return { ok: false, mensagem: 'Produto não encontrado.' };
-      }
-      atual.nome = nome;
-      atual.categoria = categoria.nome;
-      atual.uso = dados.uso;
-      atual.unidade = unidade;
-      atual.codigoBarras = codigoBarras;
-      atual.precoCusto = precoCusto;
-      atual.preco = preco;
-      atual.estoqueMinimo = estoqueMinimo;
-      atual.estoqueAtual = estoqueAtual;
-      this.atualizarStatus(atual);
-      return { ok: true, mensagem: 'Produto atualizado.', id: atual.id };
+    try {
+      const salvo = mapearProduto(
+        await this.api.salvarProduto(idNumero(dados.id), {
+          nome,
+          descricao: nome,
+          categoriaId: idNumero(categoria.id),
+          categoria: categoria.nome,
+          precoVenda: preco,
+          preco,
+          precoCusto,
+          unidade,
+          estoqueMinimo,
+          estoqueAtual,
+          codigoBarras,
+          uso: dados.uso,
+        }),
+      );
+      this.upsert(this.produtos, salvo);
+      return { ok: true, mensagem: dados.id ? 'Produto atualizado.' : 'Produto cadastrado.', id: salvo.id };
+    } catch (erro) {
+      return this.falha(erro);
     }
-
-    const criado: ProdutoEstoque = {
-      id: this.novoId('prd'),
-      nome,
-      categoria: categoria.nome,
-      uso: dados.uso,
-      unidade,
-      codigoBarras,
-      precoCusto,
-      preco,
-      estoqueMinimo,
-      estoqueAtual,
-      status: 'normal',
-    };
-    this.atualizarStatus(criado);
-    this.produtos.push(criado);
-    return { ok: true, mensagem: 'Produto cadastrado.', id: criado.id };
   }
 
-  movimentarProduto(id: string, tipo: 'entrada' | 'saida', quantidadeInformada: number): ResultadoOperacao {
+  async movimentarProduto(id: string, tipo: 'entrada' | 'saida', quantidadeInformada: number): Promise<ResultadoOperacao> {
     const produto = this.produtos.find((item) => item.id === id);
     if (!produto) {
       return { ok: false, mensagem: 'Produto não encontrado.' };
@@ -2693,22 +2922,36 @@ export class SalaoEstadoService {
       };
     }
 
-    produto.estoqueAtual += tipo === 'entrada' ? quantidade : -quantidade;
-    this.atualizarStatus(produto);
-    return {
-      ok: true,
-      mensagem: tipo === 'entrada' ? 'Entrada registrada.' : 'Saída registrada.',
-      id: produto.id,
-    };
+    try {
+      await this.api.movimentarProduto({
+        produtoId: idNumeroObrigatorio(id),
+        tipo,
+        quantidade,
+      });
+      produto.estoqueAtual += tipo === 'entrada' ? quantidade : -quantidade;
+      this.atualizarStatus(produto);
+      return {
+        ok: true,
+        mensagem: tipo === 'entrada' ? 'Entrada registrada.' : 'Saída registrada.',
+        id: produto.id,
+      };
+    } catch (erro) {
+      return this.falha(erro);
+    }
   }
 
-  removerProduto(id: string): ResultadoOperacao {
+  async removerProduto(id: string): Promise<ResultadoOperacao> {
     const indice = this.produtos.findIndex((produto) => produto.id === id);
     if (indice < 0) {
       return { ok: false, mensagem: 'Produto não encontrado.' };
     }
-    this.produtos.splice(indice, 1);
-    return { ok: true, mensagem: 'Produto excluído.' };
+    try {
+      await this.api.removerProduto(idNumeroObrigatorio(id));
+      this.produtos.splice(indice, 1);
+      return { ok: true, mensagem: 'Produto excluído.' };
+    } catch (erro) {
+      return this.falha(erro);
+    }
   }
 
   listarCategorias(tipo: TipoCategoria): CategoriaSalao[] {
@@ -2720,7 +2963,7 @@ export class SalaoEstadoService {
     return this.produtos.filter((produto) => produto.categoria.trim().toLowerCase() === alvo).length;
   }
 
-  salvarCategoria(dados: CategoriaCadastro): ResultadoOperacao {
+  async salvarCategoria(dados: CategoriaCadastro): Promise<ResultadoOperacao> {
     const nome = dados.nome.trim();
     if (nome.length < 2) {
       return { ok: false, mensagem: 'Informe o nome da categoria.' };
@@ -2735,28 +2978,26 @@ export class SalaoEstadoService {
       return { ok: false, mensagem: 'Já existe uma categoria com esse nome.' };
     }
 
-    if (dados.id) {
-      const atual = this.categorias.find((categoria) => categoria.id === dados.id);
-      if (!atual || atual.tipo !== dados.tipo) {
-        return { ok: false, mensagem: 'Categoria não encontrada.' };
-      }
-      if (atual.tipo === 'estoque') {
-        for (const produto of this.produtos) {
-          if (produto.categoria.trim().toLowerCase() === atual.nome.trim().toLowerCase()) {
-            produto.categoria = nome;
+    try {
+      const salva = mapearCategoria(await this.api.salvarCategoria(idNumero(dados.id), { nome, tipo: dados.tipo }));
+      if (dados.id) {
+        const atual = this.categorias.find((categoria) => categoria.id === dados.id);
+        if (atual?.tipo === 'estoque') {
+          for (const produto of this.produtos) {
+            if (produto.categoria.trim().toLowerCase() === atual.nome.trim().toLowerCase()) {
+              produto.categoria = nome;
+            }
           }
         }
       }
-      atual.nome = nome;
-      return { ok: true, mensagem: 'Categoria atualizada.' };
+      this.upsert(this.categorias, salva);
+      return { ok: true, mensagem: dados.id ? 'Categoria atualizada.' : 'Categoria salva.', id: salva.id };
+    } catch (erro) {
+      return this.falha(erro);
     }
-
-    const criada: CategoriaSalao = { id: this.novoId('cat'), nome, tipo: dados.tipo };
-    this.categorias.push(criada);
-    return { ok: true, mensagem: 'Categoria salva.', id: criada.id };
   }
 
-  removerCategoria(id: string): ResultadoOperacao {
+  async removerCategoria(id: string): Promise<ResultadoOperacao> {
     const indice = this.categorias.findIndex((categoria) => categoria.id === id);
     if (indice < 0) {
       return { ok: false, mensagem: 'Categoria não encontrada.' };
@@ -2765,30 +3006,51 @@ export class SalaoEstadoService {
     if (categoria.tipo === 'estoque' && this.produtosNaCategoria(categoria.nome) > 0) {
       return { ok: false, mensagem: 'Esta categoria ainda tem produtos no estoque.' };
     }
-    this.categorias.splice(indice, 1);
-    return { ok: true, mensagem: 'Categoria removida.' };
+    try {
+      await this.api.removerCategoria(idNumeroObrigatorio(id));
+      this.categorias.splice(indice, 1);
+      return { ok: true, mensagem: 'Categoria removida.' };
+    } catch (erro) {
+      return this.falha(erro);
+    }
   }
 
   listarFormas(): FormaConfigurada[] {
     return this.formas.map((forma) => ({ ...forma }));
   }
 
-  salvarFormas(formas: FormaConfigurada[]): ResultadoOperacao {
+  async salvarFormas(formas: FormaConfigurada[]): Promise<ResultadoOperacao> {
     const validacao = this.validarFormas(formas, 'formas');
     if (!validacao.ok) {
       return validacao;
     }
     this.aplicarFormas(validacao.formas, 'formas');
-    return { ok: true, mensagem: 'Formas de pagamento salvas.' };
+    try {
+      this.substituir(
+        this.formas,
+        (await this.api.salvarFormas(this.formas)).map(mapearForma).filter((item): item is FormaConfigurada => !!item),
+      );
+      return { ok: true, mensagem: 'Formas de pagamento salvas.' };
+    } catch (erro) {
+      return this.falha(erro);
+    }
   }
 
-  salvarTaxas(formas: FormaConfigurada[]): ResultadoOperacao {
+  async salvarTaxas(formas: FormaConfigurada[]): Promise<ResultadoOperacao> {
     const validacao = this.validarFormas(formas, 'taxas');
     if (!validacao.ok) {
       return validacao;
     }
     this.aplicarFormas(validacao.formas, 'taxas');
-    return { ok: true, mensagem: 'Taxas salvas.' };
+    try {
+      this.substituir(
+        this.formas,
+        (await this.api.salvarFormas(this.formas)).map(mapearForma).filter((item): item is FormaConfigurada => !!item),
+      );
+      return { ok: true, mensagem: 'Taxas salvas.' };
+    } catch (erro) {
+      return this.falha(erro);
+    }
   }
 
   maxParcelasCredito(): number {
@@ -2809,10 +3071,7 @@ export class SalaoEstadoService {
     return taxa;
   }
 
-  alterarSenha(dados: TrocaSenha): ResultadoOperacao {
-    if (dados.atual !== this.senha) {
-      return { ok: false, mensagem: 'A senha atual não confere.' };
-    }
+  async alterarSenha(dados: TrocaSenha): Promise<ResultadoOperacao> {
     const nova = dados.nova.trim();
     if (nova.length < 6) {
       return { ok: false, mensagem: 'A nova senha precisa ter ao menos 6 caracteres.' };
@@ -2820,49 +3079,62 @@ export class SalaoEstadoService {
     if (nova !== dados.confirmacao.trim()) {
       return { ok: false, mensagem: 'A confirmação não confere com a nova senha.' };
     }
-    if (nova === this.senha) {
-      return { ok: false, mensagem: 'Escolha uma senha diferente da atual.' };
+    try {
+      await this.api.alterarSenha({ atual: dados.atual, nova, confirmacao: dados.confirmacao.trim() });
+      this.senha = nova;
+      return { ok: true, mensagem: 'Senha alterada.' };
+    } catch (erro) {
+      return this.falha(erro);
     }
-    this.senha = nova;
-    return { ok: true, mensagem: 'Senha alterada.' };
   }
 
-  exportarDados(): string {
-    return JSON.stringify(
-      {
-        versao: 1,
-        dadosSalao: this.dadosSalao,
-        descontoMaximoPercentual: this.descontoMaximoPercentual,
-        horarios: this.horarios,
-        bloqueios: this.bloqueios,
-        usuarios: this.usuarios,
-        categorias: this.categorias,
-        formas: this.formas,
-        profissionais: this.profissionais,
-        clientes: this.clientes,
-        fichas: this.fichas,
-        fichasAtendimento: this.fichasAtendimento,
-        servicos: this.servicos,
-        produtos: this.produtos,
-        agendamentos: this.agendamentos,
-        caixas: this.caixas,
-        movimentacoes: this.movimentacoes,
-        contas: this.contas,
-        lancamentosConta: this.lancamentosConta,
-        sangrias: this.sangrias,
-        sequencia: this.sequencia,
-      },
-      null,
-      2,
-    );
+  async exportarDados(): Promise<string> {
+    try {
+      return JSON.stringify(await this.api.exportarBackup(), null, 2);
+    } catch {
+      return JSON.stringify(
+        {
+          versao: 1,
+          dadosSalao: this.dadosSalao,
+          descontoMaximoPercentual: this.descontoMaximoPercentual,
+          horarios: this.horarios,
+          bloqueios: this.bloqueios,
+          usuarios: this.usuarios,
+          categorias: this.categorias,
+          formas: this.formas,
+          profissionais: this.profissionais,
+          clientes: this.clientes,
+          fichas: this.fichas,
+          fichasAtendimento: this.fichasAtendimento,
+          servicos: this.servicos,
+          produtos: this.produtos,
+          agendamentos: this.agendamentos,
+          caixas: this.caixas,
+          movimentacoes: this.movimentacoes,
+          contas: this.contas,
+          lancamentosConta: this.lancamentosConta,
+          sangrias: this.sangrias,
+          sequencia: this.sequencia,
+        },
+        null,
+        2,
+      );
+    }
   }
 
-  restaurarDados(texto: string): ResultadoOperacao {
+  async restaurarDados(texto: string): Promise<ResultadoOperacao> {
     let bruto: unknown;
     try {
       bruto = JSON.parse(texto);
     } catch {
       return { ok: false, mensagem: 'O arquivo não é um backup válido.' };
+    }
+    try {
+      await this.api.restaurarBackup(bruto as never);
+      await this.carregar();
+      return { ok: true, mensagem: 'Backup restaurado.' };
+    } catch {
+      // cai no restore local abaixo
     }
     if (!bruto || typeof bruto !== 'object') {
       return { ok: false, mensagem: 'O arquivo não é um backup válido.' };

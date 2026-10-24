@@ -64,7 +64,7 @@ export class Notificacoes {
     if (item.lida) {
       return;
     }
-    this.estado.marcarComoLida(item.id);
+    void this.estado.marcarComoLida(item.id);
   }
 
   formatar(iso: string): string {

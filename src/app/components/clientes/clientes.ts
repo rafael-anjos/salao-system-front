@@ -1,5 +1,5 @@
 import { CurrencyPipe } from '@angular/common';
-import { Component, HostListener, inject, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, inject, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -36,6 +36,7 @@ export class Clientes implements OnInit, OnDestroy {
   readonly estado = inject(SalaoEstadoService);
   private readonly rota = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly cd = inject(ChangeDetectorRef);
   private assinatura: Subscription | null = null;
 
   readonly filtros: { id: FiltroCliente; nome: string }[] = [
@@ -70,6 +71,11 @@ export class Clientes implements OnInit, OnDestroy {
   senhaAdmin = '';
   erroCadastro = '';
 
+  alvoStatus: Cliente | null = null;
+  senhaStatus = '';
+  erroStatus = '';
+  processandoStatus = false;
+
   anamnese: AnamneseCapilar = anamneseVazia();
   consentimentoAnamnese = false;
   erroAnamnese = '';
@@ -103,6 +109,9 @@ export class Clientes implements OnInit, OnDestroy {
       this.fichaLeituraId = '';
       this.copiarResumo();
       this.copiarAnamnese();
+      if (this.clienteId) {
+        void this.estado.garantirFichas(this.clienteId);
+      }
     });
   }
 
@@ -211,8 +220,42 @@ export class Clientes implements OnInit, OnDestroy {
     this.mostrarCadastro = false;
   }
 
-  salvarCadastro(): void {
-    const resultado = this.estado.salvarCliente({
+  abrirStatus(cliente: Cliente): void {
+    this.alvoStatus = cliente;
+    this.senhaStatus = '';
+    this.erroStatus = '';
+    this.processandoStatus = false;
+  }
+
+  fecharStatus(): void {
+    this.alvoStatus = null;
+    this.senhaStatus = '';
+    this.erroStatus = '';
+    this.processandoStatus = false;
+  }
+
+  async confirmarStatus(): Promise<void> {
+    if (!this.alvoStatus || this.processandoStatus) {
+      return;
+    }
+    this.processandoStatus = true;
+    const resultado = await this.estado.definirClienteAtivo(
+      this.alvoStatus.id,
+      !this.alvoStatus.ativo,
+      this.senhaStatus,
+    );
+    this.processandoStatus = false;
+    if (!resultado.ok) {
+      this.erroStatus = resultado.mensagem;
+      this.cd.detectChanges();
+      return;
+    }
+    this.fecharStatus();
+    this.cd.detectChanges();
+  }
+
+  async salvarCadastro(): Promise<void> {
+    const resultado = await this.estado.salvarCliente({
       id: this.editandoId || undefined,
       nome: this.nome,
       telefone: this.telefone,
@@ -229,6 +272,7 @@ export class Clientes implements OnInit, OnDestroy {
       return;
     }
     this.mostrarCadastro = false;
+    this.cd.detectChanges();
     if (!this.editandoId && resultado.id) {
       void this.router.navigate(['/clientes', resultado.id]);
     }
@@ -273,7 +317,7 @@ export class Clientes implements OnInit, OnDestroy {
     return `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
   }
 
-  salvarResumo(): void {
+  async salvarResumo(): Promise<void> {
     if (!this.cliente) {
       return;
     }
@@ -283,7 +327,7 @@ export class Clientes implements OnInit, OnDestroy {
       this.avisoResumo = '';
       return;
     }
-    const resultado = this.estado.salvarResumoCliente(this.cliente.id, {
+    const resultado = await this.estado.salvarResumoCliente(this.cliente.id, {
       alergia,
       observacoesSaude: this.observacoesSaude,
     });
@@ -298,11 +342,11 @@ export class Clientes implements OnInit, OnDestroy {
     this.copiarAnamnese();
   }
 
-  salvarAnamnese(): void {
+  async salvarAnamnese(): Promise<void> {
     if (!this.cliente) {
       return;
     }
-    const resultado = this.estado.salvarAnamnese(this.cliente.id, this.anamnese, this.consentimentoAnamnese);
+    const resultado = await this.estado.salvarAnamnese(this.cliente.id, this.anamnese, this.consentimentoAnamnese);
     if (!resultado.ok) {
       this.erroAnamnese = resultado.mensagem;
       this.avisoAnamnese = '';
@@ -383,11 +427,11 @@ export class Clientes implements OnInit, OnDestroy {
     this.mostrarFicha = false;
   }
 
-  salvarFicha(): void {
+  async salvarFicha(): Promise<void> {
     if (!this.cliente) {
       return;
     }
-    const resultado = this.estado.salvarFicha({
+    const resultado = await this.estado.salvarFicha({
       clienteId: this.cliente.id,
       data: this.fichaData,
       servico: this.fichaServico,
@@ -418,6 +462,10 @@ export class Clientes implements OnInit, OnDestroy {
     }
     if (this.mostrarCadastro) {
       this.fecharCadastro();
+      return;
+    }
+    if (this.alvoStatus) {
+      this.fecharStatus();
     }
   }
 

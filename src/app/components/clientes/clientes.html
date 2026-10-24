@@ -4,11 +4,16 @@
       <header>
         <h1>{{ atual.nome }}</h1>
         <div class="header-btn">
-          <button class="secundario" type="button" (click)="voltarLista()">Voltar à lista</button>
           <app-notificacoes />
-          <button class="secundario" type="button" [disabled]="!atual.telefone" (click)="abrirWhatsapp(atual)">WhatsApp</button>
-          <button class="secundario" type="button" (click)="agendar(atual)">Novo agendamento</button>
-          <button class="agendamento-btn" type="button" (click)="abrirEdicao(atual)">Editar</button>
+          <div class="header-acoes">
+            <button class="secundario" type="button" (click)="voltarLista()">Voltar à lista</button>
+            <button class="secundario" type="button" [disabled]="!atual.telefone" (click)="abrirWhatsapp(atual)">WhatsApp</button>
+            <button class="secundario" type="button" (click)="agendar(atual)">Novo agendamento</button>
+            <button class="agendamento-btn" type="button" (click)="abrirEdicao(atual)">Editar</button>
+            <button class="secundario" type="button" (click)="abrirStatus(atual)">
+              {{ atual.ativo ? 'Desativar' : 'Reativar' }}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -295,6 +300,9 @@
                         <button class="btn-acao" type="button" [disabled]="!cliente.telefone" (click)="abrirWhatsapp(cliente, true)">Mensagem</button>
                       }
                       <button class="btn-acao" type="button" (click)="agendar(cliente)">Agendar</button>
+                      <button class="btn-acao" type="button" (click)="abrirStatus(cliente)">
+                        {{ cliente.ativo ? 'Desativar' : 'Reativar' }}
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -369,6 +377,36 @@
           <div class="foot-btn">
             <button class="cancel" type="button" (click)="fecharCadastro()">Cancelar</button>
             <button class="save" type="submit">Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  @if (alvoStatus; as alvo) {
+    <div class="overlay" (click)="fecharStatus()">
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="titulo-status" (click)="$event.stopPropagation()">
+        <header class="titulo">
+          <h2 id="titulo-status">{{ alvo.ativo ? 'Desativar cliente' : 'Reativar cliente' }}</h2>
+          @if (alvo.ativo) {
+            <p>{{ alvo.nome }} sai da lista de ativas. A senha da administração confirma a alteração.</p>
+          } @else {
+            <p>{{ alvo.nome }} volta para a lista de clientes ativas. A senha da administração confirma a alteração.</p>
+          }
+        </header>
+        <form (ngSubmit)="confirmarStatus()">
+          <label class="field">
+            Senha da administração
+            <input type="password" name="senhaStatus" [(ngModel)]="senhaStatus" autocomplete="off" required>
+          </label>
+          @if (erroStatus) {
+            <p class="erro" role="alert">{{ erroStatus }}</p>
+          }
+          <div class="foot-btn">
+            <button class="cancel" type="button" (click)="fecharStatus()">Cancelar</button>
+            <button class="save" type="submit" [disabled]="processandoStatus">
+              {{ alvo.ativo ? 'Desativar' : 'Reativar' }}
+            </button>
           </div>
         </form>
       </div>

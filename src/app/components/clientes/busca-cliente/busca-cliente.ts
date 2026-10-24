@@ -85,8 +85,8 @@ export class BuscaCliente implements OnChanges {
     this.erroRapido = '';
   }
 
-  salvarRapido(): void {
-    const resultado = this.estado.salvarCliente({
+  async salvarRapido(): Promise<void> {
+    const resultado = await this.estado.salvarCliente({
       nome: this.nomeRapido,
       telefone: this.telefoneRapido,
     });

@@ -1,8 +1,8 @@
 export const environment = {
   production: false,
   /**
-   * Quando preenchida, o login chama POST `${apiUrl}/auth/login`
-   * com `{ usuario, senha }` e espera `{ token, usuario, nome?, expiraEm? }`.
+   * Base HTTP do backend Spring. Todas as rotas do front usam `${apiUrl}/...`.
+   * Em desenvolvimento o servidor sobe em http://localhost:8080/api.
    */
-  apiUrl: '',
+  apiUrl: 'http://localhost:8080/api',
 };

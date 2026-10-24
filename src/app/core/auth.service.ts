@@ -1,7 +1,6 @@
-import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
-import { environment } from '../../environments/environment';
+import { SalaoApiService } from './api/salao-api.service';
+import { mensagemApi } from './api/api.util';
 import { SalaoEstadoService, UsuarioSalao } from './salao-estado.service';
 
 export interface SessaoAuth {
@@ -20,17 +19,11 @@ export interface ResultadoLogin {
 const CHAVE_SESSAO = 'salao.sessao.v1';
 const DURACAO_SESSAO_MS = 24 * 60 * 60 * 1000;
 
-interface RespostaLoginApi {
-  token?: string;
-  usuario?: string;
-  nome?: string;
-  expiraEm?: number | string;
-}
-
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly estado = inject(SalaoEstadoService);
-  private readonly http = inject(HttpClient);
+  private readonly api = inject(SalaoApiService);
+  private renovando: Promise<boolean> | null = null;
   private readonly sessaoAtual = signal<SessaoAuth | null>(this.lerSessao());
 
   readonly sessao = this.sessaoAtual.asReadonly();
@@ -45,19 +38,61 @@ export class AuthService {
     }
 
     try {
-      const sessao = environment.apiUrl
+      const sessao = this.api.disponivel
         ? await this.entrarPelaApi(login, senhaInformada)
         : await this.entrarLocal(login, senhaInformada);
       this.gravar(sessao);
+      this.estado.definirUsuario(sessao.usuario, sessao.nome);
+      if (this.api.disponivel) {
+        await this.estado.carregar();
+      }
       return { ok: true, mensagem: 'Sessão iniciada.' };
     } catch (erro) {
-      return { ok: false, mensagem: this.mensagemDeErro(erro) };
+      return { ok: false, mensagem: mensagemApi(erro, 'Não foi possível entrar. Tente de novo.') };
     }
   }
 
+  async renovar(): Promise<boolean> {
+    if (!this.api.disponivel) {
+      return false;
+    }
+    if (this.renovando) {
+      return this.renovando;
+    }
+    this.renovando = this.tentarRenovar().finally(() => {
+      this.renovando = null;
+    });
+    return this.renovando;
+  }
+
   sair(): void {
+    if (this.api.disponivel && this.sessaoAtual()) {
+      void this.api.logout().catch(() => undefined);
+    }
     localStorage.removeItem(CHAVE_SESSAO);
     this.sessaoAtual.set(null);
+    this.estado.limparSessao();
+  }
+
+  private async tentarRenovar(): Promise<boolean> {
+    try {
+      const resposta = await this.api.renovar();
+      const token = (resposta.token || resposta.acessToken || '').trim();
+      if (!token) {
+        return false;
+      }
+      const atual = this.sessaoAtual();
+      const sessao = this.montarSessao({
+        token,
+        usuario: resposta.usuario?.trim() || atual?.usuario || '',
+        nome: resposta.nome?.trim() || atual?.nome || resposta.usuario?.trim() || '',
+        expiraEm: this.lerExpiracao(resposta.expiraEm),
+      });
+      this.gravar(sessao);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   private async entrarLocal(usuario: string, senha: string): Promise<SessaoAuth> {
@@ -74,14 +109,9 @@ export class AuthService {
   }
 
   private async entrarPelaApi(usuario: string, senha: string): Promise<SessaoAuth> {
-    const resposta = await firstValueFrom(
-      this.http.post<RespostaLoginApi>(`${environment.apiUrl.replace(/\/$/, '')}/auth/login`, {
-        usuario,
-        senha,
-      }),
-    );
+    const resposta = await this.api.login(usuario, senha);
     const login = resposta.usuario?.trim() || usuario;
-    const token = resposta.token?.trim();
+    const token = (resposta.token || resposta.acessToken || '').trim();
     if (!token) {
       throw new Error('A autenticação não devolveu a sessão.');
     }
@@ -170,15 +200,5 @@ export class AuthService {
       return crypto.randomUUID();
     }
     return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-  }
-
-  private mensagemDeErro(erro: unknown): string {
-    if (erro && typeof erro === 'object' && 'status' in erro && (erro as { status: number }).status === 401) {
-      return 'Usuário ou senha inválidos.';
-    }
-    if (erro instanceof Error && erro.message) {
-      return erro.message;
-    }
-    return 'Não foi possível entrar. Tente de novo.';
   }
 }
