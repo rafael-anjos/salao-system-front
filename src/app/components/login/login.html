@@ -1,0 +1,69 @@
+<div class="login">
+  <section class="identidade" [attr.aria-label]="nomeSalao">
+    <img class="marca" src="logo-image.png" width="220" height="220" [alt]="nomeSalao">
+  </section>
+
+  <section class="acesso" aria-labelledby="titulo-entrar">
+    <form class="formulario" (ngSubmit)="entrar()" novalidate>
+      <header class="cabecalho">
+        <h1 id="titulo-entrar">Entrar</h1>
+        <p>Use o usuário da administração para abrir o sistema.</p>
+      </header>
+
+      <label class="campo">
+        <span>Usuário</span>
+        <input
+          type="text"
+          name="usuario"
+          autocomplete="username"
+          autocapitalize="none"
+          spellcheck="false"
+          [(ngModel)]="usuario"
+          [disabled]="enviando()"
+          (input)="limparErro()">
+      </label>
+
+      <label class="campo">
+        <span>Senha</span>
+        <span class="senha">
+          <input
+            [type]="mostrarSenha() ? 'text' : 'password'"
+            name="senha"
+            autocomplete="current-password"
+            [(ngModel)]="senha"
+            [disabled]="enviando()"
+            (input)="limparErro()">
+          <button
+            class="revelar"
+            type="button"
+            (click)="alternarSenha()"
+            [attr.aria-pressed]="mostrarSenha()"
+            [attr.aria-label]="mostrarSenha() ? 'Ocultar senha' : 'Mostrar senha'">
+            @if (mostrarSenha()) {
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 3l18 18" />
+                <path d="M10.6 10.6a2.2 2.2 0 0 0 3.1 3.1" />
+                <path d="M7.1 7.4C5 8.6 3.5 10.3 2.5 12c2.1 3.7 6.1 6.2 9.5 6.2 1.5 0 3-.4 4.4-1.1" />
+                <path d="M14.1 6.4A9.7 9.7 0 0 1 12 6.2C8.6 6.2 4.6 8.7 2.5 12c.5.9 1.2 1.8 2 2.6" />
+                <path d="M12.8 8.3A2.2 2.2 0 0 1 15.7 12" />
+              </svg>
+            } @else {
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M2.5 12C4.6 8.3 8.6 5.8 12 5.8s7.4 2.5 9.5 6.2c-2.1 3.7-6.1 6.2-9.5 6.2S4.6 15.7 2.5 12Z" />
+                <circle cx="12" cy="12" r="2.3" />
+              </svg>
+            }
+          </button>
+        </span>
+      </label>
+
+      @if (erro()) {
+        <p class="erro" role="alert">{{ erro() }}</p>
+      }
+
+      <button class="primario" type="submit" [disabled]="enviando()">
+        {{ enviando() ? 'Entrando…' : 'Entrar' }}
+      </button>
+    </form>
+  </section>
+</div>

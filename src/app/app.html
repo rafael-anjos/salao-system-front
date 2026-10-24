@@ -1,5 +1,7 @@
-<div class="layout">
-    <app-navbar></app-navbar>
+<div class="layout" [class.entrada]="telaLogin">
+    @if (!telaLogin) {
+        <app-navbar></app-navbar>
+    }
     <main class="conteudo">
         <router-outlet></router-outlet>
     </main>

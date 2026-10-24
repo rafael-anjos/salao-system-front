@@ -1,0 +1,198 @@
+:host {
+  --login-ink: #1c3112;
+  --login-muted: #5a6854;
+  --login-line: color-mix(in srgb, #1c3112 14%, white);
+  --login-canvas: #f3f4f2;
+  --login-critico: #9b1c2c;
+  display: block;
+  min-height: 100vh;
+  font-family: 'Montserrat', sans-serif;
+  color: var(--login-ink);
+  caret-color: var(--login-ink);
+}
+
+:host ::selection {
+  background: color-mix(in srgb, #1c3112 18%, white);
+  color: var(--login-ink);
+}
+
+.login {
+  display: grid;
+  grid-template-columns: minmax(17rem, 42%) minmax(0, 1fr);
+  min-height: 100vh;
+  background: var(--login-canvas);
+}
+
+.identidade {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 2rem;
+  background: var(--login-ink);
+  color: #f7f1dc;
+}
+
+.marca {
+  display: block;
+  width: min(16rem, 68%);
+  height: auto;
+}
+
+.acesso {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+}
+
+.formulario {
+  display: flex;
+  flex-direction: column;
+  width: min(22.5rem, 100%);
+  gap: 1rem;
+}
+
+.cabecalho {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.cabecalho h1 {
+  font-size: 1.875rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.cabecalho p {
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: var(--login-muted);
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.campo span {
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.campo input {
+  width: 100%;
+  height: 2.75rem;
+  padding: 0 0.85rem;
+  border: 1px solid var(--login-line);
+  border-radius: 10px;
+  background: white;
+  color: var(--login-ink);
+  font: inherit;
+  font-size: 0.9375rem;
+  outline: none;
+}
+
+.senha {
+  position: relative;
+  display: block;
+}
+
+.senha input {
+  padding-right: 2.8rem;
+}
+
+.revelar {
+  position: absolute;
+  top: 50%;
+  right: 0.2rem;
+  display: grid;
+  place-items: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  color: var(--login-muted);
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.revelar svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.campo input:focus,
+.revelar:focus-visible,
+.primario:focus-visible {
+  outline: 2px solid var(--login-ink);
+  outline-offset: 2px;
+}
+
+.campo input:focus {
+  border-color: var(--login-ink);
+  box-shadow: 0 0 0 3px color-mix(in srgb, #1c3112 12%, transparent);
+}
+
+.campo input:disabled,
+.primario:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.erro {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--login-critico);
+}
+
+.primario {
+  margin-top: 0.35rem;
+  height: 2.75rem;
+  padding: 0 1.1rem;
+  border: 1px solid var(--login-ink);
+  border-radius: 10px;
+  background: var(--login-ink);
+  color: white;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 180ms ease-out, color 180ms ease-out;
+}
+
+.primario:hover:not(:disabled) {
+  background: white;
+  color: var(--login-ink);
+}
+
+@media (max-width: 720px) {
+  .login {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .identidade {
+    min-height: 11.5rem;
+    padding: 1.5rem 1.25rem 1.25rem;
+  }
+
+  .marca {
+    width: min(8.5rem, 46vw);
+  }
+
+  .acesso {
+    align-items: flex-start;
+    padding: 1.75rem 1.25rem 2.5rem;
+  }
+}

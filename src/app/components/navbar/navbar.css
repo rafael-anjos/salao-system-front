@@ -62,3 +62,43 @@
     padding-top: 0.75rem;
     border-top: 1px solid rgb(255 255 255 / 28%);
 }
+
+.sessao {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    width: 14vw;
+    padding: 0 0 1.15rem;
+}
+
+.sessao p {
+    margin: 0 7px;
+    color: rgb(255 255 255 / 72%);
+    font-size: 0.78rem;
+    font-weight: 500;
+}
+
+.sessao button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 7px;
+    border: 1px solid rgb(255 255 255 / 28%);
+    border-radius: 10px;
+    background: transparent;
+    color: white;
+    font: inherit;
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+
+.sessao button:hover {
+    background: white;
+    color: #1C3112;
+}
+
+.sessao button:focus-visible {
+    outline: 2px solid white;
+    outline-offset: 2px;
+}

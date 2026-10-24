@@ -65,4 +65,10 @@
             </a>
         </li>
     </ul>
+    <div class="sessao">
+        @if (nomeSessao) {
+            <p>{{ nomeSessao }}</p>
+        }
+        <button type="button" (click)="sair()">Sair</button>
+    </div>
 </div>

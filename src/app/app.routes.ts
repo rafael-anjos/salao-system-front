@@ -9,18 +9,21 @@ import { Servicos } from './components/servicos/servicos';
 import { Configuracoes } from './components/configuracoes/configuracoes';
 import { Relatorio } from './components/relatorio/relatorio.component';
 import { Clientes } from './components/clientes/clientes';
+import { Login } from './components/login/login';
+import { authGuard, visitanteGuard } from './core/auth.guard';
 
 export const routes: Routes = [
-    { path: '', component: Dashboard },
-    { path: 'agenda', component: AgendaComponent },
-    { path: 'clientes', component: Clientes },
-    { path: 'clientes/:id', component: Clientes },
-    { path: 'caixa', component: Caixa },
-    { path: 'financeiro', component: Financeiro },
-    { path: 'estoque', component: EstoqueComponent },
-    { path: 'relatorio', component: Relatorio },
-    { path: 'servicos', component: Servicos },
-    { path: 'profissionais', component: Profissionais },
-    { path: 'configuracoes', component: Configuracoes },
-
+  { path: 'login', component: Login, canActivate: [visitanteGuard] },
+  { path: '', component: Dashboard, canActivate: [authGuard] },
+  { path: 'agenda', component: AgendaComponent, canActivate: [authGuard] },
+  { path: 'clientes', component: Clientes, canActivate: [authGuard] },
+  { path: 'clientes/:id', component: Clientes, canActivate: [authGuard] },
+  { path: 'caixa', component: Caixa, canActivate: [authGuard] },
+  { path: 'financeiro', component: Financeiro, canActivate: [authGuard] },
+  { path: 'estoque', component: EstoqueComponent, canActivate: [authGuard] },
+  { path: 'relatorio', component: Relatorio, canActivate: [authGuard] },
+  { path: 'servicos', component: Servicos, canActivate: [authGuard] },
+  { path: 'profissionais', component: Profissionais, canActivate: [authGuard] },
+  { path: 'configuracoes', component: Configuracoes, canActivate: [authGuard] },
+  { path: '**', redirectTo: '' },
 ];
